@@ -1,0 +1,11 @@
+3653	#number of days of run
+100	#inital soil water % of max
+5	#initial N mineral
+0.575	#daily root growth
+0.003	#daily root turnover g C/g C/day
+1.32	#daily litter input g C/m²
+60.3	#CN of litter
+40	#% recalcitrant of litter
+0.54	#C to myc
+0.9	#N from myc to plant as fraction of plant uptake 
+0.7	#fraction effective evapotranspiration

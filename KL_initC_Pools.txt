@@ -1,0 +1,14 @@
+15.1    #bact, g C/m3
+15.1	#fungi, g C/m3	
+160	#mycorrhisae, g C/m3
+0.1	#bacterivores, g C/m3
+0.8	#fungivores, g C/m3
+0.6	#saprotrophs (non-engineers), g C/m3
+0.2	#saprotrophs engineers, g C/m3
+0.2	#herbivores (root-eating), g C/m3
+0.4	#predators, g C/m3
+2680	#Litter, g C/m3
+11470	#SOM, g C/m3
+320	#roots, g C/m3
+0	#cummulative respiration (set to 0)
+

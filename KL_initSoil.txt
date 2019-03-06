@@ -1,0 +1,15 @@
+1	# depth of soil layer, m 
+1463	#bulk density in kg/m3
+1.2	#alpha, van Genuchten, kPa-1
+1.7	#n, van Genuchten
+0.3	#m, van Genuchten
+10	#Ksat, van Genuchten
+3.9	#pH
+38.6	#initial litter CN 
+18	#initial SOM CN 
+7	# drainmax mm/day
+45	#vol inac pores, l/m3
+37	#vol bact pores, l/m3
+37	#vol micro pores, l/m3
+200	#vol meso pores, l/m3
+6	#vol macro pores, l/m3

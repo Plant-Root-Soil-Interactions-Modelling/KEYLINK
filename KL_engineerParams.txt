@@ -1,0 +1,9 @@
+1	# ratio pore volume to engineer biomass, l/g C
+0.5  	# fPVB, volume that is 'made' by extra porosity, fraction (rest=pushed)
+0.01	# daily turnover of burrows 
+25	# PVBmax, max burrow volume, l/m3
+0.05	# fragmentation, fraction of 'eaten' litter/day
+0.2	# mfaec, sensitivity of % faeces to CN ratio
+0.3	# mfaec sap non-eng
+0.05	# bioturbation=mixing downwards of % SOM/g C earthworm per day
+0.01    # litter moving %litter/g C engineer/day
