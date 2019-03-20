@@ -1,7 +1,7 @@
 """
 FUNCTIONS FOR KEYLINK MODEL
 
-Created on 01.06.2017 last write 4/3/2019
+Created on 01.06.2017 last write 20/3/2019
 
 @author: A Schnepf - G Deckmyn - G Cauwenberg - O Flores
 """
@@ -147,7 +147,7 @@ def calcPW(PV, precip, PW, drainmax, d, R, S, alpha, n, m, Ksat): #PV=pore volum
         PW[4] = PW[4]+pnet*SAmacro  #macropores take part of rain always
         pnet = pnet*(1-SAmacro)
         #then fill from smallest pores upwards
-        for i in range(0, 3):
+        for i in range(0, 4):
             pin = (PV[i]-PW[i])
             if pnet >= pin:
                 PW[i] = PW[i]+pin
@@ -162,7 +162,7 @@ def calcPW(PV, precip, PW, drainmax, d, R, S, alpha, n, m, Ksat): #PV=pore volum
             PW[4] = 0
         elif PW[4] < drainmax:
             PW[4] = 0
-            PW[3] = PW[3]-drainmax
+            PW[3] = PW[3]+PW[4]-drainmax
             drain = drainmax
         else:
             PW[4] = PW[4]-drainmax            
@@ -173,7 +173,7 @@ def calcPW(PV, precip, PW, drainmax, d, R, S, alpha, n, m, Ksat): #PV=pore volum
         pmat = ImaxMat
         pnet = pnet-pmat
         #then fill from smallest pores upwards
-        for i in range(0, 3):
+        for i in range(0, 4):
             pin = (PV[i]-PW[i])
             if pmat >= pin:
                 PW[i] = PW[i]+pin
@@ -212,7 +212,7 @@ def calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id):
 #effect of CN when limiting (only for bacteria!) is in the main code
 # id is te identity of the organisms (1=bacteria, 2=fungi)
       #effect of recalcitrance
-   mRec = 1-prec*rec
+   mRec = 1-prec*rec/100
       #effect of pH
    if id < 2: #for bacteria
        if pH < 3:
@@ -247,8 +247,8 @@ def calcresp(temp, T1, R1, Q10): #calculate respiration ifo temperature
     return value
 
 def calcFaec(gmax, faec, pfaec, CNsource, CNbiomass, R): #calculate faeces
-    faecm = faec+pfaec*(CNsource-CNbiomass)/CNsource*faec
-    faecshort = CNsource/CNbiomass+CNsource*R/gmax-1
+    faecm = faec+pfaec*(CNsource-CNbiomass)/CNsource*faec # ffaecEff in paper
+    faecshort = CNsource/CNbiomass+CNsource*R/gmax-1 # ffaecCN in paper
     value = max(faecm, faecshort)
     return value
 
