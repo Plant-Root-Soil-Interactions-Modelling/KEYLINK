@@ -41,8 +41,9 @@ d, BD, alpha, n, m, Ksat, pH, litterCN, SOMCN, drainmax, PVstruct[0], PVstruct[1
 ratioPVBeng, fPVB, tPVB,  PVBmax, frag, pfaec[5], pfaec[6], bioturbRate, moveRate= import_pools('KL_engineerParams') #parameters for engineer activity
 
 # Parameters CNlit=of daily litter, litterCN=total litter pool
-tStop, initWater, Nmin, rrg, rootTO, inputLit, CNlit, recLit, CtoMyc, NmyctoPlant, ee = import_pools('KL_runparams')
+inittStop, initWater, Nmin, rrg, rootTO, inputLit, CNlit, recLit, CtoMyc, NmyctoPlant, ee = import_pools('KL_runparams')
 PW = initWater/100*PVstruct #fraction of pore volume filled with water
+tStop = int(inittStop)
 
 Nfauna=sum(B[:9]/CN) #N in food web functional groups
 
@@ -262,7 +263,7 @@ def f(B, t, avail, modt, GMAX, litterCN,SOMCN):
  
     return [bact, fungi, myc, bvores, fvores, sap,
             eng, hvores, pred, litter, som, roots, co2,
-            bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng]   
+            bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng, 0]   
 
     
 PVt = np.zeros(tStop)
