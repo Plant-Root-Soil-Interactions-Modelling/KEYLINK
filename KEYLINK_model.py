@@ -1,7 +1,7 @@
 '''
 KEYLINK MODEL
 
-Created on 27.07.2016 last write 4/3/2019
+Created on 27.07.2016 last write 18/02/2021
 
 @author: A Schnepf - G Deckmyn - G Cauwenberg - O Flores
 '''
@@ -9,7 +9,7 @@ Created on 27.07.2016 last write 4/3/2019
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
-import functions_KEYLINK as mf
+import functions_KEYLINK_v2 as mf
 import random
 import matplotlib
 import math
@@ -19,7 +19,6 @@ def import_pools(filename):
     """Load array from text file"""
     return np.loadtxt(filename + '.txt')
 
-
 def export_pools(filename, array):
     """Save an array in a readable format, compatible with R"""
     np.savetxt(filename + '.txt', array)
@@ -28,7 +27,6 @@ pfaec = np.zeros(7)
 PVstruct=np.zeros(5)
 drainage = 0
 runoff = 0
-#test=mf.inputLitter(50, 20)[0]
 
 B = import_pools('KL_initC_Pools') #initial biomass in each C pool
 (GMAX, KS, DEATH, RESP, FAEC, CN, REC, MCN,
@@ -43,14 +41,15 @@ d, BD, alpha, n, m, Ksat, pH, litterCN, SOMCN, drainmax, PVstruct[0], PVstruct[1
 ratioPVBeng, fPVB, tPVB,  PVBmax, frag, pfaec[5], pfaec[6], bioturbRate, moveRate= import_pools('KL_engineerParams') #parameters for engineer activity
 
 # Parameters CNlit=of daily litter, litterCN=total litter pool
-tStop, initWater, Nmin, rrg, rootTO, inputLit, CNlit, recLit, CtoMyc, NmyctoPlant, ee = import_pools('KL_runparams')
-PW = initWater/100*PVstruct  #fraction of pore volume filled with water
+inittStop, initWater, Nmin, rrg, rootTO, inputLit, CNlit, recLit, CtoMyc, NmyctoPlant, ee = import_pools('KL_runparams')
+PW = initWater/100*PVstruct #fraction of pore volume filled with water
+tStop = int(inittStop)
 
 Nfauna=sum(B[:9]/CN) #N in food web functional groups
 
 Ntot=Nfauna+Nmin+B[10]/SOMCN+B[9]/litterCN #initial total N of the system
 
-gr = np.array([10000,2000,500,50,0.1]) #graph ranges, for five biomass graphs with ranges from 0 to these values
+gr = np.array([4000,2000,500,50,0.1]) #graph ranges, for five biomass graphs with ranges from 0 to these values
 #graph labels for the populations and C pools
 popname = np.array(['Bacteria','Fungi','Mycorrhiza','bacterivores','fungivores','saprotrophs','engineers','herbivores','predators','litter','SOM','roots','CO2'])
 #graph colours for the populations and C pools
@@ -158,9 +157,9 @@ def f(B, t, avail, modt, GMAX, litterCN,SOMCN):
     # update GMAX for bacteria, fung and myc GMAX is modified for SOM
     # and litter seperately depending on CN (and possibly recalcitrance)
     #for bact if CN source too high they can't grow   
-    gmaxblit = mf.calcgmaxmod(CN[0], litterCN, MCN[0], (recLit/100), MREC[0], pH, 1)*GMAX[0] #gmax for bact on litter
+    gmaxblit = mf.calcgmaxmod(CN[0], litterCN, MCN[0], recLit, MREC[0], pH, 1)*GMAX[0] #gmax for bact on litter
     gmaxbSOM = mf.calcgmaxmod(CN[0], SOMCN, MCN[0], 0.0, MREC[0], pH, 1)*GMAX[0] #gmax for bact on SOM
-    gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], (recLit/100), MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
+    gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
     gmaxfSOM = mf.calcgmaxmod(CN[1], SOMCN, MCN[1], 0.0, MREC[1], pH, 2)* GMAX[1] #gmax for fung on SOM
     gmaxEng = min(mf.calcgmaxEng(GMAX[6],pH),GMAX[6]) #gmax for engineers
     
@@ -264,7 +263,7 @@ def f(B, t, avail, modt, GMAX, litterCN,SOMCN):
  
     return [bact, fungi, myc, bvores, fvores, sap,
             eng, hvores, pred, litter, som, roots, co2,
-            bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng]   
+            bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng, 0]   
 
     
 PVt = np.zeros(tStop)
@@ -315,7 +314,8 @@ for i in range(int(std), int(std+tStop)):
 
     # water calculations                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
     # (pvd (pore volume density = array of % filled of each porse size class)
-    PW, drainage, runoff = mf.calcPW(pv, precip, PW, drainmax,d, pv[0], sum(pv[0:3]), alpha, n, m, Ksat)
+    SatW = sum(pv[0:4])/(d-(pv[4])/sum(pv[0:5])) #saturated water content (excluding macropores)
+    PW, drainage, runoff = mf.calcPW(pv, precip, PW, drainmax,d, (pv[0]/d), SatW, alpha, n, m, Ksat)
    
     PWt[i-std] = sum(PW) #soil water content in the current day
     PVt[i-std] = sum(pv) #total soil porosity in the current day
@@ -333,7 +333,6 @@ for i in range(int(std), int(std+tStop)):
     #root growth
     B[11]=B[11]+mf.rootgrowth(rrg)-mf.rootTurnover(B[11],rootTO)
     
-
     #interaction between mycorrhizal fungi and plants
     B[2]=B[2]+mf.inputCtoMyc(CtoMyc)
     
@@ -356,16 +355,21 @@ for i in range(int(std), int(std+tStop)):
     PW = mf.wl(PW,et) # water lost by evapotranspiration: we do this at the end of the day (otherwise soil is always dry)
 
     # close N budget by adding up all N and putting 'restvalue' in SOM but not part by bact (goes into mineralised)
-    Nmin=Nmin+B[13]/CN[0]-B[16]/litterCN-B[17]/SOMCN    # adding bact resp - growth /CN for lit and SOM
+    Nmin=Nmin-(B[16]+B[17]-B[13])/CN[0]+B[16]/litterCN+B[17]/SOMCN    # adding bact resp - growth /CN for lit and SOM
+    if Nmin<0:   #Bact use more N then they 'eat' this needs to come from somewhere so from SOM (but needs to be corrected)
+        Nneg=Nmin
+        Nmin=0
+    else:
+        Nneg=0
     Nfauna=sum(B[0:9]/CN)
-    NSOM=Ntot-Nfauna-Nmin
+    NSOM=Ntot-Nfauna-Nmin+Nneg
     SOMCN=B[10]/NSOM
 
+    
     #move SOM by engineers
     SOMdown=mf.calcBioturb(B[6], bioturbRate, B[10])
     B[10]=B[10]-SOMdown
     Ntot=Ntot-SOMdown/SOMCN
-
 
     #move litter by engineers
     Litdown=mf.calcLittermove(B[6], moveRate, B[9])
@@ -377,7 +381,7 @@ for i in range(int(std), int(std+tStop)):
     B[10]=B[10]+frag*psoln[i,21]  #LITeatenEng
      
     for s in range (0, 11):
-        if B[s]<=0:  #security codes to avoid errors by negative biomasses
+        if B[s]<=0: #security codes to avoid errors by negative biomasses
             B[s]=0.001
     
 climatefile.close
@@ -387,8 +391,3 @@ export_pools('keylinkoutput', psoln)
 t = np.arange(0., tStop)
 
 show_plot(psoln, PWt, PVt)
-
-
-
-
-

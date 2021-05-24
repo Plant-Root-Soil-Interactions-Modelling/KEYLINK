@@ -1,5 +1,5 @@
 ''' MCMC FOR KEYLINK (FIRST VERSION) CALIBRATION
-    Last write 20/11/2019
+    Last write 18/02/2021
 # Python version of Markov Chain Monte Carlo (MCMC) Line 
 # David Cameron 11/11/2008 dcam@ceh.ac.uk
 # modified for KEYLINK model 3/2018 Gaby Deckmyn
@@ -9,7 +9,7 @@ from numpy import matlib as ml
 from numpy import random as ra
 import scipy
 from scipy import stats
-import Keylinkbayesian as bayes
+import Keylinkbayesian_v2 as bayes
 
 def export_pools(filename, array):
     """Save an array in a readable format, compatible with R"""

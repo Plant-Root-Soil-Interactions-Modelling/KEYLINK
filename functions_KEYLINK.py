@@ -1,7 +1,7 @@
 """
 FUNCTIONS FOR KEYLINK MODEL
 
-Created on 01.06.2017 last write 20/3/2019
+Created on 01.06.2017 last write 18/02/2021
 
 @author: A Schnepf - G Deckmyn - G Cauwenberg - O Flores
 """
@@ -161,8 +161,8 @@ def calcPW(PV, precip, PW, drainmax, d, R, S, alpha, n, m, Ksat): #PV=pore volum
             PW[3] = 0
             PW[4] = 0
         elif PW[4] < drainmax:
+            PW[3] = PW[3]-(drainmax-PW[4])
             PW[4] = 0
-            PW[3] = PW[3]+PW[4]-drainmax
             drain = drainmax
         else:
             PW[4] = PW[4]-drainmax            
@@ -216,11 +216,11 @@ def calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id):
       #effect of pH
    if id < 2: #for bacteria
        if pH < 3:
-           mpH = 1/((3-pH)*10)
+           mpH = min(1, 1/((3-pH)*10))
        else:
            mpH = 1
    elif pH > 8: #for fungi
-       mpH = 1/((pH-8)*10)
+       mpH = min(1, 1/((pH-8)*10))
    else:
        mpH = 1
    
@@ -248,7 +248,7 @@ def calcresp(temp, T1, R1, Q10): #calculate respiration ifo temperature
 
 def calcFaec(gmax, faec, pfaec, CNsource, CNbiomass, R): #calculate faeces
     faecm = faec+pfaec*(CNsource-CNbiomass)/CNsource*faec # ffaecEff in paper
-    faecshort = CNsource/CNbiomass+CNsource*R/gmax-1 # ffaecCN in paper
+    faecshort = CNsource/CNbiomass+R/gmax-1 # ffaecCN in paper
     value = max(faecm, faecshort)
     return value
 
@@ -274,17 +274,17 @@ def wl(PW, et): # water lost by evapotranspiration
     if et<PW[4]:
         PW[4]=PW[4]-et
     elif et<(PW[3]+PW[4]):
-        PW[4]=0
         PW[3]=PW[3]-(et-PW[4])
+        PW[4]=0
     elif et<(PW[2]+PW[3]+PW[4]):
+        PW[2]=PW[2]-(et-PW[3]-PW[4])
         PW[4]=0
         PW[3]=0
-        PW[2]=PW[2]-(et-PW[3]-PW[4])
     elif et<(PW[1]+PW[2]+PW[3]+PW[4]):
+        PW[1]=PW[1]-(et-PW[2]-PW[3]-PW[4])
         PW[4]=0
         PW[3]=0
         PW[2]=0
-        PW[1]=PW[1]-(et-PW[2]-PW[3]-PW[4])
     else:
         PW[4]=0
         PW[3]=0
