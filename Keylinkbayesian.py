@@ -27,12 +27,13 @@ PVstruct=np.zeros(5)
 drainage = 0
 runoff = 0
 B = import_pools('KL_initC_Pools') #initial biomass in each C pool
-(KS, DEATH, RESP, FAEC, CN, REC, MCN,
- MREC, T_MIN, T_OPT, T_MAX, Q10) = import_pools('KL_FaunalParameters') #parameters for each functional group
+(GMAXtemp, KS, DEATH, RESP, FAEC, CN, REC, MCN,
+ MREC, T_MIN, T_OPT, T_MAX, Q10) = import_pools('KL_FaunalParams') #parameters for each functional group, beware GMAX is
+#in this version overwritten when calling (depending on the runmode)
 
 iniSOM=B[10] #initial SOM in g C/m3
 
-B.resize((22,))
+B.resize(22,refcheck=False)
 
 (TEMP, SUNH) = import_pools('KL_climateParams') #monthly climate data
 d, BD, alpha, n, m, Ksat, pH, litterCN, SOMCN, drainmax, PVstruct[0], PVstruct[1], PVstruct[2], PVstruct[3], PVstruct[4] = import_pools('KL_initSoil') #soil parameters
@@ -54,11 +55,26 @@ SOMCNini=SOMCN
 Bini = B
 PWini = PW
 
+PVt = np.zeros(int(tStop))
+PWt = np.zeros(int(tStop))
+psoln = np.zeros((int(tStop), 22))
+avail = np.zeros(11)
+modt = np.zeros(9)
+rRESP = np.zeros(9)
 
 HI=0 #heat index (is calculated with the daily mean temperature of all months)
 for m in range(12):
     HI = HI + (TEMP[m]/5)**1.514
 alfa = 0.000000675*(HI**3) - 0.0000771*(HI**2) + 0.01792*HI + 0.49239 #alpha for Thornthwaite equation
+
+gr = np.array([4000,2000,500,50,0.1]) #graph ranges, for five biomass graphs with ranges from 0 to these values
+#graph labels for the populations and C pools
+popname = np.array(['Bacteria','Fungi','Mycorrhiza','bacterivores','fungivores','saprotrophs','engineers','herbivores','predators','litter','SOM','roots','CO2'])
+#graph colours for the populations and C pools
+popcolour = np.array(['blue','red','darkcyan','cyan','orange','purple','darkgreen','magenta','black','brown','grey','chartreuse','yellow'])
+t = np.arange(0., tStop)
+
+
 
 # function to be integrated daily solving the carbon pools 'B' ifo time
 def f(B, t, avail, modt, GMAX, litterCN,SOMCN):
@@ -178,22 +194,17 @@ def f(B, t, avail, modt, GMAX, litterCN,SOMCN):
  
     return [bact, fungi, myc, bvores, fvores, sap,
             eng, hvores, pred, litter, som, roots, co2,
-            bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng]   
+            bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
 
 
-PVt = np.zeros(tStop)
-PWt = np.zeros(tStop)
-psoln = np.zeros((tStop, 22))
-avail = np.zeros(11)
-modt = np.zeros(9)
-rRESP = np.zeros(9)
+
 
 
 def KeylinkModel(Val):
 
     climatefile=open('PrecipKMIBrass.txt')
     titls=climatefile.readline() # first line are titles
-
+    
     std=0 #we are using here dates from climate input file, so there is no need in create a starting date
     pv=PVstruct #initialise to structural 
     GMAX=Val
@@ -204,14 +215,15 @@ def KeylinkModel(Val):
     
     B = Bini
     PW = PWini
- 
+    pores= np.zeros([int(tStop),5], 'd') #matrix for the daily pore volumes of each size class
+    
     # this is the actual core model routine over time steps i
     for i in range(int(std), int(std+tStop)):
         # calculate PSD (array of % of five size classes of pores) and aggregation
         ag = mf.calcAg(B[1], B[2], B[10]) #calculates aggregation fraction
         pv = mf.calcPVD(PVstruct, pv, ag, ratioPVBeng, fPVB, tPVB, PVBmax, d, B)
         pvd = pv*100/sum(pv)
-    
+        pores[i,:]=pv
         nd = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]) # number of days in each month
     
         zip=climatefile.readline().split() #daily meteorological data
@@ -309,4 +321,88 @@ def KeylinkModel(Val):
                 B[s]=0.001
     
     climatefile.close
-    return (psoln)   #save the B's on all days days of all pools
+    return (psoln, PWt, PVt, pores)   #save the Cpools, water and porevolumes's on all days days
+
+
+
+'''
+    Plot population size as a function of time
+'''
+def show_plot(soln, pwt, pvt):
+    
+    plt.clf()
+    
+    plt.subplot(2, 1, 1)
+    plt.plot(t, pwt, label="SW")
+    plt.plot(t, pvt, label="porosity")
+
+    plt.ylabel('Water, l/m2')
+    plt.ylim(0,400)
+    plt.legend(loc=(1.01, 0), shadow=True) #loc='upper right',
+    
+    plt.subplot(2, 1, 2)
+    for p in range(13): # it only shows populations with max biomass value higher than gr[1]
+        if max(soln[:,p])>gr[1]:
+            plt.plot(t, soln[:, p], label=popname[p], c=popcolour[p])
+    
+    plt.xlabel('Time,days')
+    plt.ylabel('Biomass, gC/m3')
+    plt.ylim(0, gr[0])
+    plt.legend(loc=(1.01, 0), shadow=True)
+    
+    plt.show()
+    
+    plt.clf()
+    
+    plt.subplot(2, 1, 1)
+    for p in range(13): # shows populations with maximum or mean biomass values between gr[1] and gr[2]
+        maxvalue=(max(soln[:,p]))
+        meanvalue=((sum(soln[:,p]))/tStop)
+        if ((maxvalue>gr[2]) and (maxvalue<gr[1])) or (meanvalue>gr[2] and meanvalue<gr[1]):
+            plt.plot(t, soln[:, p], label=popname[p], c=popcolour[p])    
+    
+    plt.ylabel('Biomass, gC/m3')
+    plt.ylim(0, gr[1])
+    plt.legend(loc=(1.01, 0), shadow=True)
+    
+    plt.subplot(2, 1, 2)
+    for p in range(13): # shows populations with maximum or mean biomass values between gr[2] and gr[3]
+        maxvalue=(max(soln[:,p]))
+        meanvalue=((sum(soln[:,p]))/tStop)
+        if ((maxvalue>gr[3]) and (maxvalue<gr[2])) or (meanvalue>gr[3] and meanvalue<gr[2]):
+            plt.plot(t, soln[:, p], label=popname[p], c=popcolour[p])    
+    
+    plt.xlabel('Time,days')
+    plt.ylabel('Biomass, gC/m3')
+    plt.ylim(0, gr[2])
+    plt.legend(loc=(1.01, 0), shadow=True)
+    
+    plt.show()    
+    
+    plt.clf()
+    
+    plt.subplot(2, 1, 1)
+    for p in range(13): # shows populations with maximum or mean biomass values between gr[3] and gr[4]
+        maxvalue=(max(soln[:,p]))
+        meanvalue=((sum(soln[:,p]))/tStop)
+        if ((maxvalue>gr[4]) and (maxvalue<gr[3])) or (meanvalue>gr[4] and meanvalue<gr[3]):
+            plt.plot(t, soln[:, p], label=popname[p], c=popcolour[p])
+    
+    plt.ylabel('Biomass, gC/m3')
+    plt.ylim(0, gr[3])
+    plt.legend(loc=(1.01, 0), shadow=True)
+    
+    plt.subplot(2, 1, 2)
+    te=(tStop-int(round((tStop/5))))
+    # shows populations with last 20% days mean biomass values lower than gr[4] (assumed local extinction)
+    for p in range(13):
+        extvalue=((sum(soln[te:tStop,p]))/(tStop-te))
+        if (extvalue<gr[4]):
+            plt.plot(t, soln[:, p], label=popname[p], c=popcolour[p])    
+    
+    plt.xlabel('Time,days')
+    plt.ylabel('Biomass, gC/m3')
+    plt.ylim(0, gr[4])
+    plt.legend(loc=(1.01, 0), shadow=True)
+
+    plt.show()
