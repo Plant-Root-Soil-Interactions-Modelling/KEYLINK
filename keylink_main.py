@@ -3,20 +3,15 @@ NEW main for calling KEYLINK model as a function, either single call, bayesian o
  using posterior (parameter set) or using parameter distributions. 
 '''
 
-''' MCMC FOR KEYLINK (FIRST VERSION) CALIBRATION
-    Last write 24/05/2021
-# Python version of Markov Chain Monte Carlo (MCMC) Line 
-# David Cameron 11/11/2008 dcam@ceh.ac.uk
-# modified for KEYLINK model 3/2018 Gaby Deckmyn
-'''
+
 import numpy as nm
 from numpy import matlib as ml
 from numpy import random as ra
 import scipy
 from scipy import stats
-import Keylinkbayesian as core
+import keylink_core as core
 
-
+"runmode can be single, bayesian, posterior (or distribution, not yet implimented)"
 runmode='posterior'
 
 if (runmode=='single'):
@@ -30,7 +25,12 @@ if (runmode=='single'):
 # pValues        =  [1.06,1.14,1.04,1.540,1.188,0.038,0.072,0.028,0.14]    
 
 if(runmode=='bayesian'):
-
+ ''' MCMC FOR KEYLINK (FIRST VERSION) CALIBRATION
+    Last write 3/6/2021
+ # Python version of Markov Chain Monte Carlo (MCMC) Line 
+ # David Cameron 11/11/2008 dcam@ceh.ac.uk
+ # modified for KEYLINK model 3/2018 Gaby Deckmyn
+ '''
  chainLength    = 1                                 
  caldatafile=open('KL_calibData.txt')
 
