@@ -18,7 +18,7 @@ if (runmode=='single'):
 #read the gmax values
  param = core.import_pools('KL_FaunalParams')   
  gmax=param[0,:] 
- Cpools, PWt, PVt=core.KeylinkModel(gmax) 
+ Cpools, PWt, PVt, pores=core.KeylinkModel(gmax) 
  core.export_pools('keylinkoutput', Cpools)
  core.show_plot(Cpools, PWt, PVt)  
  
@@ -58,7 +58,7 @@ if(runmode=='bayesian'):
  logPrior0 = nm.sum( nm.log( stats.uniform.pdf( gmax, pMinima, pMaxima ) ) )                 
 
  # this is the call to the model with the initial parameter values
- y,PWt, PVt=core.KeylinkModel(gmax) #returns biomsses of all pools on all days in y
+ y,PWt, PVt, pores=core.KeylinkModel(gmax) #returns biomsses of all pools on all days in y
 
 
  # calculate first log likelihood (log of summed differences betwen measured and simulated and /error)
@@ -88,7 +88,7 @@ if(runmode=='bayesian'):
     
     if Prior1 > 0: #if the parameter you want to try is in the range between min and max
        # this is the model  run with the 'candidate parameter' 
-       y, PWt, PVt=core.KeylinkModel(candidategmax)
+       y, PWt, PVt, pores=core.KeylinkModel(candidategmax)
        # calculate the log likelihood
        ii=0
        logLi=[]
@@ -143,6 +143,7 @@ if runmode == 'posterior':   #the model is run for all the given combinations of
  for u in range(0,Nvec):
     gmax=bayesGmax[u,] #vector of gmax randomly selected from Bayesian calibration of gmax
     Cpools, PWt, PVt, pores=core.KeylinkModel(gmax)   
+    raw[nsim,:] = Cpools[1, :] #needs to be cheked
     soilm[u,5] = (sum(PWt)/tStop) #average value of soil water content within the simulation period
     for r in range(5): #average values of volumes in each pore size class within the simulation period
         soilm[u,r]=(sum(pores[:,r])/tStop)
