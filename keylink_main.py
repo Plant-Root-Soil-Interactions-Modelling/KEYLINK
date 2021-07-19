@@ -12,7 +12,7 @@ from scipy import stats
 import keylink_core as core
 
 "runmode can be single, bayesian, posterior (or distribution, not yet implimented)"
-runmode='posterior'
+runmode='single'
 
 if (runmode=='single'):
 #read the gmax values
