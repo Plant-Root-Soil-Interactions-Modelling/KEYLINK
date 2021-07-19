@@ -1,5 +1,5 @@
 '''
-Created on 27.07.2016 last write 24/05/2021
+Created on 27.07.2016 last write 19/7/2021 adding species
 
 
 @author: a.schnepf - G Deckmyn - G Cauwenberg - O Flores
@@ -22,18 +22,22 @@ def export_pools(filename, array):
     """Save an array in a readable format, compatible with R"""
     np.savetxt(filename + '.txt', array)
 
-pfaec = np.zeros(7)
+NrGroups=8
+CompetingSpecies=True
+pfaec = np.zeros(NrGroups-1)
 PVstruct=np.zeros(5)
 drainage = 0
 runoff = 0
+
+
 B = import_pools('KL_initC_Pools') #initial biomass in each C pool
 (GMAXtemp, KS, DEATH, RESP, FAEC, CN, REC, MCN,
  MREC, T_MIN, T_OPT, T_MAX, Q10) = import_pools('KL_FaunalParams') #parameters for each functional group, beware GMAX is
 #in this version overwritten when calling (depending on the runmode)
 
-iniSOM=B[10] #initial SOM in g C/m3
+iniSOM=B[NrGroups] #initial SOM in g C/m3
 
-B.resize(22,refcheck=False)
+B.resize(14+NrGroups,refcheck=False)
 
 (TEMP, SUNH) = import_pools('KL_climateParams') #monthly climate data
 d, BD, alpha, n, m, Ksat, pH, litterCN, SOMCN, drainmax, PVstruct[0], PVstruct[1], PVstruct[2], PVstruct[3], PVstruct[4] = import_pools('KL_initSoil') #soil parameters
@@ -43,9 +47,9 @@ ratioPVBeng, fPVB, tPVB,  PVBmax, frag, pfaec[5], pfaec[6], bioturbRate, moveRat
 tStop, initWater, Nmin, rrg, rootTO, inputLit, CNlit, recLit, CtoMyc, NmyctoPlant, ee = import_pools('KL_runparams')
 PW = initWater/100*PVstruct #fraction of pore volume filled with water
 
-Nfauna=sum(B[:9]/CN) #N in food web functional groups
+Nfauna=sum(B[:NrGroups+1]/CN) #N in food web functional groups
 
-Ntot=Nfauna+Nmin+B[10]/SOMCN+B[9]/litterCN #initial total N of the system
+Ntot=Nfauna+Nmin+B[NrGroups]/SOMCN+B[NrGroups+1]/litterCN #initial total N of the system
 
 Nminini=Nmin
 Ntotini=Ntot
@@ -57,10 +61,10 @@ PWini = PW
 
 PVt = np.zeros(int(tStop))
 PWt = np.zeros(int(tStop))
-psoln = np.zeros((int(tStop), 22))
-avail = np.zeros(11)
-modt = np.zeros(9)
-rRESP = np.zeros(9)
+psoln = np.zeros((int(tStop), NrGroups+14))
+avail = np.zeros(NrGroups+3)
+modt = np.zeros(NrGroups+1)
+rRESP = np.zeros(NrGroups+1)
 
 HI=0 #heat index (is calculated with the daily mean temperature of all months)
 for m in range(12):
@@ -77,12 +81,12 @@ t = np.arange(0., tStop)
 
 
 # function to be integrated daily solving the carbon pools 'B' ifo time
-def f(B, t, avail, modt, GMAX, litterCN,SOMCN):
+def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
     (availSOMbact, availSOMfungi, availSOMeng, availSOMsap, availbbvores,
      availffvores, availfvorespred, availbvorespred, availhvorespred,
      availsappred, availengpred ,SOMunavail) = avail
 
-    # 0=bact, 1=fungi, 2=myc, 3=bvores, 4=fvores, 5=sap,
+    # Default '10 groups': 0=bact, 1=fungi, 2=myc, 3=bvores, 4=fvores, 5=sap,
     # 6=eng, 7=hvores, 8=pred, 9=litter, 10=SOM, 11=roots, 12=CO2
 
     # update GMAX for bacteria, fung and myc GMAX is modified for SOM
@@ -242,7 +246,7 @@ def KeylinkModel(Val):
 
         precip=float(zip[4])
         temp=float(zip[5])
-        for j in range (9):
+        for j in range (NrGroups+1):
             modt[j] = mf.calcmodt(temp, T_OPT[j], T_MIN[j], T_MAX[j])
             rRESP[j]=mf.calcresp(temp, T_OPT[j], RESP[j], Q10[j])
     
@@ -282,8 +286,14 @@ def KeylinkModel(Val):
         Nmin=Nmin-min(mf.plantNuptake(litterCN, inputLit, NmyctoPlant), Nmin)
     
         # Call the ODE solver for day i
-        day = odeint(f, B, [i, i+1], args=(avail, modt, GMAX, litterCN, SOMCN))
-
+        if CompetingSpecies==True: 
+            day = odeint(mf.fCompSpecies, B, [i, i+1], args=(avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP,
+         KS, DEATH, CtoMyc))
+        else:    
+            day = odeint(fEight, B, [i, i+1], args=(avail, modt, GMAX, litterCN, SOMCN))
+        
+            
+        
         # Second column is end value for day i, start value for day i + 1
         psoln[i-std] = day[1, :]
         B = day[1, :]
