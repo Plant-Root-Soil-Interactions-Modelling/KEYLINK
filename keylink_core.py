@@ -55,6 +55,7 @@ SOMCNini=SOMCN
 Bini = B
 PWini = PW
 
+
 PVt = np.zeros(int(tStop))
 PWt = np.zeros(int(tStop))
 psoln = np.zeros((int(tStop), 22))
@@ -74,8 +75,6 @@ popname = np.array(['Bacteria','Fungi','Mycorrhiza','bacterivores','fungivores',
 popcolour = np.array(['blue','red','darkcyan','cyan','orange','purple','darkgreen','magenta','black','brown','grey','chartreuse','yellow'])
 t = np.arange(0., tStop)
 
-
-
 # function to be integrated daily solving the carbon pools 'B' ifo time
 def f(B, t, avail, modt, GMAX, litterCN,SOMCN):
     (availSOMbact, availSOMfungi, availSOMeng, availSOMsap, availbbvores,
@@ -88,6 +87,8 @@ def f(B, t, avail, modt, GMAX, litterCN,SOMCN):
     # update GMAX for bacteria, fung and myc GMAX is modified for SOM
     # and litter seperately depending on CN (and possibly recalcitrance)
     #for bact if CN source too high they can't grow   
+    
+    #check this. MCN is sensitivity
     gmaxblit = mf.calcgmaxmod(CN[0], litterCN, MCN[0], recLit, MREC[0], pH, 1)*GMAX[0] #gmax for bact on litter
     gmaxbSOM = mf.calcgmaxmod(CN[0], SOMCN, MCN[0], 0.0, MREC[0], pH, 1)*GMAX[0] #gmax for bact on SOM
     gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
@@ -201,7 +202,8 @@ def f(B, t, avail, modt, GMAX, litterCN,SOMCN):
 
 
 def KeylinkModel(Val):
-
+    
+    GMAXevol = [] #-- Olivier temp
     climatefile=open('PrecipKMIBrass.txt')
     titls=climatefile.readline() # first line are titles
     
@@ -283,6 +285,13 @@ def KeylinkModel(Val):
     
         # Call the ODE solver for day i
         day = odeint(f, B, [i, i+1], args=(avail, modt, GMAX, litterCN, SOMCN))
+        
+        #if optimisation is true -- Olivier
+        orgGroup = 0 #set this to bacteria for now for testing
+        argNum = 1 #sets the argument to change. Currently 2 = GMAX and anything else is modt 
+        selectedParamVal = mf.OptimiseParamater(argNum, orgGroup, i, f, B, avail, modt, litterCN, SOMCN, GMAX)
+        GMAX[orgGroup] = selectedParamVal #update the current GMAX value to the newly optimised one
+        GMAXevol = np.append(GMAXevol, selectedParamVal) #Store current GMAX value into a table for visualisation purposes.
 
         # Second column is end value for day i, start value for day i + 1
         psoln[i-std] = day[1, :]
@@ -321,6 +330,7 @@ def KeylinkModel(Val):
                 B[s]=0.001
     
     climatefile.close
+    #plt.plot(t, GMAXevol, label="GMAX evolution")
     return (psoln, PWt, PVt, pores)   #save the Cpools, water and porevolumes's on all days days
 
 
@@ -406,3 +416,6 @@ def show_plot(soln, pwt, pvt):
     plt.legend(loc=(1.01, 0), shadow=True)
 
     plt.show()
+    
+    #temporary plot code
+

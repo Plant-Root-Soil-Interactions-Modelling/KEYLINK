@@ -9,6 +9,8 @@ Created on 01.06.2017 last write 24/05/2021
 import numpy as np
 import random
 import math
+from scipy.integrate import odeint
+import time
 
 def calcKD(pH,fClay): #Cempirically from orchideeSOM model Cammino-serrano et al 2018
     Kd=0.001226-0.000212*pH+0.00374*fClay
@@ -96,6 +98,7 @@ def calcPVD(PVstruct, pv, Ag, ratioPVBeng, fPVB, tPVB, PVBmax, d, b):
     
     return pv
 
+    #check this
 def calcmodt(temp, topt, tmin, tmax): #calculate temperature modifier
     if temp < tmin:
         value = 0
@@ -206,7 +209,7 @@ def calcPW(PV, precip, PW, drainmax, d, R, S, alpha, n, m, Ksat): #PV=pore volum
     return PW, drain, runoff
 
 
-
+    #check here.
 def calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id):
 # effect of CN when N not limiting
 #effect of CN when limiting (only for bacteria!) is in the main code
@@ -292,3 +295,78 @@ def wl(PW, et): # water lost by evapotranspiration
         PW[1]=0
 
     return PW
+
+
+    #check recalcitrance, pH and temperature adaptation
+    #hypothesis: how well can fungi & microbes adapt to plants?
+    #hypothesis 2: does a disparity in adaptation speed cause long/midterm issues.
+
+def OptimiseParamater(argNum, orgGroup, i, f, B, avail, modt, litterCN, SOMCN, GMAX): #Takes an initial value and tries to optimise for that value, selecting on B to run on animal group orgGroup
+    argTable = [avail, modt, GMAX] #Sets the argument arrays into one nested array for code compaction
+    currentArgVal = argTable[argNum] #Selects the correct argument array based on the value of argNum
+
+    organismInterval = [[0,10]] #Calculates the stepSize based off of the organism interval.
+    lowerBound = organismInterval[orgGroup][0]
+    upperBound = organismInterval[orgGroup][1]
+    stepSize = upperBound*0.005
+    
+    #print(currentArgVal[orgGroup])
+    ArgValUp = currentArgVal.copy() #initialise tables for increase and decrease
+    ArgValDown = currentArgVal.copy()
+    ArgValUp[orgGroup] = min(upperBound,currentArgVal[orgGroup]*(1+stepSize)) #Change the paramatervalue for that organism group only
+    ArgValDown[orgGroup] = max(lowerBound, currentArgVal[orgGroup]*(1-stepSize))
+    
+    #Here code to select the argument that will be modified.
+    #if selected arg == true then
+    #selected Arg = currentArgVal
+
+    
+    #Run odeint 3 times, one with the current value, one with the increased and one with the decreased value.
+    if argNum == 2: #changes maxgrowth
+        Bday = odeint(f, B, [i, i+1], args=(avail, modt, currentArgVal, litterCN, SOMCN))
+        Bcurrent = Bday[1, :]
+                          
+        Bdayup = odeint(f, B, [i, i+1], args=(avail, modt, ArgValUp, litterCN, SOMCN))
+        Bup = Bdayup[1, :]
+                     
+        Bdaydown = odeint(f, B, [i, i+1], args=(avail, modt, ArgValDown, litterCN, SOMCN))
+        Bdown = Bdaydown[1, :]
+    elif argNum ==1: #changes temperature. Change this to change the three temperature parameters 
+        Bday = odeint(f, B, [i, i+1], args=(avail, currentArgVal, GMAX, litterCN, SOMCN))
+        Bcurrent = Bday[1, :]
+        print(Bcurrent)                  
+        
+        Bdayup = odeint(f, B, [i, i+1], args=(avail, ArgValUp, GMAX, litterCN, SOMCN))
+        Bup = Bdayup[1, :]
+        print(Bup)             
+        
+        Bdaydown = odeint(f, B, [i, i+1], args=(avail, ArgValDown, GMAX, litterCN, SOMCN))
+        Bdown = Bdaydown[1, :]
+        
+    
+    else: #changes avail
+        Bday = odeint(f, B, [i, i+1], args=(currentArgVal, modt, GMAX, litterCN, SOMCN))
+        Bcurrent = Bday[1, :]
+                          
+        Bdayup = odeint(f, B, [i, i+1], args=(ArgValUp, modt, GMAX, litterCN, SOMCN))
+        Bup = Bdayup[1, :]
+                     
+        Bdaydown = odeint(f, B, [i, i+1], args=(ArgValDown, modt, GMAX, litterCN, SOMCN))
+        Bdown = Bdaydown[1, :]
+
+    #debug
+
+    #print(Bday)
+    #print(Bdayup)
+    #print(Bdaydown)
+    
+    bestResult = max(Bcurrent[orgGroup], Bup[orgGroup], Bdown[orgGroup])
+    #Select the highest value of B and return the argument value associated with it
+    if bestResult == Bcurrent[orgGroup]: return currentArgVal[orgGroup]
+    elif bestResult == Bup[orgGroup]: return ArgValUp[orgGroup]
+    else: return ArgValDown[orgGroup]
+    
+#breeder maken van temperatuur plateau.
+#Als temperatuur ver boven optimum valt, traag beginnen adapteren?
+#als groep dood is: geen adapttie
+    

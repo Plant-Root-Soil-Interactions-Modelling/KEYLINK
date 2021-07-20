@@ -12,7 +12,7 @@ from scipy import stats
 import keylink_core as core
 
 "runmode can be single, bayesian, posterior (or distribution, not yet implimented)"
-runmode='posterior'
+runmode='single'
 
 if (runmode=='single'):
 #read the gmax values
@@ -131,7 +131,7 @@ if runmode == 'posterior':   #the model is run for all the given combinations of
 #read line by line, then average and STDEV are calculated
     
  pools = 22 #number of pools
- tStop=3653
+ tStop=3653 #selects the amount of days
  Nvec=10 #number of parameter vectors to test from the Bayesian calibration outputn ormal = 100
  statistics_A = nm.zeros([Nvec, 2*pools], 'd') #matrix to record the averages and standard deviations of population biomass and fluxes
  statistics_B = nm.zeros([Nvec, 2*pools], 'd') #matrix to record the minimum and maximum values of population biomass and fluxes
