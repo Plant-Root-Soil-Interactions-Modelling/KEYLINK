@@ -1,5 +1,5 @@
 '''
-Created on 27.07.2016 last write 19/7/2021 adding species
+Created on 27.07.2016 last write 19/7/2021 adding species test for branching
 
 
 @author: a.schnepf - G Deckmyn - G Cauwenberg - O Flores
@@ -81,13 +81,14 @@ t = np.arange(0., tStop)
 
 
 # function to be integrated daily solving the carbon pools 'B' ifo time
-def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
+def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP,
+         KS, DEATH, CtoMyc, NrGroups):
     (availSOMbact, availSOMfungi, availSOMeng, availSOMsap, availbbvores,
      availffvores, availfvorespred, availbvorespred, availhvorespred,
      availsappred, availengpred ,SOMunavail) = avail
 
     # Default '10 groups': 0=bact, 1=fungi, 2=myc, 3=bvores, 4=fvores, 5=sap,
-    # 6=eng, 7=hvores, 8=pred, 9=litter, 10=SOM, 11=roots, 12=CO2
+    # 6=eng, 7=hvores, 8=pred, NrGroups+1=litter, NrGroups+2=SOM, NrGroups+3=roots, NrGroups+4=CO2
 
     # update GMAX for bacteria, fung and myc GMAX is modified for SOM
     # and litter seperately depending on CN (and possibly recalcitrance)
@@ -103,19 +104,19 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
     faeclitSAP = min(1,mf.calcFaec(GMAX[5], FAEC[5], pfaec[5], litterCN, CN[5], rRESP[5]))
 
     #growth equations for each functional group and for variations in C pools
-    bact = (modt[0]*(mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
-            + mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]))
+    bact = (modt[0]*(mf.calcgrowth(B[0], B[NrGroups+2]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
+            + mf.calcgrowth(B[0], B[NrGroups+1], availSOMbact, gmaxblit, KS[0]))
             - DEATH[0]*B[0] - rRESP[0]*B[0]
             - modt[3]*mf.calcgrowth(B[3], B[0], availbbvores, GMAX[3], KS[3]))
 
-    fungi = (modt[1]*(mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1])
-             + mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]))
+    fungi = (modt[1]*(mf.calcgrowth(B[1], B[NrGroups+2]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1])
+             + mf.calcgrowth(B[1], B[NrGroups+1], availSOMbact, gmaxflit, KS[1]))
              - DEATH[1]*B[1] - rRESP[1]*B[1]
              - modt[4]*mf.calcgrowth(B[4], B[1], availffvores, GMAX[4], KS[4]))
 
     myc = (mf.inputCtoMyc(CtoMyc)
-           + modt[2]*(mf.calcgrowth(B[2], B[9], availSOMbact, gmaxflit, KS[2])
-           + mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[2]))
+           + modt[2]*(mf.calcgrowth(B[2], B[NrGroups+1], availSOMbact, gmaxflit, KS[2])
+           + mf.calcgrowth(B[2], B[NrGroups+2]-SOMunavail, availSOMfungi, gmaxfSOM, KS[2]))
            - DEATH[2]*B[2] - rRESP[2]*B[2]
            - modt[4]*mf.calcgrowth(B[4], B[2], availffvores, GMAX[4], KS[4]))
            # myc (being a fungi) has the same availability and gmax than fungi
@@ -128,13 +129,13 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
               - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[4], availfvorespred, GMAX[8], KS[8])
               - DEATH[4]*B[4] - rRESP[4]*B[4])
 
-    sap = (modt[5]*(mf.calcgrowth(B[5], B[9],availSOMbact, GMAX[5], KS[5])
-           + mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]))
+    sap = (modt[5]*(mf.calcgrowth(B[5], B[NrGroups+1],availSOMbact, GMAX[5], KS[5])
+           + mf.calcgrowth(B[5], B[NrGroups+2]-SOMunavail, availSOMsap, GMAX[5], KS[5]))
            -modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[5], availsappred, GMAX[8], KS[8])
            - DEATH[5]*B[5] - rRESP[5]*B[5])
 
-    eng = (modt[6]*(mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])
-           + mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6]))
+    eng = (modt[6]*(mf.calcgrowth(B[6], B[NrGroups+1], availSOMbact, gmaxEng, KS[6])
+           + mf.calcgrowth(B[6], B[NrGroups+2]-SOMunavail, availSOMeng, gmaxEng, KS[6]))
            - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
            - DEATH[6]*B[6] - rRESP[6]*B[6])
 
@@ -151,26 +152,26 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
             - DEATH[8]*B[8] - rRESP[8]*B[8])
 
     litter = (           
-              -modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #eaten by bact
-              -modt[1]*mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]) #eaten by fungi
-              -modt[2]*mf.calcgrowth(B[2], B[9], availSOMbact, gmaxflit, KS[2]) #eaten by myc
-              -modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
-              -modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) # eaten by engineers
+              -modt[0]*mf.calcgrowth(B[0], B[NrGroups+1], availSOMbact, gmaxblit, KS[0]) #eaten by bact
+              -modt[1]*mf.calcgrowth(B[1], B[NrGroups+1], availSOMbact, gmaxflit, KS[1]) #eaten by fungi
+              -modt[2]*mf.calcgrowth(B[2], B[NrGroups+1], availSOMbact, gmaxflit, KS[2]) #eaten by myc
+              -modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[NrGroups+1], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
+              -modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[NrGroups+1], availSOMbact, gmaxEng, KS[6]) # eaten by engineers
               + DEATH[5]*B[5] + DEATH[6]*B[6]+ DEATH[7]*B[7] + DEATH[8]*B[8])
 
     som = (mf.exudation() 
-           - modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
-           - modt[1]*mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1])
-           - modt[2]*mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[2])
-           - modt[5]*mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]) #eaten by SAP
-           - modt[6]*mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6]) # eaten by engineers
+           - modt[0]*mf.calcgrowth(B[0], B[NrGroups+2]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
+           - modt[1]*mf.calcgrowth(B[1], B[NrGroups+2]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1])
+           - modt[2]*mf.calcgrowth(B[2], B[NrGroups+2]-SOMunavail, availSOMfungi, gmaxfSOM, KS[2])
+           - modt[5]*mf.calcgrowth(B[5], B[NrGroups+2]-SOMunavail, availSOMsap, GMAX[5], KS[5]) #eaten by SAP
+           - modt[6]*mf.calcgrowth(B[6], B[NrGroups+2]-SOMunavail, availSOMeng, gmaxEng, KS[6]) # eaten by engineers
            + modt[8]*FAEC[8] * (mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
                         + mf.calcgrowth(B[8], B[4], availfvorespred, GMAX[8], KS[8])
                         + mf.calcgrowth(B[8], B[5], availsappred, GMAX[8], KS[8])
                         + mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
                         + mf.calcgrowth(B[8], B[7], availhvorespred, GMAX[8], KS[8]))
-           + modt[5]*faeclitSAP*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5])
-           + modt[6]*faeclitEng*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])
+           + modt[5]*faeclitSAP*mf.calcgrowth(B[5], B[NrGroups+1], availSOMbact, GMAX[5], KS[5])
+           + modt[6]*faeclitEng*mf.calcgrowth(B[6], B[NrGroups+1], availSOMbact, gmaxEng, KS[6])
            + modt[7]*FAEC[7]*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7])
            + DEATH[0]*B[0]+DEATH[1]*B[1]+DEATH[2]*B[2]+DEATH[3]*B[3]+DEATH[4]*B[4])
 
@@ -182,19 +183,19 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
     bactResp=rRESP[0]*B[0] #respiration of bacteria
     funResp=rRESP[1]*B[1] #respiration of fungi
     EMresp=rRESP[2]*B[2] #respiration of mycorrhizal fungi
-    bactGrowthSOM=modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0]) #growth of bact from eaten SOM
-    bactGrowthLit=modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #growth of bact from eaten litter
-    SOMeaten=modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0]) #SOM eaten by bact
-    + modt[1]*mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1]) #eaten by fungi
-    + modt[2]*mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[2]) #eaten by myc
-    + modt[5]*mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]) #eaten by SAP
-    + modt[6]*mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6]) # eaten by engineers
-    LITeaten=modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #Litter eaten by bact
-    +modt[1]*mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]) #eaten by fungi
-    +modt[2]*mf.calcgrowth(B[2], B[9], availSOMbact, gmaxflit, KS[2]) #eaten by myc
-    +modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
-    +modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) # eaten by engineers      
-    LITeatenEng=modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) #only litter eaten by enginners
+    bactGrowthSOM=modt[0]*mf.calcgrowth(B[0], B[NrGroups+2]-SOMunavail, availSOMbact, gmaxbSOM, KS[0]) #growth of bact from eaten SOM
+    bactGrowthLit=modt[0]*mf.calcgrowth(B[0], B[NrGroups+1], availSOMbact, gmaxblit, KS[0]) #growth of bact from eaten litter
+    SOMeaten=modt[0]*mf.calcgrowth(B[0], B[NrGroups+2]-SOMunavail, availSOMbact, gmaxbSOM, KS[0]) #SOM eaten by bact
+    + modt[1]*mf.calcgrowth(B[1], B[NrGroups+2]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1]) #eaten by fungi
+    + modt[2]*mf.calcgrowth(B[2], B[NrGroups+2]-SOMunavail, availSOMfungi, gmaxfSOM, KS[2]) #eaten by myc
+    + modt[5]*mf.calcgrowth(B[5], B[NrGroups+2]-SOMunavail, availSOMsap, GMAX[5], KS[5]) #eaten by SAP
+    + modt[6]*mf.calcgrowth(B[6], B[NrGroups+2]-SOMunavail, availSOMeng, gmaxEng, KS[6]) # eaten by engineers
+    LITeaten=modt[0]*mf.calcgrowth(B[0], B[NrGroups+1], availSOMbact, gmaxblit, KS[0]) #Litter eaten by bact
+    +modt[1]*mf.calcgrowth(B[1], B[NrGroups+1], availSOMbact, gmaxflit, KS[1]) #eaten by fungi
+    +modt[2]*mf.calcgrowth(B[2], B[NrGroups+1], availSOMbact, gmaxflit, KS[2]) #eaten by myc
+    +modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[NrGroups+1], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
+    +modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[NrGroups+1], availSOMbact, gmaxEng, KS[6]) # eaten by engineers      
+    LITeatenEng=modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[NrGroups+1], availSOMbact, gmaxEng, KS[6]) #only litter eaten by enginners
  
     return [bact, fungi, myc, bvores, fvores, sap,
             eng, hvores, pred, litter, som, roots, co2,
@@ -224,7 +225,7 @@ def KeylinkModel(Val):
     # this is the actual core model routine over time steps i
     for i in range(int(std), int(std+tStop)):
         # calculate PSD (array of % of five size classes of pores) and aggregation
-        ag = mf.calcAg(B[1], B[2], B[10]) #calculates aggregation fraction
+        ag = mf.calcAg(B[1], B[2], B[NrGroups+2]) #calculates aggregation fraction
         pv = mf.calcPVD(PVstruct, pv, ag, ratioPVBeng, fPVB, tPVB, PVBmax, d, B)
         pvd = pv*100/sum(pv)
         pores[i,:]=pv
@@ -265,20 +266,20 @@ def KeylinkModel(Val):
         avail = mf.calcAvail(pv, PW, iniSOM)
 
         #update litter CN
-        litterCN=(B[9]+mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[11],rootTO))/(B[9]/litterCN+(mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[11],rootTO))/CNlit)
+        litterCN=(B[NrGroups+1]+mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[NrGroups+3],rootTO))/(B[NrGroups+1]/litterCN+(mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[11],rootTO))/CNlit)
     
         #add litter (plant and root) and update total soil N
-        B[9]=B[9]+mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[11],rootTO)
-        Ntot=Ntot+(mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[11],rootTO))/CNlit
+        B[NrGroups+1]=B[NrGroups+1]+mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[NrGroups+3],rootTO)
+        Ntot=Ntot+(mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[NrGroups+3],rootTO))/CNlit
     
         #root growth
-        B[11]=B[11]+mf.rootgrowth(rrg)-mf.rootTurnover(B[11],rootTO)
+        B[NrGroups+3]=B[NrGroups+3]+mf.rootgrowth(rrg)-mf.rootTurnover(B[NrGroups+3],rootTO)
     
         #interaction between mycorrhizal fungi and plants
         B[2]=B[2]+mf.inputCtoMyc(CtoMyc)
     
         #update soil C and N in soil
-        CNsoil=(B[9]+B[10])/(B[9]/litterCN+B[10]/SOMCN)
+        CNsoil=(B[NrGroups+1]+B[NrGroups+2])/(B[NrGroups+1]/litterCN+B[NrGroups+2]/SOMCN)
         Ntot=Ntot-mf.mycNtoPlant(NmyctoPlant, CtoMyc, litterCN, CtoMyc, CNsoil)    
     
         #plant N uptake    
@@ -301,7 +302,7 @@ def KeylinkModel(Val):
         PW = mf.wl(PW,et) # water lost by evapotranspiration: we do this at the end of the day (otherwise soil is always dry)
 
         # close N budget by adding up all N and putting 'restvalue' in SOM but not part by bact (goes into mineralised)
-        Nmin=Nmin-(B[16]+B[17]-B[13])/CN[0]+B[16]/litterCN+B[17]/SOMCN    # adding bact resp - growth /CN for lit and SOM
+        Nmin=Nmin-(B[NrGroups+8]+B[NrGroups+9]-B[NrGroups+5])/CN[0]+B[NrGroups+8]/litterCN+B[NrGroups+9]/SOMCN    # adding bact resp - growth /CN for lit and SOM
         if Nmin<0:   #Bact use more N then they 'eat' this needs to come from somewhere so from SOM (but needs to be corrected)
             Nneg=Nmin
             Nmin=0
@@ -309,22 +310,22 @@ def KeylinkModel(Val):
             Nneg=0
         Nfauna=sum(B[0:9]/CN)
         NSOM=Ntot-Nfauna-Nmin+Nneg
-        SOMCN=B[10]/NSOM
+        SOMCN=B[NrGroups+2]/NSOM
 
     
         #move SOM by engineers
-        SOMdown=mf.calcBioturb(B[6], bioturbRate, B[10])
-        B[10]=B[10]-SOMdown
+        SOMdown=mf.calcBioturb(B[6], bioturbRate, B[NrGroups+2])
+        B[NrGroups+2]=B[NrGroups+2]-SOMdown
         Ntot=Ntot-SOMdown/SOMCN
 
         #move litter by engineers
-        Litdown=mf.calcLittermove(B[6], moveRate, B[9])
-        B[9]=B[9]-Litdown
+        Litdown=mf.calcLittermove(B[6], moveRate, B[NrGroups+1])
+        B[NrGroups+1]=B[NrGroups+1]-Litdown
         Ntot=Ntot-Litdown/litterCN
     
         #fragmentation    
-        B[9]=B[9]-frag*psoln[i,21]
-        B[10]=B[10]+frag*psoln[i,21]  #LITeatenEng
+        B[NrGroups+1]=B[NrGroups+1]-frag*psoln[i,NrGroups+13]
+        B[NrGroups+2]=B[NrGroups+2]+frag*psoln[i,NrGroups+13]  #LITeatenEng
      
         for s in range (0, 11):
             if B[s]<=0: #security codes to avoid errors by negative biomasses
