@@ -12,6 +12,11 @@ import math
 from scipy.integrate import odeint
 import time
 
+    #mathematical function to get y value of a normal distribution with given mean and standard deviation.
+def calcNormalDistribution(height,mean,deviation,x):  
+    answer = height*np.exp(-(((x-mean)**2)/(2*deviation**2)))
+    return answer
+
 def calcKD(pH,fClay): #Cempirically from orchideeSOM model Cammino-serrano et al 2018
     Kd=0.001226-0.000212*pH+0.00374*fClay
     return Kd
@@ -99,7 +104,7 @@ def calcPVD(PVstruct, pv, Ag, ratioPVBeng, fPVB, tPVB, PVBmax, d, b):
     return pv
 
     #check this
-def calcmodt(temp, topt, tmin, tmax): #calculate temperature modifier
+def calcmodtold(temp, topt, tmin, tmax): #calculate temperature modifier. old version for comparison purposes.
     if temp < tmin:
         value = 0
     elif temp < topt:
@@ -108,6 +113,17 @@ def calcmodt(temp, topt, tmin, tmax): #calculate temperature modifier
         value = 1
     else:
         value = 0
+    return np.real(value)
+
+def calcmodt(temp, topt, tmin, tmax): #future arguments: tolerance, tabsopt
+    #deviation is smaller if the species is more sensitive --> percentage
+    tolerance = 50
+    deviation = 1+tolerance/50 # deviation is 1 for a sensible group and 3 for a tolerant group.
+    tabsopt = topt #temporary, tabsopt (absolute optimal temperature) is supposed to be the 'best fit' under ideal circumstances.
+    deviationmodif = np.abs(tabsopt-topt)**-1 # makes the deviation lower the further away frop optimal, as the amount of tolerance decreases.
+    height = 10
+    deviation = (tmax-topt)*(2/9) #2/9 is a good enough approximation of the deviation when a maximum is given. Aprox 4.5 units per degree of deviation. 3 is good for a range of 20 (10 on each side)
+    value = calcNormalDistribution(height,topt,deviation,temp)
     return np.real(value)
 
 # returns pressure head at a given volumetric water content according to the van genuchten model
@@ -300,6 +316,9 @@ def wl(PW, et): # water lost by evapotranspiration
     #check recalcitrance, pH and temperature adaptation
     #hypothesis: how well can fungi & microbes adapt to plants?
     #hypothesis 2: does a disparity in adaptation speed cause long/midterm issues.
+    
+
+
 
 def OptimiseParamater(argNum, orgGroup, i, f, B, avail, modt, litterCN, SOMCN, GMAX): #Takes an initial value and tries to optimise for that value, selecting on B to run on animal group orgGroup
     argTable = [avail, modt, GMAX] #Sets the argument arrays into one nested array for code compaction

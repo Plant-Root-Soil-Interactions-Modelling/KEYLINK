@@ -81,7 +81,7 @@ t = np.arange(0., tStop)
 
 # function to be integrated daily solving the carbon pools 'B' ifo time
 def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP,
-         KS, DEATH, CtoMyc, NrGroups):
+         KS, DEATH, CtoMyc, NrGroups, temp, T_OPT, T_MIN, T_MAX, RESP, Q10):
     (availSOMbact, availSOMfungi, availSOMeng, availSOMsap, availbbvores,
      availffvores, availfvorespred, availbvorespred, availhvorespred,
      availsappred, availengpred ,SOMunavail) = avail
@@ -99,6 +99,10 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLi
     gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
     gmaxfSOM = mf.calcgmaxmod(CN[1], SOMCN, MCN[1], 0.0, MREC[1], pH, 2)* GMAX[1] #gmax for fung on SOM
     gmaxEng = min(mf.calcgmaxEng(GMAX[6],pH),GMAX[6]) #gmax for engineers
+    
+#    for j in range (NrGroups+1): #--here
+#        modt[j] = mf.calcmodt(temp, T_OPT[j], T_MIN[j], T_MAX[j])
+#        rRESP[j]=mf.calcresp(temp, T_OPT[j], RESP[j], Q10[j])
     
     #update faeces for  SAP and engineers
     faeclitEng = min(1,mf.calcFaec(gmaxEng, FAEC[6], pfaec[6], litterCN, CN[6], rRESP[6]))
@@ -249,7 +253,7 @@ def KeylinkModel(Val):
 
         precip=float(zip[4])
         temp=float(zip[5])
-        for j in range (NrGroups+1):
+        for j in range (NrGroups+1): #--here
             modt[j] = mf.calcmodt(temp, T_OPT[j], T_MIN[j], T_MAX[j])
             rRESP[j]=mf.calcresp(temp, T_OPT[j], RESP[j], Q10[j])
     
