@@ -100,10 +100,6 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLi
     gmaxfSOM = mf.calcgmaxmod(CN[1], SOMCN, MCN[1], 0.0, MREC[1], pH, 2)* GMAX[1] #gmax for fung on SOM
     gmaxEng = min(mf.calcgmaxEng(GMAX[6],pH),GMAX[6]) #gmax for engineers
     
-#    for j in range (NrGroups+1): #--here
-#        modt[j] = mf.calcmodt(temp, T_OPT[j], T_MIN[j], T_MAX[j])
-#        rRESP[j]=mf.calcresp(temp, T_OPT[j], RESP[j], Q10[j])
-    
     #update faeces for  SAP and engineers
     faeclitEng = min(1,mf.calcFaec(gmaxEng, FAEC[6], pfaec[6], litterCN, CN[6], rRESP[6]))
     faeclitSAP = min(1,mf.calcFaec(GMAX[5], FAEC[5], pfaec[5], litterCN, CN[5], rRESP[5]))
@@ -213,7 +209,16 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLi
 def KeylinkModel(Val):
     
     GMAXevol = [] #-- Olivier temp
+    GenerationTime = [1,10,10,10,10,10,10,10,10,10] #acclimatisation speed of the different groups through generationa changes (logarhitmic)
+    Maxtemp = [40,40,40,40,40,40,40,40,40,40] #when the value reaches the maxtemp then gmax goes down.
+    longT_OPT = [0]*10 #Initialise long term value tables for 10 groups. Number can be changed to a variable later.
+    longT_MIN = [0]*10
+    longT_MAX = [0]*10
+    absT_MIN = T_MIN.copy() #Copy the original values of T_Min & T_Max to use as hardcaps for the calculations.
+    absT_MAX = T_MAX.copy()
     climatefile=open('PrecipKMIBrass.txt')
+#    temperaturefile=open('')    #this requires a file with daily logged temperatures to function
+    loggedTemps = []            #initialise an empty list to be used to log temperatures for days that have 'happened' so far in the simulation
     titls=climatefile.readline() # first line are titles
     
     std=0 #we are using here dates from climate input file, so there is no need in create a starting date
@@ -252,11 +257,11 @@ def KeylinkModel(Val):
             nd[1]=nd[1]+1
 
         precip=float(zip[4])
-        temp=float(zip[5])
+        temp=float(zip[5]) #This will have to be changed later to read from temperaturefile once that's set up -- Olivier
         for j in range (NrGroups+1): #--here
-            modt[j] = mf.calcmodt(temp, T_OPT[j], T_MIN[j], T_MAX[j])
-            rRESP[j]=mf.calcresp(temp, T_OPT[j], RESP[j], Q10[j])
-    
+            modt[j], loggedTemps, T_OPT[j], T_MIN[j], T_MAX[j], longT_MAX[j], longT_MIN[j],  longT_OPT[j], absT_MIN[j], absT_MAX[j]  = mf.calcmodt(loggedTemps, temp, T_OPT[j], T_MIN[j], T_MAX[j], longT_OPT[j], longT_MIN[j], longT_MAX[j], absT_MIN[j], absT_MAX[j])
+            rRESP[j]=mf.calcresp(temp, T_OPT[j], RESP[j], Q10[j])   
+
         #calculate the Potential Evapotranspiration (pet)
         pet = mf.PET(temp, nd[month], SUNH[month], HI, alfa)
 

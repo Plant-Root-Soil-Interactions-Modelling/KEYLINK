@@ -17,6 +17,13 @@ def calcNormalDistribution(height,mean,deviation,x):
     answer = height*np.exp(-(((x-mean)**2)/(2*deviation**2)))
     return answer
 
+#fs = function(x,epsilon,delta) dnorm(sinh(delta*asinh(x)-epsilon))*delta*cosh(delta*asinh(x)-epsilon)/sqrt(1+x^2)
+#    function(x,epsilon,delta) dnorm(sinh(a*asinh(x)-b))*a*cosh(a*asinh(x)-b)/sqrt(1+x^2)
+
+#def sinh_archsinh_transformation(x,epsilon,delta):
+#    return norm.pdf(np.sinh(delta*np.arcsinh(x)-epsilon))*delta*np.cosh(delta*np.arcsinh(x)-epsilon)/np.sqrt(1+np.power(x,2))
+
+
 def calcKD(pH,fClay): #Cempirically from orchideeSOM model Cammino-serrano et al 2018
     Kd=0.001226-0.000212*pH+0.00374*fClay
     return Kd
@@ -104,7 +111,7 @@ def calcPVD(PVstruct, pv, Ag, ratioPVBeng, fPVB, tPVB, PVBmax, d, b):
     return pv
 
     #check this
-def calcmodtold(temp, topt, tmin, tmax): #calculate temperature modifier. old version for comparison purposes.
+def calcmodtOld(temp, topt, tmin, tmax): #calculate temperature modifier. old version for comparison purposes.
     if temp < tmin:
         value = 0
     elif temp < topt:
@@ -115,16 +122,97 @@ def calcmodtold(temp, topt, tmin, tmax): #calculate temperature modifier. old ve
         value = 0
     return np.real(value)
 
-def calcmodt(temp, topt, tmin, tmax): #future arguments: tolerance, tabsopt
-    #deviation is smaller if the species is more sensitive --> percentage
-    tolerance = 50
-    deviation = 1+tolerance/50 # deviation is 1 for a sensible group and 3 for a tolerant group.
-    tabsopt = topt #temporary, tabsopt (absolute optimal temperature) is supposed to be the 'best fit' under ideal circumstances.
-    deviationmodif = np.abs(tabsopt-topt)**-1 # makes the deviation lower the further away frop optimal, as the amount of tolerance decreases.
+def calctempdata(longlist,dailyTemp,maxLength,intervalPercent): #calculate specified metadata using recent temperature and puts them in a list
+    reactionTime = 10 #np.log(generationTime) at a later point?
+    if len(longlist) > maxLength:               #If the list exceeds the needed data range the first element is popped.
+        del longlist[0]        
+    longlist.append(dailyTemp)                  #Append today's temperature to the end of the list
+
+    #'global' data of the timeset, currently unused.
+    tempRange = max(longlist) - min(longlist)       #calculate the delta temperature
+    tempMean = sum(longlist)/len(longlist)          #calculate the average temperature of that 
+    lowBound = np.quantile(longlist, ((100-intervalPercent)/200))
+    highBound = np.quantile(longlist,((100+intervalPercent)/200))
+    
+    
+    #Checks for differing trends in temperatures compared to last year, only works if at least one year of data + 10 day buffer exists
+    if len(longlist) > 375:
+        compareCheck = 1 #set to 1 so that medium term and longterm changes can be made
+        #short term reaction system, uses the long list but only takes the last few days [-N:] gets the last N elements from a list
+        tempRangeNew = max(longlist[-reactionTime:]) - min(longlist[-reactionTime:])       #calculate the delta temperature
+        tempMeanNew = sum(longlist[-reactionTime:])/len(longlist[-reactionTime:])          #calculate the average temperature of that 
+        lowBoundNew = np.quantile(longlist[-reactionTime:], ((100-intervalPercent)/200))
+        highBoundNew = np.quantile(longlist[-reactionTime:],((100+intervalPercent)/200))
+        
+        #data for same days, last year (ignores leapyears for simplification) 
+        tempRangeOld = max(longlist[-(reactionTime+365):-365]) - min(longlist[-(reactionTime+365):-365])
+        tempMeanOld = sum(longlist[-(reactionTime+365):-365])/len(longlist[-(reactionTime+365):-365])          #calculate the average temperature of that 
+        lowBoundOld = np.quantile(longlist[-(reactionTime+365):-365], ((100-intervalPercent)/200))
+        highBoundOld = np.quantile(longlist[-(reactionTime+365):-365],((100+intervalPercent)/200))
+    #code comparing short vs long data  
+        if tempRangeNew == 0:   #exception for 0 to catch div by 0 errors. 
+            tempRangeRatio = 0   
+        elif tempRangeOld == 0:
+            tempRangeRatio = 10  #if the old range is 0 then that means the ratio opens up a lot, 10 arbitrarily chosen as a big number
+        else:
+            tempRangeRatio = tempRangeOld/tempRangeNew
+        
+        tempMeanDiff = tempMeanOld - tempMeanNew
+        lowBoundDiff = lowBoundOld - lowBoundNew
+        highBoundDiff = highBoundOld - highBoundNew
+    else:
+        tempRangeRatio, tempMeanDiff, lowBoundDiff, highBoundDiff, compareCheck = 0,0,0,0,0
+    
+    return longlist, tempRangeRatio, tempMeanDiff, lowBoundDiff, highBoundDiff, compareCheck
+
+
+
+def calcmodt(tempList,temp, topt, tmin, tmax, toptl, tminl, tmaxl, absmin, absmax):
+    #calculate a bunch of stats to be used for medium and long-termed behaviour
+    tempList, rangeRatio, meanDiff, lowBoundDiff, highBoundDiff, compareCheck = calctempdata(tempList, temp, 1000, 80) #temporary values for logging time and interval check.
+
+    #Only run medium and longterm calculations when meaningful data was collected
+    #these are currently static numbers but will be based on thermal tolerance ranges
+    if compareCheck == 1:
+        #Medium term calculations
+        if meanDiff >1:
+            tmaxl += 0.02
+        elif meanDiff <-1:
+            tminl -= 0.02
+        
+        #longterm calculations
+        #slowly shift STDEV if there is sufficienent temperature change. Set to 1 currently but can be turned into a variable based on sensitivity?
+        #gain is slower than loss, but loss only happens if temperature anomalies are common. 
+        #initial temperatures are NOT recorded because that would assume starting situation is "ideal"
+        if highBoundDiff >2:
+            absmax += 0.01
+            #Also should run a check for consistency of temperature anomalies here
+            absmin += 0.05
+        elif lowBoundDiff <-2:
+            absmin -= 0.01
+            #same here
+            absmax -= 0.05
+        
+
+    #part that calculates current Gmax
+    if temp<absmin:
+        value = 0
+    elif temp>absmax:
+        value = 0
+    else:
+        value = calcShortTemp(temp, topt, tmin, tmax)
+    
+    return value, tempList, topt, tmin, tmax, tmaxl, tminl, toptl, absmin, absmax #also needs to return the other values, not done yet
+
+def calcShortTemp(temp, topt, tmin, tmax): #generates a Gmax value for the current thermal curve
+    deviationleft = (topt - tmin)/5     #set first deviation for the lower bound, assuming tmin as 5 sigma.
+    deviationright = (tmax - topt)/5    #set the second deviation for the higher bound
     height = 10
-    deviation = (tmax-topt)*(2/9) #2/9 is a good enough approximation of the deviation when a maximum is given. Aprox 4.5 units per degree of deviation. 3 is good for a range of 20 (10 on each side)
-    value = calcNormalDistribution(height,topt,deviation,temp)
-    return np.real(value)
+    if temp <= topt: #if loop to make the function work as a split normal distribution function.
+        value = calcNormalDistribution(height,topt,deviationleft,temp)
+    else:
+        value = calcNormalDistribution(height,topt,deviationright,temp)
+    return value
 
 # returns pressure head at a given volumetric water content according to the van genuchten model
 def pressure_head(theta, R, S, alpha, n, m): 
@@ -384,6 +472,9 @@ def OptimiseParamater(argNum, orgGroup, i, f, B, avail, modt, litterCN, SOMCN, G
     if bestResult == Bcurrent[orgGroup]: return currentArgVal[orgGroup]
     elif bestResult == Bup[orgGroup]: return ArgValUp[orgGroup]
     else: return ArgValDown[orgGroup]
+    
+def optimiseTemperature():
+    return
     
 #breeder maken van temperatuur plateau.
 #Als temperatuur ver boven optimum valt, traag beginnen adapteren?
