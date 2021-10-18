@@ -1,0 +1,6 @@
+0000000000000000000000000000000000000000 783220239901482454c5d2d37396c94e9b8b8793 BlochOli <Olivier.Bloch@student.uantwerpen.be> 1626437561 +0200	branch: Created from upstream/master
+783220239901482454c5d2d37396c94e9b8b8793 074dd5040e9ce0519c91fc3ab9c4d486fa2018a0 BlochOli <Olivier.Bloch@student.uantwerpen.be> 1626791170 +0200	commit: Add OptimiseParamater (start)
+074dd5040e9ce0519c91fc3ab9c4d486fa2018a0 f76c26d7c948ff761740987d6ed1ff9aeb6ea560 BlochOli <Olivier.Bloch@student.uantwerpen.be> 1628193621 +0200	commit (merge): Merge remote-tracking branch 'upstream/OlivierOptimiseParam' into OlivierOptimiseParam
+f76c26d7c948ff761740987d6ed1ff9aeb6ea560 3f954fdab6765c0387edd288e2518d49da013348 BlochOli <Olivier.Bloch@student.uantwerpen.be> 1628242497 +0200	commit: merge of functions
+3f954fdab6765c0387edd288e2518d49da013348 f450d3ce723d6de37c9c640c0a1b21347b58fef6 BlochOli <Olivier.Bloch@student.uantwerpen.be> 1628596934 +0200	commit: Changed the way motd is calculated
+f450d3ce723d6de37c9c640c0a1b21347b58fef6 e72bc1b30903bca73d6b4ad1eff6819fcfed0d9c BlochOli <Olivier.Bloch@student.uantwerpen.be> 1633162286 +0200	commit: Added longer term systems

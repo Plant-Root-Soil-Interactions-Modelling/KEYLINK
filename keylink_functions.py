@@ -122,11 +122,13 @@ def calcmodtOld(temp, topt, tmin, tmax): #calculate temperature modifier. old ve
         value = 0
     return np.real(value)
 
-def calctempdata(longlist,dailyTemp,maxLength,intervalPercent): #calculate specified metadata using recent temperature and puts them in a list
-    reactionTime = 10 #np.log(generationTime) at a later point?
+def calctempdata(longlist,dailyTemp,maxLength,intervalPercent, organism): #calculate specified metadata using recent temperature and puts them in a list
+    reactionTime = 14 #np.log(generationTime) at a later point?
+    if organism == 0:   #only update the list once for each organism group
+        longlist.append(dailyTemp)   
     if len(longlist) > maxLength:               #If the list exceeds the needed data range the first element is popped.
         del longlist[0]        
-    longlist.append(dailyTemp)                  #Append today's temperature to the end of the list
+                   #Append today's temperature to the end of the list
 
     #'global' data of the timeset, currently unused.
     tempRange = max(longlist) - min(longlist)       #calculate the delta temperature
@@ -134,9 +136,11 @@ def calctempdata(longlist,dailyTemp,maxLength,intervalPercent): #calculate speci
     lowBound = np.quantile(longlist, ((100-intervalPercent)/200))
     highBound = np.quantile(longlist,((100+intervalPercent)/200))
     
+    print("average temp: ", tempMean) 
+    
     
     #Checks for differing trends in temperatures compared to last year, only works if at least one year of data + 10 day buffer exists
-    if len(longlist) > 375:
+    if len(longlist) > 365+reactionTime:
         compareCheck = 1 #set to 1 so that medium term and longterm changes can be made
         #short term reaction system, uses the long list but only takes the last few days [-N:] gets the last N elements from a list
         tempRangeNew = max(longlist[-reactionTime:]) - min(longlist[-reactionTime:])       #calculate the delta temperature
@@ -145,10 +149,10 @@ def calctempdata(longlist,dailyTemp,maxLength,intervalPercent): #calculate speci
         highBoundNew = np.quantile(longlist[-reactionTime:],((100+intervalPercent)/200))
         
         #data for same days, last year (ignores leapyears for simplification) 
-        tempRangeOld = max(longlist[-(reactionTime+365):-365]) - min(longlist[-(reactionTime+365):-365])
-        tempMeanOld = sum(longlist[-(reactionTime+365):-365])/len(longlist[-(reactionTime+365):-365])          #calculate the average temperature of that 
-        lowBoundOld = np.quantile(longlist[-(reactionTime+365):-365], ((100-intervalPercent)/200))
-        highBoundOld = np.quantile(longlist[-(reactionTime+365):-365],((100+intervalPercent)/200))
+        tempRangeOld = max(longlist[-(reactionTime+366):-366]) - min(longlist[-(reactionTime+365):-366])
+        tempMeanOld = sum(longlist[-(reactionTime+366):-366])/len(longlist[-(reactionTime+365):-366])          #calculate the average temperature of that 
+        lowBoundOld = np.quantile(longlist[-(reactionTime+366):-366], ((100-intervalPercent)/200))
+        highBoundOld = np.quantile(longlist[-(reactionTime+366):-366],((100+intervalPercent)/200))
     #code comparing short vs long data  
         if tempRangeNew == 0:   #exception for 0 to catch div by 0 errors. 
             tempRangeRatio = 0   
@@ -157,7 +161,7 @@ def calctempdata(longlist,dailyTemp,maxLength,intervalPercent): #calculate speci
         else:
             tempRangeRatio = tempRangeOld/tempRangeNew
         
-        tempMeanDiff = tempMeanOld - tempMeanNew
+        tempMeanDiff = tempMeanNew - tempMeanOld
         lowBoundDiff = lowBoundOld - lowBoundNew
         highBoundDiff = highBoundOld - highBoundNew
     else:
@@ -165,35 +169,89 @@ def calctempdata(longlist,dailyTemp,maxLength,intervalPercent): #calculate speci
     
     return longlist, tempRangeRatio, tempMeanDiff, lowBoundDiff, highBoundDiff, compareCheck
 
+#20-2
+#19-1
 
-
-def calcmodt(tempList,temp, topt, tmin, tmax, toptl, tminl, tmaxl, absmin, absmax):
+def calcmodt(tempList,temp, topt, tmin, tmax, absmin, absmax, variabilityCounter, variabilityMeanCounter, orgGroup):
     #calculate a bunch of stats to be used for medium and long-termed behaviour
-    tempList, rangeRatio, meanDiff, lowBoundDiff, highBoundDiff, compareCheck = calctempdata(tempList, temp, 1000, 80) #temporary values for logging time and interval check.
+    tempList, rangeRatio, meanDiff, lowBoundDiff, highBoundDiff, compareCheck = calctempdata(tempList, temp, 1000, 80, orgGroup) #temporary values for logging time and interval check.
+
+    tempFullRange = (absmax-absmin)/50 #store a temporary variable to be used to expand or reduce the range of a group
+                                      #The smaller the current range, the smaller the effects are. No cap because there already is one for hgiher temps.
+                                      #It is divided by 50 to not make the system too sensitive.
+
 
     #Only run medium and longterm calculations when meaningful data was collected
     #these are currently static numbers but will be based on thermal tolerance ranges
     if compareCheck == 1:
         #Medium term calculations
         if meanDiff >1:
-            tmaxl += 0.02
-        elif meanDiff <-1:
-            tminl -= 0.02
+            if variabilityMeanCounter<0:
+                variabilityMeanCounter = min(variabilityMeanCounter + 10,0)
+            else:
+                variabilityMeanCounter = variabilityMeanCounter + 1
+        elif meanDiff <1:
+            if variabilityMeanCounter>0:
+                variabilityMeanCounter = max(variabilityMeanCounter - 10,0)
+            else:
+                variabilityMeanCounter = variabilityMeanCounter - 1
+        
+        
+        if temp>topt and topt<absmax and variabilityMeanCounter>3:
+            topt += 0.0004*meanDiff #0.002 for stable
+            if temp>0.8*tmax and variabilityMeanCounter>3:
+                tmax += 0.002*meanDiff
+                tmin += 0.002*meanDiff       
+        elif temp<topt and topt>absmin and variabilityMeanCounter<-3:
+            topt -= 0.0004*meanDiff
+            if temp<1.2*tmin and variabilityMeanCounter<-3:
+                tmin -= 0.002*meanDiff
+                tmax -= 0.002*meanDiff      
+        else:
+            tmax = max(tmax-0.03*(tmax-absmax),absmax) #when no stress, move back towards absmax/min values at a rate loss of 3%
+            tmin = min(tmin+0.03*(absmin-tmin),absmin)
+            
+            
+#        else:   #Gravitate back towards absmaxvalues when no stress, use 3% percentual diff
+            
         
         #longterm calculations
         #slowly shift STDEV if there is sufficienent temperature change. Set to 1 currently but can be turned into a variable based on sensitivity?
         #gain is slower than loss, but loss only happens if temperature anomalies are common. 
         #initial temperatures are NOT recorded because that would assume starting situation is "ideal"
-        if highBoundDiff >2:
-            absmax += 0.01
-            #Also should run a check for consistency of temperature anomalies here
-            absmin += 0.05
-        elif lowBoundDiff <-2:
-            absmin -= 0.01
-            #same here
-            absmax -= 0.05
         
-
+        #system to reduce sensitivity
+        # rangeRatio checks for if the temp difference is small or big, why am I using it here
+        if rangeRatio >1:
+            if variabilityCounter<0:
+                variabilityCounter = min(variabilityCounter + 10,0)
+            else:
+                variabilityCounter = variabilityCounter + 1
+        elif rangeRatio <1:
+            if variabilityCounter>0:
+                variabilityCounter = max(variabilityCounter - 10,0)
+            else:
+                variabilityCounter = variabilityCounter - 1
+                
+            
+            #speed should be based on max range
+        if highBoundDiff > 5 and variabilityCounter >10:
+            absmax += 0.01*tempFullRange
+            #Also should run a check for consistency of temperature anomalies here
+            absmin += 0.005*tempFullRange
+        elif lowBoundDiff <-5 and variabilityCounter <-10:
+            absmin -= 0.01*tempFullRange
+            #same here
+            absmax -= 0.005*tempFullRange
+        else:               #during times of no stress, very slow loss of range.
+            absmin += 0.00001*tempFullRange
+            absmax -= 0.00001*tempFullRange
+        
+    print("temp: ", temp)    
+    #print("tmaxl: ", tmax)
+    #print("tminl: ", tmin)
+    print("tmin: ", tmin)
+    print("absmin: ", absmin)
     #part that calculates current Gmax
     if temp<absmin:
         value = 0
@@ -202,7 +260,7 @@ def calcmodt(tempList,temp, topt, tmin, tmax, toptl, tminl, tmaxl, absmin, absma
     else:
         value = calcShortTemp(temp, topt, tmin, tmax)
     
-    return value, tempList, topt, tmin, tmax, tmaxl, tminl, toptl, absmin, absmax #also needs to return the other values, not done yet
+    return value, tempList, topt, tmin, tmax, absmin, absmax, variabilityCounter, variabilityMeanCounter #also needs to return the other values, not done yet
 
 def calcShortTemp(temp, topt, tmin, tmax): #generates a Gmax value for the current thermal curve
     deviationleft = (topt - tmin)/5     #set first deviation for the lower bound, assuming tmin as 5 sigma.
@@ -336,7 +394,7 @@ def calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id):
    
    return np.real(value) #changing value/mCN we can enable or not effects of pH and recalcitrance
 
-def calcgmaxEng(GM,pH): #calculate engineer gmax ifo pH
+def calcgmaxEng(GM,pH): #calculate engineer gmax info pH
     if pH<3:
         gmaxEng=0
     elif 3<=pH<5:
@@ -430,35 +488,35 @@ def OptimiseParamater(argNum, orgGroup, i, f, B, avail, modt, litterCN, SOMCN, G
     
     #Run odeint 3 times, one with the current value, one with the increased and one with the decreased value.
     if argNum == 2: #changes maxgrowth
-        Bday = odeint(f, B, [i, i+1], args=(avail, modt, currentArgVal, litterCN, SOMCN))
+        Bday = odeint(fCompSpecies, B, [i, i+1], args=(avail, modt, currentArgVal, litterCN, SOMCN))
         Bcurrent = Bday[1, :]
                           
-        Bdayup = odeint(f, B, [i, i+1], args=(avail, modt, ArgValUp, litterCN, SOMCN))
+        Bdayup = odeint(fCompSpecies, B, [i, i+1], args=(avail, modt, ArgValUp, litterCN, SOMCN))
         Bup = Bdayup[1, :]
                      
-        Bdaydown = odeint(f, B, [i, i+1], args=(avail, modt, ArgValDown, litterCN, SOMCN))
+        Bdaydown = odeint(fCompSpecies, B, [i, i+1], args=(avail, modt, ArgValDown, litterCN, SOMCN))
         Bdown = Bdaydown[1, :]
     elif argNum ==1: #changes temperature. Change this to change the three temperature parameters 
-        Bday = odeint(f, B, [i, i+1], args=(avail, currentArgVal, GMAX, litterCN, SOMCN))
+        Bday = odeint(fCompSpecies, B, [i, i+1], args=(avail, currentArgVal, GMAX, litterCN, SOMCN))
         Bcurrent = Bday[1, :]
         print(Bcurrent)                  
         
-        Bdayup = odeint(f, B, [i, i+1], args=(avail, ArgValUp, GMAX, litterCN, SOMCN))
+        Bdayup = odeint(fCompSpecies, B, [i, i+1], args=(avail, ArgValUp, GMAX, litterCN, SOMCN))
         Bup = Bdayup[1, :]
         print(Bup)             
         
-        Bdaydown = odeint(f, B, [i, i+1], args=(avail, ArgValDown, GMAX, litterCN, SOMCN))
+        Bdaydown = odeint(fCompSpecies, B, [i, i+1], args=(avail, ArgValDown, GMAX, litterCN, SOMCN))
         Bdown = Bdaydown[1, :]
         
     
     else: #changes avail
-        Bday = odeint(f, B, [i, i+1], args=(currentArgVal, modt, GMAX, litterCN, SOMCN))
+        Bday = odeint(fCompSpecies, B, [i, i+1], args=(currentArgVal, modt, GMAX, litterCN, SOMCN))
         Bcurrent = Bday[1, :]
                           
-        Bdayup = odeint(f, B, [i, i+1], args=(ArgValUp, modt, GMAX, litterCN, SOMCN))
+        Bdayup = odeint(fCompSpecies, B, [i, i+1], args=(ArgValUp, modt, GMAX, litterCN, SOMCN))
         Bup = Bdayup[1, :]
                      
-        Bdaydown = odeint(f, B, [i, i+1], args=(ArgValDown, modt, GMAX, litterCN, SOMCN))
+        Bdaydown = odeint(fCompSpecies, B, [i, i+1], args=(ArgValDown, modt, GMAX, litterCN, SOMCN))
         Bdown = Bdaydown[1, :]
 
     #debug
@@ -595,7 +653,9 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
     +modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
     +modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) # eaten by engineers      
     LITeatenEng=modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) #only litter eaten by enginners
- 
+
+    print(GMAX)
+    
     return [bact, fungi, myc, bvores, fvores, sap,
             eng, hvores, pred, litter, som, roots, co2,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]

@@ -28,7 +28,9 @@ pfaec = np.zeros(NrGroups-1)
 PVstruct=np.zeros(5)
 drainage = 0
 runoff = 0
-
+usingDailyTemp=1
+usingNewTemp=1
+optimisation=False
 
 B = import_pools('KL_initC_Pools') #initial biomass in each C pool
 (GMAXtemp, KS, DEATH, RESP, FAEC, CN, REC, MCN,
@@ -197,7 +199,7 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLi
     +modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[NrGroups+1], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
     +modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[NrGroups+1], availSOMbact, gmaxEng, KS[6]) # eaten by engineers      
     LITeatenEng=modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[NrGroups+1], availSOMbact, gmaxEng, KS[6]) #only litter eaten by enginners
- 
+
     return [bact, fungi, myc, bvores, fvores, sap,
             eng, hvores, pred, litter, som, roots, co2,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
@@ -211,15 +213,15 @@ def KeylinkModel(Val):
     GMAXevol = [] #-- Olivier temp
     GenerationTime = [1,10,10,10,10,10,10,10,10,10] #acclimatisation speed of the different groups through generationa changes (logarhitmic)
     Maxtemp = [40,40,40,40,40,40,40,40,40,40] #when the value reaches the maxtemp then gmax goes down.
-    longT_OPT = [0]*10 #Initialise long term value tables for 10 groups. Number can be changed to a variable later.
-    longT_MIN = [0]*10
-    longT_MAX = [0]*10
     absT_MIN = T_MIN.copy() #Copy the original values of T_Min & T_Max to use as hardcaps for the calculations.
     absT_MAX = T_MAX.copy()
+    sensor = [0]*10     #sensor for lag time in the temperature system.
+    meanSensor = [0]*10 #short term sensor
     climatefile=open('PrecipKMIBrass.txt')
-#    temperaturefile=open('')    #this requires a file with daily logged temperatures to function
+    temperaturefile=open('tempData.txt')    #this requires a file with daily logged temperatures to function
     loggedTemps = []            #initialise an empty list to be used to log temperatures for days that have 'happened' so far in the simulation
     titls=climatefile.readline() # first line are titles
+    titls=temperaturefile.readline() # first line are titles
     
     std=0 #we are using here dates from climate input file, so there is no need in create a starting date
     pv=PVstruct #initialise to structural 
@@ -257,10 +259,21 @@ def KeylinkModel(Val):
             nd[1]=nd[1]+1
 
         precip=float(zip[4])
-        temp=float(zip[5]) #This will have to be changed later to read from temperaturefile once that's set up -- Olivier
+        temp=float(zip[5])
+        if(usingDailyTemp==1): #if the flag is set to 1, then KEYLINK switches to reading a daily temperature file. Assumes no gaps.
+            x,y,z,xx=temperaturefile.readline().split()
+            temp=float(xx)
         for j in range (NrGroups+1): #--here
-            modt[j], loggedTemps, T_OPT[j], T_MIN[j], T_MAX[j], longT_MAX[j], longT_MIN[j],  longT_OPT[j], absT_MIN[j], absT_MAX[j]  = mf.calcmodt(loggedTemps, temp, T_OPT[j], T_MIN[j], T_MAX[j], longT_OPT[j], longT_MIN[j], longT_MAX[j], absT_MIN[j], absT_MAX[j])
-            rRESP[j]=mf.calcresp(temp, T_OPT[j], RESP[j], Q10[j])   
+            if usingNewTemp == 0:
+                modt[j]=mf.calcmodtOld(temp, T_OPT[j], T_MIN[j], T_MAX[j])
+            else:
+                modt[j], loggedTemps, T_OPT[j], T_MIN[j], T_MAX[j], absT_MIN[j], absT_MAX[j], sensor[j], meanSensor[j]  = mf.calcmodt(loggedTemps, temp, T_OPT[j], T_MIN[j], T_MAX[j], absT_MIN[j], absT_MAX[j], sensor[j], meanSensor[j], j)
+            rRESP[j]=mf.calcresp(temp, T_OPT[j], RESP[j], Q10[j])  
+            
+        if i % 90 == 0: #○debug
+            #print(T_OPT)
+            print(modt)
+
 
         #calculate the Potential Evapotranspiration (pet)
         pet = mf.PET(temp, nd[month], SUNH[month], HI, alfa)
@@ -301,12 +314,12 @@ def KeylinkModel(Val):
 
 #        day = odeint(f, B, [i, i+1], args=(avail, modt, GMAX, litterCN, SOMCN))
         
-        #if optimisation is true -- Olivier
-#        orgGroup = 0 #set this to bacteria for now for testing
-#        argNum = 1 #sets the argument to change. Currently 2 = GMAX and anything else is modt 
-#        selectedParamVal = mf.OptimiseParamater(argNum, orgGroup, i, f, B, avail, modt, litterCN, SOMCN, GMAX)
-#        GMAX[orgGroup] = selectedParamVal #update the current GMAX value to the newly optimised one
-#        GMAXevol = np.append(GMAXevol, selectedParamVal) #Store current GMAX value into a table for visualisation purposes.
+        if optimisation is True:# -- Olivier
+            orgGroup = 0 #set this to bacteria for now for testing
+            argNum = 1 #sets the argument to change. Currently 2 = GMAX and anything else is modt 
+            selectedParamVal = mf.OptimiseParamater(argNum, orgGroup, i, mf.fCompSpecies, B, avail, modt, litterCN, SOMCN, GMAX)
+            GMAX[orgGroup] = selectedParamVal #update the current GMAX value to the newly optimised one
+            GMAXevol = np.append(GMAXevol, selectedParamVal) #Store current GMAX value into a table for visualisation purposes.
 
 
         if CompetingSpecies==True: 
