@@ -1,7 +1,7 @@
 """
 FUNCTIONS FOR KEYLINK MODEL
 
-Created on 01.06.2017 last write 24/05/2021
+Created on 01.06.2017 last write 19/7/2021
 
 @author: A Schnepf - G Deckmyn - G Cauwenberg - O Flores
 """
