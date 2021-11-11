@@ -1,5 +1,5 @@
 '''
-Created on 27.07.2016 last write 19/7/2021 adding species
+Created on 27.07.2016 last write 11/11/2021
 
 
 @author: a.schnepf - G Deckmyn - G Cauwenberg - O Flores
@@ -28,8 +28,7 @@ pfaec = np.zeros(NrGroups-1)
 PVstruct=np.zeros(5)
 drainage = 0
 runoff = 0
-
-
+mineralisation=0
 B = import_pools('KL_initC_Pools') #initial biomass in each C pool
 (GMAXtemp, KS, DEATH, RESP, FAEC, CN, REC, MCN,
  MREC, T_MIN, T_OPT, T_MAX, Q10) = import_pools('KL_FaunalParams') #parameters for each functional group, beware GMAX is
@@ -88,7 +87,7 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
 
     # Default '10 groups': 0=bact, 1=fungi, 2=myc, 3=bvores, 4=fvores, 5=sap,
     # 6=eng, 7=hvores, 8=pred, 9=litter, 10=SOM, 11=roots, 12=CO2
-
+    B[13:22]=0 #uesed for aditional output, but if not set to 0 is cummulative (change DB/dt is calculated)
     # update GMAX for bacteria, fung and myc GMAX is modified for SOM
     # and litter seperately depending on CN (and possibly recalcitrance)
     #for bact if CN source too high they can't grow   
@@ -102,7 +101,7 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
     faeclitEng = min(1,mf.calcFaec(gmaxEng, FAEC[6], pfaec[6], litterCN, CN[6], rRESP[6]))
     faeclitSAP = min(1,mf.calcFaec(GMAX[5], FAEC[5], pfaec[5], litterCN, CN[5], rRESP[5]))
 
-    #growth equations for each functional group and for variations in C pools
+    #growth equations (dB/dt) for each functional group and for variations in C pools
     bact = (modt[0]*(mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
             + mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]))
             - DEATH[0]*B[0] - rRESP[0]*B[0]
@@ -280,7 +279,10 @@ def KeylinkModel(Val):
         #update soil C and N in soil
         CNsoil=(B[9]+B[10])/(B[9]/litterCN+B[10]/SOMCN)
         Ntot=Ntot-mf.mycNtoPlant(NmyctoPlant, CtoMyc, litterCN, CtoMyc, CNsoil)    
-    
+        if mf.mycNtoPlant(NmyctoPlant, CtoMyc, litterCN, CtoMyc, CNsoil)<Nmin:   #mycorrhisae take up mineral N first
+            Nmin=Nmin-mf.mycNtoPlant(NmyctoPlant, CtoMyc, litterCN, CtoMyc, CNsoil)
+        else:
+            Nmin=0  #it will need to come from SOM in this case
         #plant N uptake    
         Ntot=Ntot-min(mf.plantNuptake(litterCN, inputLit, NmyctoPlant), Nmin)
         Nmin=Nmin-min(mf.plantNuptake(litterCN, inputLit, NmyctoPlant), Nmin)
@@ -300,8 +302,10 @@ def KeylinkModel(Val):
         et = ee*pet #evapotranspiration (rate of effective evapotranspiration * potential evapotranspiration)
         PW = mf.wl(PW,et) # water lost by evapotranspiration: we do this at the end of the day (otherwise soil is always dry)
 
-        # close N budget by adding up all N and putting 'restvalue' in SOM but not part by bact (goes into mineralised)
-        Nmin=Nmin-(B[16]+B[17]-B[13])/CN[0]+B[16]/litterCN+B[17]/SOMCN    # adding bact resp - growth /CN for lit and SOM
+               # close N for bact: (bactgrowthsom/CNsom, bactgrowthlit/CNlit = 'gain' goes into min if not needed to grow 
+        mineralisation=(B[16]/litterCN+B[17]/SOMCN-(B[16]+B[17]-B[13])/CN[0])  # adding bact resp - growth /CN for lit and SOM
+        Nmin=Nmin+mineralisation
+ 
         if Nmin<0:   #Bact use more N then they 'eat' this needs to come from somewhere so from SOM (but needs to be corrected)
             Nneg=Nmin
             Nmin=0
@@ -309,6 +313,9 @@ def KeylinkModel(Val):
             Nneg=0
         Nfauna=sum(B[0:9]/CN)
         NSOM=Ntot-Nfauna-Nmin+Nneg
+        if NSOM<0:   #Bact use more N then they 'eat' this needs to come from somewhere so from SOM (but needs to be corrected)
+            NSOM=-NSOM
+            print('error NSOM<0')
         SOMCN=B[10]/NSOM
 
     
