@@ -1,7 +1,7 @@
 '''
 KEYLINK MODEL
 
-Created on 27.07.2016 last write 24/05/2021
+Created on 27.07.2016 last write 18/11/2021
 
 @author: A Schnepf - G Deckmyn - G Cauwenberg - O Flores
 '''
@@ -9,7 +9,7 @@ Created on 27.07.2016 last write 24/05/2021
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
-import functions_KEYLINK as mf
+import keylink_functions as mf
 import random
 import matplotlib
 import math
