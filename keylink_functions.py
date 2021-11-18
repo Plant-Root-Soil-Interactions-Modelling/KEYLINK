@@ -26,7 +26,7 @@ def calcAvail(PV, PW, SOMini):
             mwater[i] = 0
         elif PW[i]/PV[i] > 0:
             mwater[i] = mwatertot*PV[i]/(PV[i]+PW[i])
-            if(i+1) < 5:
+            if i == 3:
                 mwater[i+1] = mwatertot*PW[i]/(PV[i]+PW[i])
                 
     availSOMbact    = np.sum([1, 1, 1, 1]*PV[1:]*mwater[1:]/sum(PV[1:])) #SOM availability to bact
