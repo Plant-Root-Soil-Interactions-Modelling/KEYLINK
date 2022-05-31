@@ -7,7 +7,6 @@ Created on 01.06.2017 last write 19/7/2021
 """
 
 import numpy as np
-import random
 import math
 from scipy.integrate import odeint
 import time
@@ -110,6 +109,10 @@ def calcPVD(PVstruct, pv, Ag, ratioPVBeng, fPVB, tPVB, PVBmax, d, b):
     
     return pv
 
+def calcmodH(): #water level, temperature
+        
+    return
+
     #check this
 def calcmodtOld(temp, topt, tmin, tmax): #calculate temperature modifier. old version for comparison purposes.
     if temp < tmin:
@@ -136,7 +139,7 @@ def calctempdata(longlist,dailyTemp,maxLength,intervalPercent, organism): #calcu
     lowBound = np.quantile(longlist, ((100-intervalPercent)/200))
     highBound = np.quantile(longlist,((100+intervalPercent)/200))
     
-    print("average temp: ", tempMean) 
+    #print("average temp: ", tempMean) #debug
     
     
     #Checks for differing trends in temperatures compared to last year, only works if at least one year of data + 10 day buffer exists
@@ -169,47 +172,74 @@ def calctempdata(longlist,dailyTemp,maxLength,intervalPercent, organism): #calcu
     
     return longlist, tempRangeRatio, tempMeanDiff, lowBoundDiff, highBoundDiff, compareCheck
 
-#20-2
-#19-1
 
-def calcmodt(tempList,temp, topt, tmin, tmax, absmin, absmax, variabilityCounter, variabilityMeanCounter, orgGroup):
+#flag for separate reaction speeds
+reactionDiff=0
+
+def calcmodt(tempList,temp, topt, tmin, tmax, absmin, absmax, variabilityCounter, variabilityMeanCounter, orgGroup, acclimSpeed, height, anomalyCounter, tminTempCap, tmaxTempCap):
     #calculate a bunch of stats to be used for medium and long-termed behaviour
     tempList, rangeRatio, meanDiff, lowBoundDiff, highBoundDiff, compareCheck = calctempdata(tempList, temp, 1000, 80, orgGroup) #temporary values for logging time and interval check.
 
     tempFullRange = (absmax-absmin)/50 #store a temporary variable to be used to expand or reduce the range of a group
                                       #The smaller the current range, the smaller the effects are. No cap because there already is one for hgiher temps.
                                       #It is divided by 50 to not make the system too sensitive.
-
+                                      
+                                      
+    stepSize = 0.0002
+    tempSpikeThold = 5 #Threshhold of temp spike anomaly counting. Should be based off of affinity ranges of isozymes.
+    if reactionDiff==0:
+        stepSize = stepSize*(1/np.log(acclimSpeed+1)+1)
+    #print(stepSize)
+    
+    #Temperature anomaly system, always active.
+    if len(tempList)>1:
+        if abs(tempList[-1] - tempList[-2]) >= tempSpikeThold: #if an anomaly is detected
+            #☻print("anomaly!")
+            anomalyCounter = min(anomalyCounter + 1,10)
+        else:
+            anomalyCounter = max(anomalyCounter - 1,0)
+            
+        if anomalyCounter > 5:
+            height = height*0.90
+            #print(height)
+        else:
+            height = min(height + 0.05,1)
+        
+        
 
     #Only run medium and longterm calculations when meaningful data was collected
     #these are currently static numbers but will be based on thermal tolerance ranges
     if compareCheck == 1:
         #Medium term calculations
-        if meanDiff >1:
+        if meanDiff >1: #if temperature has gone up
             if variabilityMeanCounter<0:
                 variabilityMeanCounter = min(variabilityMeanCounter + 10,0)
             else:
                 variabilityMeanCounter = variabilityMeanCounter + 1
-        elif meanDiff <1:
+        elif meanDiff <-1: #if temperature has gone down
             if variabilityMeanCounter>0:
                 variabilityMeanCounter = max(variabilityMeanCounter - 10,0)
             else:
                 variabilityMeanCounter = variabilityMeanCounter - 1
+                
         
-        
-        if temp>topt and topt<absmax and variabilityMeanCounter>3:
-            topt += 0.0004*meanDiff #0.002 for stable
-            if temp>0.8*tmax and variabilityMeanCounter>3:
-                tmax += 0.002*meanDiff
-                tmin += 0.002*meanDiff       
-        elif temp<topt and topt>absmin and variabilityMeanCounter<-3:
-            topt -= 0.0004*meanDiff
-            if temp<1.2*tmin and variabilityMeanCounter<-3:
-                tmin -= 0.002*meanDiff
-                tmax -= 0.002*meanDiff      
+        if temp>topt and topt<absmax and variabilityMeanCounter>5:
+            topt = topt + stepSize*meanDiff/5 #0.002 for stable
+            if temp> (tmax-topt)*0.6+topt: #Comes down to an 80% quantile under symmetric circumstances.
+                tmax += stepSize*meanDiff
+                tmin += stepSize*meanDiff       
+                tminTempCap = tmin #these two variables are used in the recovery formula to make it linear.
+                tmaxTempCap = tmax
+        elif temp<topt and topt>absmin and variabilityMeanCounter<-5:
+            topt = topt - stepSize*meanDiff/5
+            if temp< (topt-tmin)*0.4+tmin: #Comes down to a 20% quantile under symmetric circumstances.
+                tmin -= stepSize*meanDiff
+                tmax -= stepSize*meanDiff 
+                tminTempCap = tmin
+                tmaxTempCap = tmax
         else:
-            tmax = max(tmax-0.03*(tmax-absmax),absmax) #when no stress, move back towards absmax/min values at a rate loss of 3%
-            tmin = min(tmin+0.03*(absmin-tmin),absmin)
+            tmax = max(tmax-0.03*(tmaxTempCap-absmax),absmax) #when no stress, move back towards absmax/min values at a rate loss of 3%
+            tmin = min(tmin+0.03*(absmin-tminTempCap),absmin)
             
             
 #        else:   #Gravitate back towards absmaxvalues when no stress, use 3% percentual diff
@@ -244,28 +274,28 @@ def calcmodt(tempList,temp, topt, tmin, tmax, absmin, absmax, variabilityCounter
             #same here
             absmax -= 0.005*tempFullRange
         else:               #during times of no stress, very slow loss of range.
-            absmin += 0.00001*tempFullRange
-            absmax -= 0.00001*tempFullRange
+            absmin += 0.0001*tempFullRange
+            absmax -= 0.0001*tempFullRange
         
-    print("temp: ", temp)    
+    #print("temp: ", temp)    #debug
     #print("tmaxl: ", tmax)
     #print("tminl: ", tmin)
-    print("tmin: ", tmin)
-    print("absmin: ", absmin)
+    #print("tmin: ", tmin)
+    #print("absmin: ", absmin)
     #part that calculates current Gmax
     if temp<absmin:
         value = 0
     elif temp>absmax:
         value = 0
     else:
-        value = calcShortTemp(temp, topt, tmin, tmax)
+        value = calcShortTemp(temp, topt, tmin, tmax, height)
     
-    return value, tempList, topt, tmin, tmax, absmin, absmax, variabilityCounter, variabilityMeanCounter #also needs to return the other values, not done yet
-
-def calcShortTemp(temp, topt, tmin, tmax): #generates a Gmax value for the current thermal curve
-    deviationleft = (topt - tmin)/5     #set first deviation for the lower bound, assuming tmin as 5 sigma.
+    return value, tempList, topt, tmin, tmax, absmin, absmax, variabilityCounter, variabilityMeanCounter, anomalyCounter, height, tminTempCap, tmaxTempCap #also needs to return the other values, not done yet
+                
+                
+def calcShortTemp(temp, topt, tmin, tmax, height): #generates a Gmax value for the current thermal curve
+    deviationleft = (topt - tmin)/5    #set first deviation for the lower bound, assuming tmin as 5 sigma.
     deviationright = (tmax - topt)/5    #set the second deviation for the higher bound
-    height = 10
     if temp <= topt: #if loop to make the function work as a split normal distribution function.
         value = calcNormalDistribution(height,topt,deviationleft,temp)
     else:
@@ -463,17 +493,20 @@ def wl(PW, et): # water lost by evapotranspiration
     #hypothesis: how well can fungi & microbes adapt to plants?
     #hypothesis 2: does a disparity in adaptation speed cause long/midterm issues.
     
+#day = odeint(mf.fCompSpecies, B, [i, i+1], args=(avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
 
+#Optimisation should probably either happen extremely slowly or not at all if temperatures stagnate
 
-
-def OptimiseParamater(argNum, orgGroup, i, f, B, avail, modt, litterCN, SOMCN, GMAX): #Takes an initial value and tries to optimise for that value, selecting on B to run on animal group orgGroup
-    argTable = [avail, modt, GMAX] #Sets the argument arrays into one nested array for code compaction
+def OptimiseParamater(argNum, orgGroup, i, f, B, avail, modt, litterCN, SOMCN, GMAX, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc, temp, T_OPT, T_MIN, T_MAX, loggedTemps, absT_MIN, absT_MAX, sensor, meanSensor, usingNewTemp, acclimSpeed, height, anomalyCounter, tminTempCap, tmaxTempCap): #Takes an initial value and tries to optimise for that value, selecting on B to run on animal group orgGroup
+    argTable = [avail, T_OPT, GMAX] #Sets the argument arrays into one nested array for code compaction
     currentArgVal = argTable[argNum] #Selects the correct argument array based on the value of argNum
 
-    organismInterval = [[0,10]] #Calculates the stepSize based off of the organism interval.
-    lowerBound = organismInterval[orgGroup][0]
-    upperBound = organismInterval[orgGroup][1]
-    stepSize = upperBound*0.005
+    organismInterval = [0,40]*10 #Calculates the stepSize based off of the organism interval.
+    lowerBound = organismInterval[2*orgGroup]
+    upperBound = organismInterval[2*orgGroup+1]
+    stepSize = upperBound*0.000005 #divide by 10 
+    if reactionDiff==1:
+        stepSize = stepSize*(1/np.log(acclimSpeed[orgGroup]+1)+1)
     
     #print(currentArgVal[orgGroup])
     ArgValUp = currentArgVal.copy() #initialise tables for increase and decrease
@@ -483,60 +516,161 @@ def OptimiseParamater(argNum, orgGroup, i, f, B, avail, modt, litterCN, SOMCN, G
     
     #Here code to select the argument that will be modified.
     #if selected arg == true then
-    #selected Arg = currentArgVal
+    #selected Arg = currentArgVal 
+    
+    #initialise temp tables
+    currentmodt=modt.copy()
+    modtUp=modt.copy()
+    modtDown=modt.copy()
+    #put parts of the arguments into tables for code compaction.
+    legacyArgs=[T_MIN[orgGroup], T_MAX[orgGroup]]
+    argList=[absT_MIN[orgGroup], absT_MAX[orgGroup], sensor[orgGroup], meanSensor[orgGroup], orgGroup, acclimSpeed[orgGroup], height, anomalyCounter, tminTempCap, tmaxTempCap]
+    
+    #Switch for if you use the legacy or new modt formula.
+    if usingNewTemp== False:
+        currentmodt[orgGroup]=calcmodtOld(temp, currentArgVal[orgGroup], T_MIN[orgGroup], T_MAX[orgGroup])
+        modtUp[orgGroup]=calcmodtOld(temp, ArgValUp[orgGroup], T_MIN[orgGroup], T_MAX[orgGroup])
+        modtDown[orgGroup]=calcmodtOld(temp, ArgValDown[orgGroup], T_MIN[orgGroup], T_MAX[orgGroup])
+    else:
+        currentmodt[orgGroup]=calcmodt(loggedTemps, temp, T_OPT[orgGroup], *legacyArgs,*argList)[0]
+        modtUp[orgGroup]=calcmodt(loggedTemps, temp, ArgValUp[orgGroup], *legacyArgs, *argList)[0]
+        modtDown[orgGroup]=calcmodt(loggedTemps, temp, ArgValDown[orgGroup], *legacyArgs, *argList)[0]
+        #because the new modt formula returns a tuple, only the first element is needed hence it is called as calcmodt()[0]
+        #if this was not the case, logging calculations are being done twice.
+    
+    #print("current: ",currentmodt[orgGroup])
+    #print("up: ",modtUp[orgGroup])
+    #print("down: ",modtDown[orgGroup])
 
     
     #Run odeint 3 times, one with the current value, one with the increased and one with the decreased value.
     if argNum == 2: #changes maxgrowth
-        Bday = odeint(fCompSpecies, B, [i, i+1], args=(avail, modt, currentArgVal, litterCN, SOMCN))
+        Bday = odeint(fCompSpecies, B, [i, i+1], args=(avail, modt, currentArgVal, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
         Bcurrent = Bday[1, :]
                           
-        Bdayup = odeint(fCompSpecies, B, [i, i+1], args=(avail, modt, ArgValUp, litterCN, SOMCN))
+        Bdayup = odeint(fCompSpecies, B, [i, i+1], args=(avail, modt, ArgValUp, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
         Bup = Bdayup[1, :]
                      
-        Bdaydown = odeint(fCompSpecies, B, [i, i+1], args=(avail, modt, ArgValDown, litterCN, SOMCN))
+        Bdaydown = odeint(fCompSpecies, B, [i, i+1], args=(avail, modt, ArgValDown, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
         Bdown = Bdaydown[1, :]
     elif argNum ==1: #changes temperature. Change this to change the three temperature parameters 
-        Bday = odeint(fCompSpecies, B, [i, i+1], args=(avail, currentArgVal, GMAX, litterCN, SOMCN))
+        Bday = odeint(fCompSpecies, B, [i, i+1], args=(avail, currentmodt, GMAX, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
         Bcurrent = Bday[1, :]
-        print(Bcurrent)                  
+        #print(Bcurrent)                  
         
-        Bdayup = odeint(fCompSpecies, B, [i, i+1], args=(avail, ArgValUp, GMAX, litterCN, SOMCN))
+        Bdayup = odeint(fCompSpecies, B, [i, i+1], args=(avail, modtUp, GMAX, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
         Bup = Bdayup[1, :]
-        print(Bup)             
+        #print(Bup)             
         
-        Bdaydown = odeint(fCompSpecies, B, [i, i+1], args=(avail, ArgValDown, GMAX, litterCN, SOMCN))
+        Bdaydown = odeint(fCompSpecies, B, [i, i+1], args=(avail, modtDown, GMAX, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
         Bdown = Bdaydown[1, :]
         
     
     else: #changes avail
-        Bday = odeint(fCompSpecies, B, [i, i+1], args=(currentArgVal, modt, GMAX, litterCN, SOMCN))
+        Bday = odeint(fCompSpecies, B, [i, i+1], args=(currentArgVal, modt, GMAX, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
         Bcurrent = Bday[1, :]
                           
-        Bdayup = odeint(fCompSpecies, B, [i, i+1], args=(ArgValUp, modt, GMAX, litterCN, SOMCN))
+        Bdayup = odeint(fCompSpecies, B, [i, i+1], args=(ArgValUp, modt, GMAX, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
         Bup = Bdayup[1, :]
                      
-        Bdaydown = odeint(fCompSpecies, B, [i, i+1], args=(ArgValDown, modt, GMAX, litterCN, SOMCN))
+        Bdaydown = odeint(fCompSpecies, B, [i, i+1], args=(ArgValDown, modt, GMAX, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
         Bdown = Bdaydown[1, :]
 
     #debug
 
-    #print(Bday)
-    #print(Bdayup)
-    #print(Bdaydown)
+    #print("current", currentArgVal)
+    #print("up", ArgValUp)
+    #print("down", ArgValDown)
     
     bestResult = max(Bcurrent[orgGroup], Bup[orgGroup], Bdown[orgGroup])
     #Select the highest value of B and return the argument value associated with it
-    if bestResult == Bcurrent[orgGroup]: return currentArgVal[orgGroup]
-    elif bestResult == Bup[orgGroup]: return ArgValUp[orgGroup]
+    if bestResult == Bup[orgGroup]: return ArgValUp[orgGroup]
+    elif bestResult == Bcurrent[orgGroup]: return currentArgVal[orgGroup]
     else: return ArgValDown[orgGroup]
     
-def optimiseTemperature():
-    return
+    #code for the statistics part, to see if the data make sense.
+    
+def scrambleTemps(currentYear,currentTemp,startYear,mode,intensity):
+    if mode == 0:
+        currentTemp=staticTemp(currentYear,currentTemp,startYear,intensity)
+    if mode == 1:
+        currentTemp=risingTemp(currentYear,currentTemp,startYear,intensity)
+    if mode == 2:
+        currentTemp=diminishTemp(currentYear,currentTemp,startYear,intensity)
+    if mode == 3:
+        currentTemp=erraticTemp(currentYear,currentTemp,startYear,intensity)
+    if mode == 4:
+        currentTemp=variableTemp(currentYear,currentTemp,startYear,intensity)
+    if mode == 5:
+        currentTemp=idiosyncraticTemp(currentYear,currentTemp,startYear,intensity)
+    if mode== 6:
+        currentTemp=JoltRisingTemp(currentYear,currentTemp,startYear,intensity)   
+    return currentTemp
+
+#generate a temperature value between current temp-1 and a higher bound that increases every year + 3 random decimals. the +1 on the higher bound is because the igher bound is exclusive.
+def risingTemp(currentYear,currentTemp,startYear,intensity):
+    yearDiff=currentYear-startYear
+    lowerBound=int(currentTemp-intensity)
+    upperBound=int(currentTemp+1+yearDiff*intensity/2)
+    currentTemp=np.random.randint(lowerBound, upperBound)+np.random.randint(0,1001)/1000   
+    return currentTemp
+
+#generate a temperature value between current temp+1 and a lower bound that decreases every year + 3 random decimals. the +1 on the higher bound is because the igher bound is exclusive.
+def diminishTemp(currentYear,currentTemp,startYear,intensity):
+    yearDiff=currentYear-startYear
+    lowerBound=int(currentTemp-yearDiff*intensity/2)
+    upperBound=int(currentTemp+intensity+1)
+    currentTemp=np.random.randint(lowerBound, upperBound)+np.random.randint(0,1001)/1000
+    return currentTemp
+    
+#generate a temperature value where both boundaries expand every year + 3 random decimals. the +1 on the higher bound is because the igher bound is exclusive.
+def erraticTemp(currentYear,currentTemp,startYear,intensity):
+    yearDiff=currentYear-startYear
+    lowerBound=int(currentTemp-yearDiff*intensity/2)
+    upperBound=int(currentTemp+2+yearDiff*intensity/2)
+    currentTemp=np.random.randint(lowerBound, upperBound)+np.random.randint(0,1001)/1000
+    return currentTemp
+ 
+#keep the temperature the same for comparisons, the 'actual' code for this is in core, where you simply reset to the first year after a given time. For generating cyclic static temperatures.
+def staticTemp(currentYear,currentTemp,startYear,intensity):
+    return currentTemp
+    
+#generate a temperature value that increases every second year and decreases during the other years + 3 random decimals. the +1 on the higher bound is because the igher bound is exclusive.
+def variableTemp(currentYear,currentTemp,startYear,intensity):
+    yearDiff=currentYear-startYear
+    if yearDiff % 2 == 0:
+        lowerBound=int(currentTemp-yearDiff*intensity/2)
+        upperBound=int(currentTemp+intensity+1)
+    else:
+        lowerBound=int(currentTemp-intensity)
+        upperBound=int(currentTemp+1+yearDiff*intensity/2)
+    currentTemp=np.random.randint(lowerBound, upperBound)+np.random.randint(0,1001)/1000
+    return currentTemp
+
+#Stresstest function, generates completely random temperatures.
+def idiosyncraticTemp(currentYear,currentTemp,startYear,intensity):
+    lowerBound=int(currentTemp-intensity*5)
+    upperBound=int(currentTemp+intensity*5)
+    currentTemp=np.random.randint(lowerBound, upperBound)+np.random.randint(0,1001)/1000
+    return currentTemp
+
+def JoltRisingTemp(currentYear,currentTemp,startYear,intensity):
+    yearDiff=currentYear-startYear   
+    if yearDiff > 5:
+        lowerBound=int(currentTemp+intensity*2)
+        upperBound=int(currentTemp+intensity*10)
+    else:
+        lowerBound=int(currentTemp-intensity)
+        upperBound=int(currentTemp+intensity)
+    currentTemp=np.random.randint(lowerBound, upperBound)+np.random.randint(0,1001)/1000
+    return currentTemp
     
 #breeder maken van temperatuur plateau.
 #Als temperatuur ver boven optimum valt, traag beginnen adapteren?
-#als groep dood is: geen adapttie
+#als groep dood is: geen adaptqtie incorrect
+
+
+
     
 def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP,
          KS, DEATH, CtoMyc):
@@ -653,8 +787,6 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
     +modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
     +modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) # eaten by engineers      
     LITeatenEng=modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) #only litter eaten by enginners
-
-    print(GMAX)
     
     return [bact, fungi, myc, bvores, fvores, sap,
             eng, hvores, pred, litter, som, roots, co2,

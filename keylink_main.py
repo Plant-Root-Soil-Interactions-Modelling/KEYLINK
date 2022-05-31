@@ -10,9 +10,10 @@ from numpy import random as ra
 import scipy
 from scipy import stats
 import keylink_core as core
+import pandas as pd
 
-"runmode can be single, bayesian, posterior (or distribution, not yet implimented)"
-runmode='single'
+"runmode can be single, bayesian, posterior, testing (or distribution, not yet implimented)"
+runmode='bootstrap'
 
 if (runmode=='single'):
 #read the gmax values
@@ -20,7 +21,9 @@ if (runmode=='single'):
  gmax=param[0,:] 
  Cpools, PWt, PVt, pores=core.KeylinkModel(gmax) 
  core.export_pools('keylinkoutput', Cpools)
+ print(Cpools)
  core.show_plot(Cpools, PWt, PVt)  
+
  
 # pValues        =  [1.06,1.14,1.04,1.540,1.188,0.038,0.072,0.028,0.14]    
 
@@ -31,7 +34,7 @@ if(runmode=='bayesian'):
  # David Cameron 11/11/2008 dcam@ceh.ac.uk
  # modified for KEYLINK model 3/2018 Gaby Deckmyn
  '''
- chainLength    = 1                                 
+ chainLength    = 10000                          
  caldatafile=open('KL_calibData.txt')
 
  titls=caldatafile.readline() # first line are titles
@@ -123,7 +126,7 @@ if(runmode=='bayesian'):
  print('psetMAP', psetMAP)
  
  #call best fit again and show graphs
- Cpools, PWt, PVt=core.KeylinkModel(psetMAP) 
+ Cpools, PWt, PVt, pores=core.KeylinkModel(psetMAP) 
  core.export_pools('keylinkoutput', Cpools)
  core.show_plot(Cpools, PWt, PVt)  
  
@@ -167,5 +170,37 @@ if runmode == 'posterior':   #the model is run for all the given combinations of
     core.export_pools('KL_soil_matrix', soilm)
     core.export_pools('KL_raw_data', raw)
   
-# if runmode ==  distributions:  
-    
+    #Does a specified amount of runs, to be used in conjunction with testtempmodel being on in core.
+    #it will then store all the Carbon pool data into one big csv
+if runmode ==  'bootstrap':      
+    param = core.import_pools('KL_FaunalParams')   #read the gmax values
+    gmax=param[0,:] 
+    sampleSize = 100 #amount of runs
+    groupAmount = 14
+    tStop=3653 #selects the amount of days
+    seasonLength = int(nm.floor(tStop/(4*tStop/365.25)))
+    seasonAmount = int(nm.floor(4*tStop/365.25))
+ 
+    for i in range(0,sampleSize):
+        Cpools, PWt, PVt, temps=core.KeylinkModel(gmax) #Mimic the simple approach, grab the data the model generates
+        CpoolSeasonalData = [[0] * groupAmount for i in range(seasonAmount)]
+        CpoolSeasonalTemps = [[0] * groupAmount for i in range(seasonAmount)]
+        
+        for s in range(1,seasonAmount+1): #Grab 40 data points from day 91 onwards in 91 day intervals until 10 years have passed and collect it into a new array
+            CpoolSeasonalData[s-1] = Cpools[s*seasonLength][0:groupAmount]
+            CpoolSeasonalTemps[s-1] = temps[s*seasonLength]            
+        currentCpoolData=core.mk_dataframe(CpoolSeasonalData, CpoolSeasonalTemps, i, tStop, groupAmount) #store into a compatible dataframe
+        
+        if i == 0:
+            currentCpoolData.to_csv('./data/testData.csv') #export data to csv
+        else:
+            fullCpoolData=pd.concat([core.importFromCSV('./data/testData.csv'),currentCpoolData])
+            fullCpoolData.to_csv('./data/testData.csv') #export data to csv
+
+        
+        
+        
+#        if i > 0:
+#            fullCpoolData=core.append_df(fullCpoolData, CpoolSeasonalData) #append last dataframe to the full dataframe
+        
+        
