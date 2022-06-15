@@ -13,6 +13,9 @@ import random
 import matplotlib
 import math
 import string
+import pandas as pd
+import os
+import csv
 
 def import_pools(filename):
     """Load array from text file"""
@@ -23,12 +26,20 @@ def export_pools(filename, array):
     np.savetxt(filename + '.txt', array)
 
 NrGroups=8
-CompetingSpecies=True
 pfaec = np.zeros(NrGroups-1)
 PVstruct=np.zeros(5)
 drainage = 0
 runoff = 0
-
+mineralisation=0
+NherbOld=0
+Nherb=0
+#New flags introduced in the dynamic version, competing set to False breaks the program.
+CompetingSpecies=True
+usingDailyTemp=1
+usingNewTemp=1 #optimising Topt, Tmax and Tmin towards daily temp
+optimisation=1 #optimising gmax using Topt changes in steps
+allOptimise=0 #for all groups
+testTempModel=1
 
 B = import_pools('KL_initC_Pools') #initial biomass in each C pool
 (GMAXtemp, KS, DEATH, RESP, FAEC, CN, REC, MCN,
@@ -59,6 +70,7 @@ SOMCNini=SOMCN
 Bini = B
 PWini = PW
 
+
 PVt = np.zeros(int(tStop))
 PWt = np.zeros(int(tStop))
 psoln = np.zeros((int(tStop), NrGroups+14))
@@ -78,21 +90,22 @@ popname = np.array(['Bacteria','Fungi','Mycorrhiza','bacterivores','fungivores',
 popcolour = np.array(['blue','red','darkcyan','cyan','orange','purple','darkgreen','magenta','black','brown','grey','chartreuse','yellow'])
 t = np.arange(0., tStop)
 
-
-
 # function to be integrated daily solving the carbon pools 'B' ifo time
 def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP,
-         KS, DEATH, CtoMyc, NrGroups):
+         KS, DEATH, CtoMyc, NrGroups, temp, T_OPT, T_MIN, T_MAX, RESP, Q10):
     (availSOMbact, availSOMfungi, availSOMeng, availSOMsap, availbbvores,
      availffvores, availfvorespred, availbvorespred, availhvorespred,
      availsappred, availengpred ,SOMunavail) = avail
 
     # Default '10 groups': 0=bact, 1=fungi, 2=myc, 3=bvores, 4=fvores, 5=sap,
     # 6=eng, 7=hvores, 8=pred, NrGroups+1=litter, NrGroups+2=SOM, NrGroups+3=roots, NrGroups+4=CO2
-
+    #set all values above 12 to 0 because this solver calculates the change, is otherwise cummulative and interpreted wrong aftwerwards!
+    #B[13:22]=0
     # update GMAX for bacteria, fung and myc GMAX is modified for SOM
     # and litter seperately depending on CN (and possibly recalcitrance)
     #for bact if CN source too high they can't grow   
+    
+    #check this. MCN is sensitivity
     gmaxblit = mf.calcgmaxmod(CN[0], litterCN, MCN[0], recLit, MREC[0], pH, 1)*GMAX[0] #gmax for bact on litter
     gmaxbSOM = mf.calcgmaxmod(CN[0], SOMCN, MCN[0], 0.0, MREC[0], pH, 1)*GMAX[0] #gmax for bact on SOM
     gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
@@ -139,7 +152,7 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLi
            - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
            - DEATH[6]*B[6] - rRESP[6]*B[6])
 
-    #roots are avaialble because larger than herbivores
+    #roots are available because larger than herbivores
     hvores = (modt[7]*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7])
               - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[7], availhvorespred, GMAX[8], KS[8])
               - DEATH[7]*B[7] - rRESP[7]*B[7])
@@ -196,7 +209,7 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLi
     +modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[NrGroups+1], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
     +modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[NrGroups+1], availSOMbact, gmaxEng, KS[6]) # eaten by engineers      
     LITeatenEng=modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[NrGroups+1], availSOMbact, gmaxEng, KS[6]) #only litter eaten by enginners
- 
+
     return [bact, fungi, myc, bvores, fvores, sap,
             eng, hvores, pred, litter, som, roots, co2,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
@@ -206,9 +219,24 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLi
 
 
 def KeylinkModel(Val):
-
+    
+    GMAXevol = [] #-- Olivier temp
+    acclimSpeed = [0.3,7,7,2,7,5,5,5,5,10] #acclimatisation speed of the different groups through generational or plasticity changes (used logarithmically)
+    Maxtemp = [55,40,40,40,40,40,40,40,40,40] #when the value reaches the maxtemp then gmax goes down.
+    absT_MIN = T_MIN.copy() #Copy the original values of T_Min & T_Max to use as hardcaps for the calculations.
+    absT_MAX = T_MAX.copy()
+    sensor = [0]*10     #sensor for lag time in the temperature system.
+    meanSensor = [0]*10 #short term sensor
+    anomalyCounter = 0
+    height = 1
+    tminTempCap = T_MIN.copy()
+    tmaxTempCap = T_MAX.copy()
     climatefile=open('PrecipKMIBrass.txt')
+    temperaturefile=open('tempData.txt')    #this requires a file with daily logged temperatures to function
+    loggedTemps = []            #initialise a list to be used to log temperatures for days that have 'happened' so far in the simulation
     titls=climatefile.readline() # first line are titles
+    titls=temperaturefile.readline() # first line are titles
+    testDataTempList = []#initialise a list to be used for the generation of a temperature column for statistics; works with testTempModel==1
     
     std=0 #we are using here dates from climate input file, so there is no need in create a starting date
     pv=PVstruct #initialise to structural 
@@ -229,28 +257,61 @@ def KeylinkModel(Val):
         pv = mf.calcPVD(PVstruct, pv, ag, ratioPVBeng, fPVB, tPVB, PVBmax, d, B)
         pvd = pv*100/sum(pv)
         pores[i,:]=pv
-        nd = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]) # number of days in each month
-    
+        nd = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]) # number of days in each month    
         zip=climatefile.readline().split() #daily meteorological data
         year=int(zip[1])
         month=(int(zip[2])-1)
-        ly=0 #it will became 1 in leap-years
+        ly=0 #it will become 1 in leap-years
         if (year%4)==0:
             ly=1
         if (year%100)==0:
             ly=0
         if (year%400)==0:
             ly=1
-        
         if ly==1: #in leap-years, this changes the number of days of february to 29
             nd[1]=nd[1]+1
-
         precip=float(zip[4])
         temp=float(zip[5])
-        for j in range (NrGroups+1):
-            modt[j] = mf.calcmodt(temp, T_OPT[j], T_MIN[j], T_MAX[j])
-            rRESP[j]=mf.calcresp(temp, T_OPT[j], RESP[j], Q10[j])
-    
+
+        if(usingDailyTemp==1): #if the flag is set to 1, then KEYLINK switches to reading a daily temperature file. Assumes no gaps.
+            x,y,z,xx=temperaturefile.readline().split()
+            year=int(x)
+            temp=float(xx)
+            if i == 0: 
+                startYear=int(x)
+        else:
+            startYear=0
+            
+            
+        #testing method functions here -- OLIVIER temp
+        if(testTempModel==1):
+            mode = 2      # what test will be performed
+            intensity = 1 # how big is the temperature difference?
+            temp=mf.scrambleTemps(year,temp,startYear,mode,intensity)     
+            testDataTempList.append(temp) #extend randomised temp table for use in statistics.
+            #print("temp: ", temp)
+            if mode == 0 and i % 738 == 0: #if the selected mode is static, reuse the data of the first two years for the enterity of the test.
+                climatefile.seek(0, 0)
+                climatefile.readline()
+            
+            
+        for j in range (NrGroups+1): #--here
+            if usingNewTemp == 0:
+                modt[j]=mf.calcmodtOld(temp, T_OPT[j], T_MIN[j], T_MAX[j])
+            else:
+                modt[j], loggedTemps, T_OPT[j], T_MIN[j], T_MAX[j], absT_MIN[j], absT_MAX[j], sensor[j], meanSensor[j], anomalyCounter, height, tminTempCap[j], tmaxTempCap[j]  = mf.calcmodt(loggedTemps, temp, T_OPT[j], T_MIN[j], T_MAX[j], absT_MIN[j], absT_MAX[j], sensor[j], meanSensor[j], j, acclimSpeed[j], height, anomalyCounter, tminTempCap[j], tmaxTempCap[j])
+            rRESP[j]=mf.calcresp(temp, T_OPT[j], RESP[j], Q10[j])  
+
+        B[13:20]=0               
+        #if i % 30 == 0: #debug
+            #print("day: ",i)
+            #print(T_OPT)
+            #print(absT_MAX)
+            #print(modt)
+            #print ("temp: ", temp)
+            #print(GMAX)
+            
+
         #calculate the Potential Evapotranspiration (pet)
         pet = mf.PET(temp, nd[month], SUNH[month], HI, alfa)
 
@@ -271,6 +332,7 @@ def KeylinkModel(Val):
         #add litter (plant and root) and update total soil N
         B[NrGroups+1]=B[NrGroups+1]+mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[NrGroups+3],rootTO)
         Ntot=Ntot+(mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[NrGroups+3],rootTO))/CNlit
+        NherbOld=B[7]/CN[7]
     
         #root growth
         B[NrGroups+3]=B[NrGroups+3]+mf.rootgrowth(rrg)-mf.rootTurnover(B[NrGroups+3],rootTO)
@@ -281,35 +343,67 @@ def KeylinkModel(Val):
         #update soil C and N in soil
         CNsoil=(B[NrGroups+1]+B[NrGroups+2])/(B[NrGroups+1]/litterCN+B[NrGroups+2]/SOMCN)
         Ntot=Ntot-mf.mycNtoPlant(NmyctoPlant, CtoMyc, litterCN, CtoMyc, CNsoil)    
-    
+        if mf.mycNtoPlant(NmyctoPlant, CtoMyc, litterCN, CtoMyc, CNsoil)<Nmin:
+            Nmin=Nmin-mf.mycNtoPlant(NmyctoPlant, CtoMyc, litterCN, CtoMyc, CNsoil)
+        else:
+            Nmin=0  #it will need to come from SOM in this case
         #plant N uptake    
-        Ntot=Ntot-min(mf.plantNuptake(litterCN, inputLit, NmyctoPlant), Nmin)
-        Nmin=Nmin-min(mf.plantNuptake(litterCN, inputLit, NmyctoPlant), Nmin)
+        Ntot=Ntot-min(mf.plantNuptake(litterCN, inputLit, NmyctoPlant), Nmin) 
+        Nmin=Nmin-min(mf.plantNuptake(litterCN, inputLit, NmyctoPlant), Nmin) #plant uptake comes from mineral N 
     
         # Call the ODE solver for day i
+
+#        day = odeint(f, B, [i, i+1], args=(avail, modt, GMAX, litterCN, SOMCN))
+
+        if optimisation == 1:# -- Olivier
+            if allOptimise==1:
+                for orgGroup in range(NrGroups):
+                    argNum = 1 #sets the argument to change. Currently 2 = GMAX and anything else is modt 
+                    selectedParamVal = mf.OptimiseParamater(argNum, orgGroup, i, mf.fCompSpecies, B, avail, modt, litterCN, SOMCN, GMAX, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc, temp, T_OPT, T_MIN, T_MAX, loggedTemps, absT_MIN, absT_MAX, sensor, meanSensor, usingNewTemp, acclimSpeed, height, anomalyCounter, tminTempCap[j], tmaxTempCap[j])
+                    if argNum == 2:
+                        GMAX[orgGroup] = selectedParamVal #update the current GMAX value to the newly optimised one
+                    elif argNum == 1:
+                        T_OPT[orgGroup] = selectedParamVal #update the current GMAX value to the newly optimised one
+            else:
+                orgGroup = 0 #set this to bacteria for now for testing
+                argNum = 1 #sets the argument to change. Currently 2 = GMAX and anything else is modt 
+                selectedParamVal = mf.OptimiseParamater(argNum, orgGroup, i, mf.fCompSpecies, B, avail, modt, litterCN, SOMCN, GMAX, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc, temp, T_OPT, T_MIN, T_MAX, loggedTemps, absT_MIN, absT_MAX, sensor, meanSensor, usingNewTemp, acclimSpeed, height, anomalyCounter, tminTempCap[j], tmaxTempCap[j])
+                if argNum == 2:
+                    GMAX[orgGroup] = selectedParamVal #update the current GMAX value to the newly optimised one
+                elif argNum == 1:
+                    T_OPT[orgGroup] = selectedParamVal #update the current GMAX value to the newly optimised one
+                #GMAXevol = np.append(GMAXevol, selectedParamVal) #Store current GMAX value into a table for visualisation purposes.
+
         if CompetingSpecies==True: 
             day = odeint(mf.fCompSpecies, B, [i, i+1], args=(avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP,
-         KS, DEATH, CtoMyc))
+                                                             KS, DEATH, CtoMyc))
         else:    
-            day = odeint(fEight, B, [i, i+1], args=(avail, modt, GMAX, litterCN, SOMCN))
+            day = odeint(fEight, B, [i, i+1], args=(avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP,
+                                                     KS, DEATH, CtoMyc, NrGroups, temp, T_OPT, T_MIN, T_MAX, RESP, Q10))
         
-            
-        
+           
         # Second column is end value for day i, start value for day i + 1
         psoln[i-std] = day[1, :]
         B = day[1, :]
         et = ee*pet #evapotranspiration (rate of effective evapotranspiration * potential evapotranspiration)
         PW = mf.wl(PW,et) # water lost by evapotranspiration: we do this at the end of the day (otherwise soil is always dry)
 
-        # close N budget by adding up all N and putting 'restvalue' in SOM but not part by bact (goes into mineralised)
-        Nmin=Nmin-(B[NrGroups+8]+B[NrGroups+9]-B[NrGroups+5])/CN[0]+B[NrGroups+8]/litterCN+B[NrGroups+9]/SOMCN    # adding bact resp - growth /CN for lit and SOM
+        # close N for bact: (bactgrowthsom/CNsom, bactgrowthlit/CNlit = 'gain' goes into min if not needed to grow 
+        mineralisation=(B[NrGroups+8]/litterCN+B[NrGroups+9]/SOMCN-(B[NrGroups+8]+B[NrGroups+9]-B[NrGroups+5])/CN[0])  # adding bact resp - growth /CN for lit and SOM
+        Nmin=Nmin+mineralisation
+        Nherb=B[7]/CN[7]
+        Ntot=Ntot+Nherb-NherbOld
         if Nmin<0:   #Bact use more N then they 'eat' this needs to come from somewhere so from SOM (but needs to be corrected)
             Nneg=Nmin
             Nmin=0
         else:
             Nneg=0
-        Nfauna=sum(B[0:9]/CN)
+        Nfauna=sum(B[0:9]/CN) #all fauna assumed constant CN
         NSOM=Ntot-Nfauna-Nmin+Nneg
+        if NSOM<0:   #Bact use more N then they 'eat' this needs to come from somewhere so from SOM (but needs to be corrected)
+            NSOM=-NSOM
+            #print('error NSOM<0')
+            #print(Nmin)
         SOMCN=B[NrGroups+2]/NSOM
 
     
@@ -332,7 +426,11 @@ def KeylinkModel(Val):
                 B[s]=0.001
     
     climatefile.close
+    #plt.plot(t, GMAXevol, label="GMAX evolution")
+    if(testTempModel==1): #need different data when doing statistics
+        return (psoln, PWt, PVt, testDataTempList)
     return (psoln, PWt, PVt, pores)   #save the Cpools, water and porevolumes's on all days days
+#line 380, 317, 318, 247
 
 
 
@@ -417,3 +515,101 @@ def show_plot(soln, pwt, pvt):
     plt.legend(loc=(1.01, 0), shadow=True)
 
     plt.show()
+    
+    #temporary plot code
+
+
+''' Writes the data into a dataframe.
+    @param r:  is the constant to fill 'run' col with
+'''
+
+def mk_dataframe(data, T,  r=0, days=3653,groupAmount=14):   
+    tempdaycolumn=[]
+    seasonLength = int(np.floor(days/(4*days/365.25)))
+    seasonAmount = int(np.floor(4*days/365.25))
+    DataframeLength = seasonAmount*groupAmount
+    for i in range(seasonLength, days, seasonLength):
+        tempdaycolumn.append(groupAmount*[i])
+    dayAmount = len(tempdaycolumn)
+    #need to concat days column now
+    temptempcolumn=[]
+    for i in range(dayAmount):
+        temptempcolumn.append(groupAmount*[T[i]])
+    runcolumn = groupAmount*dayAmount*[r]
+    #daycolumn = groupAmount*days
+    groupcolumn = dayAmount*[i for i in range(1,1+groupAmount)]
+    
+    Biomasscolumn = []
+    for i in range(len(data)): 
+        Biomasscolumn.extend(data[i]) #generate the biomass column correctly.
+        
+    daycolumn = []
+    for i in range(len(tempdaycolumn)): 
+        daycolumn.extend(tempdaycolumn[i]) #generate the day column correctly.
+        
+    Tempcolumn = []
+    for i in range(len(temptempcolumn)): 
+        Tempcolumn.extend(temptempcolumn[i]) #generate the day column correctly.
+    
+    #run, temperature, group, day, BValue
+    d = {'run': runcolumn, 'temperature': Tempcolumn, 'group': groupcolumn, 'day': daycolumn, 'biomass': Biomasscolumn}
+    df = pd.DataFrame(data=d, index=[i for i in range(r*DataframeLength,r*DataframeLength+DataframeLength)]) #['run']
+    df.index.name = 'ID'
+    return df#index=[r*5,r*5+1,r*5+2,r*5+3,r*5+4]
+
+def append_df(d1, d2):
+    # figure out our new group index and run no.
+    if d2.empty:
+        return d1
+    groups     = d1.index.values
+    run        = d1['run'].values
+    maxGroup   = np.argmax(groups)
+    maxRun     = np.argmax(run)
+    new_groups = [g for g in range(maxGroup, maxGroup+14)]
+    new_run    = [maxRun+1 for r in new_groups]
+
+    # reassign index
+    d2Prime = d2 # do_copy
+    d2Prime.index  = new_groups
+    d2Prime.index.name = 'group'
+    d2Prime['run'] = new_run
+
+    df3 = pd.concat([d1, d2Prime])
+    return df3
+
+def importFromCSV(fp):
+    return pd.read_csv(fp, index_col='ID')
+
+''' writes all the csvs into a dataframe from the ./data folder.'''
+def exportToCSV(data_dir=None):
+    if not data_dir:
+        data_dir='./data'
+    fps = os.listdir(data_dir)
+    print(fps)
+
+    csvs = []
+    for fp in fps:
+        df = importFromCSV(data_dir + '/' + fp)
+        print(df)
+        csvs.append(df)
+    if not csvs:
+        return pd.DataFrame()
+
+    big_df = csvs[0]
+    for df in csvs[1:]:
+        big_df = append_df(big_df, df)
+    return big_df
+    
+'''
+def export_pools(filename, array):
+    """Save an array in a readable format, compatible with R"""
+    np.savetxt(filename + '.txt', array)
+from message import main, bodge_out_of_csv, append_df, mk_dataframe
+Cpools = Cpools.T #to transpose.
+'''
+
+def writeToCSV(data):
+    with open('./data/testData.csv', 'w', encoding='UTF8') as f:
+        writer = csv.writer(f)
+        # write the data
+        writer.writerows(data)

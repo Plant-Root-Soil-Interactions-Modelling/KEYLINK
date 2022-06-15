@@ -7,8 +7,21 @@ Created on 01.06.2017 last write 19/7/2021
 """
 
 import numpy as np
-import random
 import math
+from scipy.integrate import odeint
+import time
+
+    #mathematical function to get y value of a normal distribution with given mean and standard deviation.
+def calcNormalDistribution(height,mean,deviation,x):  
+    answer = height*np.exp(-(((x-mean)**2)/(2*deviation**2)))
+    return answer
+
+#fs = function(x,epsilon,delta) dnorm(sinh(delta*asinh(x)-epsilon))*delta*cosh(delta*asinh(x)-epsilon)/sqrt(1+x^2)
+#    function(x,epsilon,delta) dnorm(sinh(a*asinh(x)-b))*a*cosh(a*asinh(x)-b)/sqrt(1+x^2)
+
+#def sinh_archsinh_transformation(x,epsilon,delta):
+#    return norm.pdf(np.sinh(delta*np.arcsinh(x)-epsilon))*delta*np.cosh(delta*np.arcsinh(x)-epsilon)/np.sqrt(1+np.power(x,2))
+
 
 def calcKD(pH,fClay): #Cempirically from orchideeSOM model Cammino-serrano et al 2018
     Kd=0.001226-0.000212*pH+0.00374*fClay
@@ -96,7 +109,12 @@ def calcPVD(PVstruct, pv, Ag, ratioPVBeng, fPVB, tPVB, PVBmax, d, b):
     
     return pv
 
-def calcmodt(temp, topt, tmin, tmax): #calculate temperature modifier
+def calcmodH(): #water level, temperature
+        
+    return
+
+    #check this
+def calcmodtOld(temp, topt, tmin, tmax): #calculate temperature modifier. old version for comparison purposes.
     if temp < tmin:
         value = 0
     elif temp < topt:
@@ -106,6 +124,183 @@ def calcmodt(temp, topt, tmin, tmax): #calculate temperature modifier
     else:
         value = 0
     return np.real(value)
+
+def calctempdata(longlist,dailyTemp,maxLength,intervalPercent, organism): #calculate specified metadata using recent temperature and puts them in a list
+    reactionTime = 14 #np.log(generationTime) at a later point?
+    if organism == 0:   #only update the list once for each organism group
+        longlist.append(dailyTemp)   
+    if len(longlist) > maxLength:               #If the list exceeds the needed data range the first element is popped.
+        del longlist[0]        
+                   #Append today's temperature to the end of the list
+
+    #'global' data of the timeset, currently unused.
+    tempRange = max(longlist) - min(longlist)       #calculate the delta temperature
+    tempMean = sum(longlist)/len(longlist)          #calculate the average temperature of that 
+    lowBound = np.quantile(longlist, ((100-intervalPercent)/200))
+    highBound = np.quantile(longlist,((100+intervalPercent)/200))
+    
+    #print("average temp: ", tempMean) #debug
+    
+    
+    #Checks for differing trends in temperatures compared to last year, only works if at least one year of data + 10 day buffer exists
+    if len(longlist) > 365+reactionTime:
+        compareCheck = 1 #set to 1 so that medium term and longterm changes can be made
+        #short term reaction system, uses the long list but only takes the last few days [-N:] gets the last N elements from a list
+        tempRangeNew = max(longlist[-reactionTime:]) - min(longlist[-reactionTime:])       #calculate the delta temperature
+        tempMeanNew = sum(longlist[-reactionTime:])/len(longlist[-reactionTime:])          #calculate the average temperature of that 
+        lowBoundNew = np.quantile(longlist[-reactionTime:], ((100-intervalPercent)/200))
+        highBoundNew = np.quantile(longlist[-reactionTime:],((100+intervalPercent)/200))
+        
+        #data for same days, last year (ignores leapyears for simplification) 
+        tempRangeOld = max(longlist[-(reactionTime+366):-366]) - min(longlist[-(reactionTime+365):-366])
+        tempMeanOld = sum(longlist[-(reactionTime+366):-366])/len(longlist[-(reactionTime+365):-366])          #calculate the average temperature of that 
+        lowBoundOld = np.quantile(longlist[-(reactionTime+366):-366], ((100-intervalPercent)/200))
+        highBoundOld = np.quantile(longlist[-(reactionTime+366):-366],((100+intervalPercent)/200))
+    #code comparing short vs long data  
+        if tempRangeNew == 0:   #exception for 0 to catch div by 0 errors. 
+            tempRangeRatio = 0   
+        elif tempRangeOld == 0:
+            tempRangeRatio = 10  #if the old range is 0 then that means the ratio opens up a lot, 10 arbitrarily chosen as a big number
+        else:
+            tempRangeRatio = tempRangeOld/tempRangeNew
+        
+        tempMeanDiff = tempMeanNew - tempMeanOld
+        lowBoundDiff = lowBoundOld - lowBoundNew
+        highBoundDiff = highBoundOld - highBoundNew
+    else:
+        tempRangeRatio, tempMeanDiff, lowBoundDiff, highBoundDiff, compareCheck = 0,0,0,0,0
+    
+    return longlist, tempRangeRatio, tempMeanDiff, lowBoundDiff, highBoundDiff, compareCheck
+
+
+#flag for separate reaction speeds
+reactionDiff=0
+
+def calcmodt(tempList,temp, topt, tmin, tmax, absmin, absmax, variabilityCounter, variabilityMeanCounter, orgGroup, acclimSpeed, height, anomalyCounter, tminTempCap, tmaxTempCap):
+    #calculate a bunch of stats to be used for medium and long-termed behaviour
+    tempList, rangeRatio, meanDiff, lowBoundDiff, highBoundDiff, compareCheck = calctempdata(tempList, temp, 1000, 80, orgGroup) #temporary values for logging time and interval check.
+
+    tempFullRange = (absmax-absmin)/50 #store a temporary variable to be used to expand or reduce the range of a group
+                                      #The smaller the current range, the smaller the effects are. No cap because there already is one for hgiher temps.
+                                      #It is divided by 50 to not make the system too sensitive.
+                                      
+                                      
+    stepSize = 0.0002
+    tempSpikeThold = 5 #Threshhold of temp spike anomaly counting. Should be based off of affinity ranges of isozymes.
+    if reactionDiff==0:
+        stepSize = stepSize*(1/np.log(acclimSpeed+1)+1)
+    #print(stepSize)
+    
+    #Temperature anomaly system, always active.
+    if len(tempList)>1:
+        if abs(tempList[-1] - tempList[-2]) >= tempSpikeThold: #if an anomaly is detected
+            #☻print("anomaly!")
+            anomalyCounter = min(anomalyCounter + 1,10)
+        else:
+            anomalyCounter = max(anomalyCounter - 1,0)
+            
+        if anomalyCounter > 5:
+            height = height*0.90
+            #print(height)
+        else:
+            height = min(height + 0.05,1)
+        
+        
+
+    #Only run medium and longterm calculations when meaningful data was collected
+    #these are currently static numbers but will be based on thermal tolerance ranges
+    if compareCheck == 1:
+        #Medium term calculations
+        if meanDiff >1: #if temperature has gone up
+            if variabilityMeanCounter<0:
+                variabilityMeanCounter = min(variabilityMeanCounter + 10,0)
+            else:
+                variabilityMeanCounter = variabilityMeanCounter + 1
+        elif meanDiff <-1: #if temperature has gone down
+            if variabilityMeanCounter>0:
+                variabilityMeanCounter = max(variabilityMeanCounter - 10,0)
+            else:
+                variabilityMeanCounter = variabilityMeanCounter - 1
+                
+        
+        if temp>topt and topt<absmax and variabilityMeanCounter>5:
+            topt = topt + stepSize*meanDiff/5 #0.002 for stable
+            if temp> (tmax-topt)*0.6+topt: #Comes down to an 80% quantile under symmetric circumstances.
+                tmax += stepSize*meanDiff
+                tmin += stepSize*meanDiff       
+                tminTempCap = tmin #these two variables are used in the recovery formula to make it linear.
+                tmaxTempCap = tmax
+        elif temp<topt and topt>absmin and variabilityMeanCounter<-5:
+            topt = topt - stepSize*meanDiff/5
+            if temp< (topt-tmin)*0.4+tmin: #Comes down to a 20% quantile under symmetric circumstances.
+                tmin -= stepSize*meanDiff
+                tmax -= stepSize*meanDiff 
+                tminTempCap = tmin
+                tmaxTempCap = tmax
+        else:
+            tmax = max(tmax-0.03*(tmaxTempCap-absmax),absmax) #when no stress, move back towards absmax/min values at a rate loss of 3%
+            tmin = min(tmin+0.03*(absmin-tminTempCap),absmin)
+            
+            
+#        else:   #Gravitate back towards absmaxvalues when no stress, use 3% percentual diff
+            
+        
+        #longterm calculations
+        #slowly shift STDEV if there is sufficienent temperature change. Set to 1 currently but can be turned into a variable based on sensitivity?
+        #gain is slower than loss, but loss only happens if temperature anomalies are common. 
+        #initial temperatures are NOT recorded because that would assume starting situation is "ideal"
+        
+        #system to reduce sensitivity
+        # rangeRatio checks for if the temp difference is small or big, why am I using it here
+        if rangeRatio >1:
+            if variabilityCounter<0:
+                variabilityCounter = min(variabilityCounter + 10,0)
+            else:
+                variabilityCounter = variabilityCounter + 1
+        elif rangeRatio <1:
+            if variabilityCounter>0:
+                variabilityCounter = max(variabilityCounter - 10,0)
+            else:
+                variabilityCounter = variabilityCounter - 1
+                
+            
+            #speed should be based on max range
+        if highBoundDiff > 5 and variabilityCounter >10:
+            absmax += 0.01*tempFullRange
+            #Also should run a check for consistency of temperature anomalies here
+            absmin += 0.005*tempFullRange
+        elif lowBoundDiff <-5 and variabilityCounter <-10:
+            absmin -= 0.01*tempFullRange
+            #same here
+            absmax -= 0.005*tempFullRange
+        else:               #during times of no stress, very slow loss of range.
+            absmin += 0.0001*tempFullRange
+            absmax -= 0.0001*tempFullRange
+        
+    #print("temp: ", temp)    #debug
+    #print("tmaxl: ", tmax)
+    #print("tminl: ", tmin)
+    #print("tmin: ", tmin)
+    #print("absmin: ", absmin)
+    #part that calculates current Gmax
+    if temp<absmin:
+        value = 0
+    elif temp>absmax:
+        value = 0
+    else:
+        value = calcShortTemp(temp, topt, tmin, tmax, height)
+    
+    return value, tempList, topt, tmin, tmax, absmin, absmax, variabilityCounter, variabilityMeanCounter, anomalyCounter, height, tminTempCap, tmaxTempCap #also needs to return the other values, not done yet
+                
+                
+def calcShortTemp(temp, topt, tmin, tmax, height): #generates a Gmax value for the current thermal curve
+    deviationleft = (topt - tmin)/5    #set first deviation for the lower bound, assuming tmin as 5 sigma.
+    deviationright = (tmax - topt)/5    #set the second deviation for the higher bound
+    if temp <= topt: #if loop to make the function work as a split normal distribution function.
+        value = calcNormalDistribution(height,topt,deviationleft,temp)
+    else:
+        value = calcNormalDistribution(height,topt,deviationright,temp)
+    return value
 
 # returns pressure head at a given volumetric water content according to the van genuchten model
 def pressure_head(theta, R, S, alpha, n, m): 
@@ -206,7 +401,7 @@ def calcPW(PV, precip, PW, drainmax, d, R, S, alpha, n, m, Ksat): #PV=pore volum
     return PW, drain, runoff
 
 
-
+    #check here.
 def calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id):
 # effect of CN when N not limiting
 #effect of CN when limiting (only for bacteria!) is in the main code
@@ -229,7 +424,7 @@ def calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id):
    
    return np.real(value) #changing value/mCN we can enable or not effects of pH and recalcitrance
 
-def calcgmaxEng(GM,pH): #calculate engineer gmax ifo pH
+def calcgmaxEng(GM,pH): #calculate engineer gmax info pH
     if pH<3:
         gmaxEng=0
     elif 3<=pH<5:
@@ -293,6 +488,190 @@ def wl(PW, et): # water lost by evapotranspiration
 
     return PW
 
+
+    #check recalcitrance, pH and temperature adaptation
+    #hypothesis: how well can fungi & microbes adapt to plants?
+    #hypothesis 2: does a disparity in adaptation speed cause long/midterm issues.
+    
+#day = odeint(mf.fCompSpecies, B, [i, i+1], args=(avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
+
+#Optimisation should probably either happen extremely slowly or not at all if temperatures stagnate
+
+def OptimiseParamater(argNum, orgGroup, i, f, B, avail, modt, litterCN, SOMCN, GMAX, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc, temp, T_OPT, T_MIN, T_MAX, loggedTemps, absT_MIN, absT_MAX, sensor, meanSensor, usingNewTemp, acclimSpeed, height, anomalyCounter, tminTempCap, tmaxTempCap): #Takes an initial value and tries to optimise for that value, selecting on B to run on animal group orgGroup
+    argTable = [avail, T_OPT, GMAX] #Sets the argument arrays into one nested array for code compaction
+    currentArgVal = argTable[argNum] #Selects the correct argument array based on the value of argNum
+
+    organismInterval = [0,40]*10 #Calculates the stepSize based off of the organism interval.
+    lowerBound = organismInterval[2*orgGroup]
+    upperBound = organismInterval[2*orgGroup+1]
+    stepSize = upperBound*0.000005 #divide by 10 
+    if reactionDiff==1:
+        stepSize = stepSize*(1/np.log(acclimSpeed[orgGroup]+1)+1)
+    
+    #print(currentArgVal[orgGroup])
+    ArgValUp = currentArgVal.copy() #initialise tables for increase and decrease
+    ArgValDown = currentArgVal.copy()
+    ArgValUp[orgGroup] = min(upperBound,currentArgVal[orgGroup]*(1+stepSize)) #Change the paramatervalue for that organism group only
+    ArgValDown[orgGroup] = max(lowerBound, currentArgVal[orgGroup]*(1-stepSize))
+    
+    #Here code to select the argument that will be modified.
+    #if selected arg == true then
+    #selected Arg = currentArgVal 
+    
+    #initialise temp tables
+    currentmodt=modt.copy()
+    modtUp=modt.copy()
+    modtDown=modt.copy()
+    #put parts of the arguments into tables for code compaction.
+    legacyArgs=[T_MIN[orgGroup], T_MAX[orgGroup]]
+    argList=[absT_MIN[orgGroup], absT_MAX[orgGroup], sensor[orgGroup], meanSensor[orgGroup], orgGroup, acclimSpeed[orgGroup], height, anomalyCounter, tminTempCap, tmaxTempCap]
+    
+    #Switch for if you use the legacy or new modt formula.
+    if usingNewTemp== False:
+        currentmodt[orgGroup]=calcmodtOld(temp, currentArgVal[orgGroup], T_MIN[orgGroup], T_MAX[orgGroup])
+        modtUp[orgGroup]=calcmodtOld(temp, ArgValUp[orgGroup], T_MIN[orgGroup], T_MAX[orgGroup])
+        modtDown[orgGroup]=calcmodtOld(temp, ArgValDown[orgGroup], T_MIN[orgGroup], T_MAX[orgGroup])
+    else:
+        currentmodt[orgGroup]=calcmodt(loggedTemps, temp, T_OPT[orgGroup], *legacyArgs,*argList)[0]
+        modtUp[orgGroup]=calcmodt(loggedTemps, temp, ArgValUp[orgGroup], *legacyArgs, *argList)[0]
+        modtDown[orgGroup]=calcmodt(loggedTemps, temp, ArgValDown[orgGroup], *legacyArgs, *argList)[0]
+        #because the new modt formula returns a tuple, only the first element is needed hence it is called as calcmodt()[0]
+        #if this was not the case, logging calculations are being done twice.
+    
+    #print("current: ",currentmodt[orgGroup])
+    #print("up: ",modtUp[orgGroup])
+    #print("down: ",modtDown[orgGroup])
+
+    
+    #Run odeint 3 times, one with the current value, one with the increased and one with the decreased value.
+    if argNum == 2: #changes maxgrowth
+        Bday = odeint(fCompSpecies, B, [i, i+1], args=(avail, modt, currentArgVal, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
+        Bcurrent = Bday[1, :]
+                          
+        Bdayup = odeint(fCompSpecies, B, [i, i+1], args=(avail, modt, ArgValUp, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
+        Bup = Bdayup[1, :]
+                     
+        Bdaydown = odeint(fCompSpecies, B, [i, i+1], args=(avail, modt, ArgValDown, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
+        Bdown = Bdaydown[1, :]
+    elif argNum ==1: #changes temperature. Change this to change the three temperature parameters 
+        Bday = odeint(fCompSpecies, B, [i, i+1], args=(avail, currentmodt, GMAX, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
+        Bcurrent = Bday[1, :]
+        #print(Bcurrent)                  
+        
+        Bdayup = odeint(fCompSpecies, B, [i, i+1], args=(avail, modtUp, GMAX, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
+        Bup = Bdayup[1, :]
+        #print(Bup)             
+        
+        Bdaydown = odeint(fCompSpecies, B, [i, i+1], args=(avail, modtDown, GMAX, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
+        Bdown = Bdaydown[1, :]
+        
+    
+    else: #changes avail
+        Bday = odeint(fCompSpecies, B, [i, i+1], args=(currentArgVal, modt, GMAX, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
+        Bcurrent = Bday[1, :]
+                          
+        Bdayup = odeint(fCompSpecies, B, [i, i+1], args=(ArgValUp, modt, GMAX, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
+        Bup = Bdayup[1, :]
+                     
+        Bdaydown = odeint(fCompSpecies, B, [i, i+1], args=(ArgValDown, modt, GMAX, litterCN, SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP, KS, DEATH, CtoMyc))
+        Bdown = Bdaydown[1, :]
+
+    #debug
+
+    #print("current", currentArgVal)
+    #print("up", ArgValUp)
+    #print("down", ArgValDown)
+    
+    bestResult = max(Bcurrent[orgGroup], Bup[orgGroup], Bdown[orgGroup])
+    #Select the highest value of B and return the argument value associated with it
+    if bestResult == Bup[orgGroup]: return ArgValUp[orgGroup]
+    elif bestResult == Bcurrent[orgGroup]: return currentArgVal[orgGroup]
+    else: return ArgValDown[orgGroup]
+    
+    #code for the statistics part, to see if the data make sense.
+    
+def scrambleTemps(currentYear,currentTemp,startYear,mode,intensity):
+    if mode == 0:
+        currentTemp=staticTemp(currentYear,currentTemp,startYear,intensity)
+    if mode == 1:
+        currentTemp=risingTemp(currentYear,currentTemp,startYear,intensity)
+    if mode == 2:
+        currentTemp=diminishTemp(currentYear,currentTemp,startYear,intensity)
+    if mode == 3:
+        currentTemp=erraticTemp(currentYear,currentTemp,startYear,intensity)
+    if mode == 4:
+        currentTemp=variableTemp(currentYear,currentTemp,startYear,intensity)
+    if mode == 5:
+        currentTemp=idiosyncraticTemp(currentYear,currentTemp,startYear,intensity)
+    if mode== 6:
+        currentTemp=JoltRisingTemp(currentYear,currentTemp,startYear,intensity)   
+    return currentTemp
+
+#generate a temperature value between current temp-1 and a higher bound that increases every year + 3 random decimals. the +1 on the higher bound is because the igher bound is exclusive.
+def risingTemp(currentYear,currentTemp,startYear,intensity):
+    yearDiff=currentYear-startYear
+    lowerBound=int(currentTemp-intensity)
+    upperBound=int(currentTemp+1+yearDiff*intensity/2)
+    currentTemp=np.random.randint(lowerBound, upperBound)+np.random.randint(0,1001)/1000   
+    return currentTemp
+
+#generate a temperature value between current temp+1 and a lower bound that decreases every year + 3 random decimals. the +1 on the higher bound is because the igher bound is exclusive.
+def diminishTemp(currentYear,currentTemp,startYear,intensity):
+    yearDiff=currentYear-startYear
+    lowerBound=int(currentTemp-yearDiff*intensity/2)
+    upperBound=int(currentTemp+intensity+1)
+    currentTemp=np.random.randint(lowerBound, upperBound)+np.random.randint(0,1001)/1000
+    return currentTemp
+    
+#generate a temperature value where both boundaries expand every year + 3 random decimals. the +1 on the higher bound is because the igher bound is exclusive.
+def erraticTemp(currentYear,currentTemp,startYear,intensity):
+    yearDiff=currentYear-startYear
+    lowerBound=int(currentTemp-yearDiff*intensity/2)
+    upperBound=int(currentTemp+2+yearDiff*intensity/2)
+    currentTemp=np.random.randint(lowerBound, upperBound)+np.random.randint(0,1001)/1000
+    return currentTemp
+ 
+#keep the temperature the same for comparisons, the 'actual' code for this is in core, where you simply reset to the first year after a given time. For generating cyclic static temperatures.
+def staticTemp(currentYear,currentTemp,startYear,intensity):
+    return currentTemp
+    
+#generate a temperature value that increases every second year and decreases during the other years + 3 random decimals. the +1 on the higher bound is because the igher bound is exclusive.
+def variableTemp(currentYear,currentTemp,startYear,intensity):
+    yearDiff=currentYear-startYear
+    if yearDiff % 2 == 0:
+        lowerBound=int(currentTemp-yearDiff*intensity/2)
+        upperBound=int(currentTemp+intensity+1)
+    else:
+        lowerBound=int(currentTemp-intensity)
+        upperBound=int(currentTemp+1+yearDiff*intensity/2)
+    currentTemp=np.random.randint(lowerBound, upperBound)+np.random.randint(0,1001)/1000
+    return currentTemp
+
+#Stresstest function, generates completely random temperatures.
+def idiosyncraticTemp(currentYear,currentTemp,startYear,intensity):
+    lowerBound=int(currentTemp-intensity*5)
+    upperBound=int(currentTemp+intensity*5)
+    currentTemp=np.random.randint(lowerBound, upperBound)+np.random.randint(0,1001)/1000
+    return currentTemp
+
+def JoltRisingTemp(currentYear,currentTemp,startYear,intensity):
+    yearDiff=currentYear-startYear   
+    if yearDiff > 5:
+        lowerBound=int(currentTemp+intensity*2)
+        upperBound=int(currentTemp+intensity*10)
+    else:
+        lowerBound=int(currentTemp-intensity)
+        upperBound=int(currentTemp+intensity)
+    currentTemp=np.random.randint(lowerBound, upperBound)+np.random.randint(0,1001)/1000
+    return currentTemp
+    
+#breeder maken van temperatuur plateau.
+#Als temperatuur ver boven optimum valt, traag beginnen adapteren?
+#als groep dood is: geen adaptqtie incorrect
+
+
+
+    
 def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP,
          KS, DEATH, CtoMyc):
     (availSOMbact, availSOMfungi, availSOMeng, availSOMsap, availbbvores,
@@ -408,7 +787,7 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
     +modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
     +modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) # eaten by engineers      
     LITeatenEng=modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) #only litter eaten by enginners
- 
+    
     return [bact, fungi, myc, bvores, fvores, sap,
             eng, hvores, pred, litter, som, roots, co2,
-            bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
+            bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]
