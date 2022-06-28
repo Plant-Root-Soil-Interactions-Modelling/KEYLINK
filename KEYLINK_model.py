@@ -362,7 +362,7 @@ for i in range(int(std), int(std+tStop)):
     else:
         Nneg=0
     Nfauna=sum(B[0:9]/CN)
-    NSOM=Ntot-Nfauna-Nmin+Nneg
+    NSOM=Ntot-Nfauna-Nmin+Nneg-B[9]/litterCN
     SOMCN=B[10]/NSOM
 
     
