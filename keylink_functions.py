@@ -412,3 +412,29 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
     return [bact, fungi, myc, bvores, fvores, sap,
             eng, hvores, pred, litter, som, roots, co2,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
+
+def priming(CNbact,fCN, DOM,CN_DOM, POM, CN_POM, gmax, Nnit, Namo, Cbact, resp, primingIntensity):
+    if fCN<1:  # if there was a shortage
+        primingIntensity # ratio of POM decayed for DOM decayed, depends on DOM quality, we know DOM CN which is something else
+        # how much bact could grow on DOM if N were unlimiting
+        maxgrowth =gmax*DOM
+        # N shortage
+        Nrequired=maxgrowth/CNbact
+        Navail=maxgrowth/CN_DOM + Nnit + Namo
+        Nshortage=Nrequired-Navail  # what is needed from POM
+        NavailPOM=1/primingIntensity/maxgrowth/CN_POM   # how much N is avaialble by using the DOM
+        if NavailPOM>=Nshortage:   #enough Energy to decay all required POM
+            Cbact=Cbact+maxgrowth
+            DOM=DOM-maxgrowth
+            POM=POM-1/primingIntensity/maxgrowth
+            resp=1/primingIntensity/maxgrowth
+        else: # limited by N, decay all DOM, and as much possible POM
+            Cbact=Cbact+(Navail+NavailPOM)/CNbact
+            DOM=DOM-maxgrowth
+            POM=POM-1/primingIntensity/maxgrowth
+            resp=maxgrowth+1/primingIntensity/maxgrowth-(Navail+NavailPOM)/CNbact
+        
+    return DOM, POM, Cbact, resp
+
+def MAOMformation (MAOM,MAOMmax, MAOMrate, bactTurnover):
+    return MAOM
