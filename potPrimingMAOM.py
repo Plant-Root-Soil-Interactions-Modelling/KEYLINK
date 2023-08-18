@@ -37,7 +37,7 @@ pH=3.5
 Nmin=0.0005
 SOMCN=20
 PV=15 # volume of micropores 
-primingIntensity=0.1
+primingIntensity=0.01
 CN_DOM_RS=CN_DOM_RSinput # set inital DOM CN equal to input
 SOM=SOMini
 MAOM=MAOMini
@@ -54,7 +54,7 @@ for d in range(numDays):
       outMAOMsaturation.append(MAOMsaturation)
       outDOM.append(DOM_RS)
       outBact_RS.append(bact_RS)
-      outPRIMING.append((SOM-MAOM)-(SOMini-MAOMini))
+      outPRIMING.append((SOM-MAOMsaturation*maxMAOM)-(SOMini-MAOMini))
 plt.plot(outMAOM)      
 plt.plot (outDOM)
 plt.plot (outMAOMsaturation) 

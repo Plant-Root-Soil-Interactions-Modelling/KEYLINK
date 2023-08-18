@@ -430,15 +430,17 @@ def calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, gmaxmodCN, Nmin,
         if NavailPOM>=Nshortage:   #enough Energy to decay all required POM
             Cbact_RS=Cbact_RS+maxgrowth
             DOM_RS=DOM_RS-maxgrowth
-            POM=POM-1/primingIntensity/maxgrowth
-            SOM=SOM-1/primingIntensity/maxgrowth
-            resp=1/primingIntensity/maxgrowth
+            if primingIntensity*maxgrowth<POM: #should never go below 0 
+                POM=POM-(primingIntensity*maxgrowth)
+                SOM=SOM-(primingIntensity*maxgrowth)
+                resp=primingIntensity*maxgrowth
+                
         else: # limited by N, decay all DOM, and as much possible POM
             Cbact_RS=Cbact_RS+(Navail+NavailPOM)/CNbact
             DOM_RS=DOM_RS-maxgrowth
-            POM=POM-1/primingIntensity/maxgrowth
-            SOM=SOM-1/primingIntensity/maxgrowth
-            resp=maxgrowth+1/primingIntensity/maxgrowth-(Navail+NavailPOM)/CNbact
+            POM=POM-(primingIntensity*maxgrowth)
+            SOM=SOM-(primingIntensity*maxgrowth)
+            resp=maxgrowth+(primingIntensity*maxgrowth)-(Navail+NavailPOM)/CNbact
         
         return DOM_RS, SOM, Cbact_RS, resp
 
@@ -455,6 +457,7 @@ def calcRhizosphere (MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact
     CN_DOM_RS=DOM_RS/DOM_N
     resp=res*bact_RS
     mCN = min(1, (CN_bact/CN_DOM_RS)**pCN) #effect of CN
+    SOM=SOM
     if mCN<1:  # if there was a shortage
         DOM_RS, SOM, Cbact_RS, resp= calcPriming(MAOM, CN_bact,mCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, mCN, Nmin, bact_RS, resp, primingIntensity)
     #calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, gmaxmodCN, Nmin, Cbact_RS, resp, primingIntensity)
