@@ -15,17 +15,17 @@ outBact_RS=[]
 outPRIMING=[]
 DOM_RS=0.05  # rhizosphere DOM
 bact_RS=0.01
-CN_DOM_RSinput=5  #CN of the daily input
+CN_DOM_RSinput=50  #CN of the daily input
 
 MAOMsaturation=0.5
 maxMAOM=  100#TODO needs to be set to literature values clay & silt
-MAOM=MAOMsaturation*maxMAOM
+MAOMini=MAOMsaturation*maxMAOM
 MM_DOMtoMAOM=0.025  # DOM concentration for speed being half max speed (Michaelis Menten)
 MAOMmaxrate=0.2 # max proportion of DOM stabilized in MAOM per day
 surface_RS= 10000   # surface area of all roots/hyphae (in m2)
 DOMinput=0.5
-numDays=150
-SOMini=5000  # total SOM, only used for priming
+numDays=1500
+SOMini=150  # total SOM, only used for priming
 resp=0
 GMAX=0.3
 DEATH=0.1
@@ -40,6 +40,7 @@ PV=15 # volume of micropores
 primingIntensity=0.1
 CN_DOM_RS=CN_DOM_RSinput # set inital DOM CN equal to input
 SOM=SOMini
+MAOM=MAOMini
 
 for d in range(numDays):
       DOM_N=DOM_RS/CN_DOM_RS
@@ -53,7 +54,7 @@ for d in range(numDays):
       outMAOMsaturation.append(MAOMsaturation)
       outDOM.append(DOM_RS)
       outBact_RS.append(bact_RS)
-      outPRIMING.append(SOM-SOMini)
+      outPRIMING.append((SOM-MAOM)-(SOMini-MAOMini))
 plt.plot(outMAOM)      
 plt.plot (outDOM)
 plt.plot (outMAOMsaturation) 
