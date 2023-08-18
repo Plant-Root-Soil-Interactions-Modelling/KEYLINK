@@ -22,6 +22,7 @@ def export_pools(filename, array):
     """Save an array in a readable format, compatible with R"""
     np.savetxt(filename + '.txt', array)
 
+
 NrGroups=8
 CompetingSpecies=True
 pfaec = np.zeros(NrGroups-1)
@@ -37,6 +38,8 @@ B = import_pools('KL_initC_Pools') #initial biomass in each C pool
 iniSOM=B[NrGroups] #initial SOM in g C/m3
 
 B.resize(14+NrGroups,refcheck=False)
+
+
 
 (TEMP, SUNH) = import_pools('KL_climateParams') #monthly climate data
 d, BD, alpha, n, m, Ksat, pH, litterCN, SOMCN, drainmax, PVstruct[0], PVstruct[1], PVstruct[2], PVstruct[3], PVstruct[4] = import_pools('KL_initSoil') #soil parameters
@@ -215,12 +218,23 @@ def KeylinkModel(Val):
     Ntot=Ntotini
     litterCN=litterCNini
     SOMCN=SOMCNini
-    
+   
+    primingIntensity=0.1
     B = Bini
     PW = PWini
     pores= np.zeros([int(tStop),5], 'd') #matrix for the daily pore volumes of each size class
-    
-    # this is the actual core model routine over time steps i
+     
+    # this is the actual core mo #For priming/rhizosphere/MAOM calculations
+    DOM_RS=0.05  # rhizosphere DOM
+    bact_RS=0.01
+    CN_DOM_RS=50
+    MAOMsaturation=0.5
+    maxMAOM=2*B[10]  #TODO needs to be set to literature values clay & silt
+    MAOM=MAOMsaturation*maxMAOM
+    MM_DOMtoMAOM=0.025  # DOM concentration for speed being half max speed (Michaelis Menten)
+    MAOMmaxrate=0.01 # max proportion of DOM stabilized in MAOM per day
+    surface_RS= 1000   # surface area of all roots/hyphae (in m2)
+    #routine over time steps i
     for i in range(int(std), int(std+tStop)):
         # calculate PSD (array of % of five size classes of pores) and aggregation
         ag = mf.calcAg(B[1], B[2], B[10]) #calculates aggregation fraction
@@ -261,7 +275,7 @@ def KeylinkModel(Val):
         PVt[i-std] = sum(pv) #total soil porosity in the current day
 
         #calculate availability of each pool to each relevant biota
-        avail = mf.calcAvail(pv, PW, iniSOM)
+        avail = mf.calcAvail(pv, PW, iniSOM, MAOMsaturation)
 
         #update litter CN
         litterCN=(B[9]+mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[11],rootTO))/(B[9]/litterCN+(mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[11],rootTO))/CNlit)
@@ -333,6 +347,13 @@ def KeylinkModel(Val):
         B[9]=B[9]-frag*psoln[i,21]
         B[10]=B[10]+frag*psoln[i,21]  #LITeatenEng
      
+        
+        # rhizosphere including priming=
+        # POM defined as non-MAOM 
+        
+        DOM_RS,CN_DOM_RS, bact_RS, B[10], B[12]= mf.calcRhizosphere(MAOMsaturation,maxMAOM, bact_RS, DOM_RS, GMAX[0], DEATH[0],CN[0], CN_DOM_RS, MCN[0], pH, rRESP[0], KS[0], SOMCN, Nmin, B[10],PVstruct,  primingIntensity)
+                                                                # ((MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact, CN_DOM_RS, pCN, pH, res, Ks, fCN, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity)        # MAOM formation
+        MAOMsaturation=mf.calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, DEATH[0], pv,bact_RS, surface_RS, DOM_RS)
         for s in range (0, 11):
             if B[s]<=0: #security codes to avoid errors by negative biomasses
                 B[s]=0.001
