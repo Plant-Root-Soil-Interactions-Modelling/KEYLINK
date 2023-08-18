@@ -463,10 +463,10 @@ def calcRhizosphere (MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact
 def calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, bactTurnover, PV,RSbact, RSsurface, DOM_RS):
 #    Microporessaturated= PV[0]*MAOMsaturation/sum(PV[:])
     MAOM=MAOMsaturation*maxMAOM
-    EmptyMicropores=PV[0]* (1-MAOMsaturation)
-    totalSurface=PV[0]*10**8   #random, needs to be surface area clay & silt
+#    EmptyMicropores=PV*(1-MAOMsaturation)
+    totalSurface=PV*1000   #random, needs to be surface area clay & silt
     FractionRS = RSsurface/totalSurface  # to find?
-    dMAOM=FractionRS*EmptyMicropores*DOM_RS*MAOMmaxrate/ (MM_DOMtoMAOM + DOM_RS)
+    dMAOM=FractionRS*DOM_RS*MAOMmaxrate*(1-MAOM/maxMAOM)/ (MM_DOMtoMAOM + DOM_RS)
     MAOM+=dMAOM
     MAOMsaturation=MAOM/maxMAOM
     # gradual decrease in CN dom because bact respire and turnover

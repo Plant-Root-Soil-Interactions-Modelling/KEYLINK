@@ -219,12 +219,13 @@ def KeylinkModel(Val):
     litterCN=litterCNini
     SOMCN=SOMCNini
    
-    primingIntensity=0.1
+    
     B = Bini
     PW = PWini
     pores= np.zeros([int(tStop),5], 'd') #matrix for the daily pore volumes of each size class
      
     # this is the actual core mo #For priming/rhizosphere/MAOM calculations
+ #   maxMAOM = 0.52 + 0.22 * fClay + fSilt  to be calculated (fSilt in mg/g)
     DOM_RS=0.05  # rhizosphere DOM
     bact_RS=0.01
     CN_DOM_RS=50
@@ -234,6 +235,9 @@ def KeylinkModel(Val):
     MM_DOMtoMAOM=0.025  # DOM concentration for speed being half max speed (Michaelis Menten)
     MAOMmaxrate=0.01 # max proportion of DOM stabilized in MAOM per day
     surface_RS= 1000   # surface area of all roots/hyphae (in m2)
+    DOMinput=0.001
+    primingIntensity=0.1
+    
     #routine over time steps i
     for i in range(int(std), int(std+tStop)):
         # calculate PSD (array of % of five size classes of pores) and aggregation
@@ -351,7 +355,8 @@ def KeylinkModel(Val):
         # rhizosphere including priming=
         # POM defined as non-MAOM 
         
-        DOM_RS,CN_DOM_RS, bact_RS, B[10], B[12]= mf.calcRhizosphere(MAOMsaturation,maxMAOM, bact_RS, DOM_RS, GMAX[0], DEATH[0],CN[0], CN_DOM_RS, MCN[0], pH, rRESP[0], KS[0], SOMCN, Nmin, B[10],PVstruct,  primingIntensity)
+        DOM_RS+=DOMinput
+        DOM_RS,CN_DOM_RS, bact_RS, B[10], B[12]= mf.calcRhizosphere(MAOMsaturation,maxMAOM, bact_RS, DOM_RS, GMAX[0], DEATH[0],CN[0], CN_DOM_RS, MCN[0], pH, rRESP[0], KS[0], SOMCN, Nmin, B[10],pv[0],  primingIntensity)
                                                                 # ((MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact, CN_DOM_RS, pCN, pH, res, Ks, fCN, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity)        # MAOM formation
         MAOMsaturation=mf.calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, DEATH[0], pv,bact_RS, surface_RS, DOM_RS)
         for s in range (0, 11):
