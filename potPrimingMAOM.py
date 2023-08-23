@@ -12,13 +12,14 @@ time_d=[]
 outMAOM=[]
 outMAOMsaturation=[]
 outPOM=[]
+outDOMadded=[]
 outDOM=[]
 outDOM_CN=[]
 outBact_RS=[]
 outPRIMING=[]
 outResp=[]
 outRespPriming=[]
-DOM_RS=10  # rhizosphere DOM [gC/m3]
+DOM_RS=0  # rhizosphere DOM [gC/m3]
 bact_RS=61*0.2 #bacterial biomass [gC/m3], noadd average from Jílková2022, was 2.4, *0.2 because most was li-ving on SOM, only 20% on new C
 CN_DOM_RSinput=80  #CN of the daily input [unitless], Jílková2022: leachates 80, exudates 6, was 50
 MAOMsaturation=0.9 #proportion of MAOM capacity filled [unitless], based on MAOM content from Jílková2022, was 0.5
@@ -57,8 +58,9 @@ KSbact=38000 #for decaying SOM
 
 for d in range(numDays):
       time_d.append(d)  #store days in an array for plotting
-      
-      if (d%14)==0: #where does this if end?
+      DOM_added = 0
+      if d==0 or (d%14)==0: #where does this if end?
+          DOM_added=DOMinput #to keep track of the additions
           DOM_RS+=DOMinput #??why is DOMinput divided by CN
           DOM_N+=DOMinput/CN_DOM_RSinput
       CN_DOM_RS=DOM_RS/ DOM_N
@@ -85,6 +87,7 @@ for d in range(numDays):
                                                          # ((MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact, CN_DOM_RS, pCN, pH, res, Ks, fCN, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity)        # MAOM formation
       MAOMsaturation, DOM_RS,DOM_N=mf.calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, DEATH, PV,bact_RS, surface_RS, DOM_RS, DOM_N, CN_DOM_RS)
       MAOM=MAOMsaturation*maxMAOM   
+      outDOMadded.append(DOM_added)
       outMAOM.append(MAOM)
       outMAOMsaturation.append(MAOMsaturation)
       outPOM.append(SOM-MAOM)
@@ -102,12 +105,13 @@ for d in range(numDays):
 # plt.plot(outPRIMING) 
 # plt.plot(outResp)
 # plt.plot(outRespPriming)   
+# plt.plot(outDOMadded) 
 
 outResp2 =np.divide(outResp, 0.8*24) #change units from gC/m3/day to µg CO2-C/g soil/h
 outRespPriming2=np.divide(outRespPriming,0.8*24)
 outBact_RS2=np.divide(outBact_RS,0.8) #change units from gC/m3 µgC/g soil
 
-def Dailyplot(outBact_RS, outResp, outRespPriming, outDOM, outPOM, outPRIMING, outMAOM): #plot in original KEYLINK units
+def Dailyplot(outDOMadded, outDOM, outBact_RS, outResp, outRespPriming, outPOM, outMAOM): #plot in original KEYLINK units
     # df2 = pd.DataFrame(df)
     # x = []
     # y = []
@@ -118,21 +122,20 @@ def Dailyplot(outBact_RS, outResp, outRespPriming, outDOM, outPOM, outPRIMING, o
     ps = (p1, p2, p3, p4, p5, p6)
     # counter = count(0, 1)
     # columns = list(df)
-    ps[0].set_title("Respiration, gC m-3 day-1")
-    ps[1].set_title("Microbial biomass, gC m-3")
-    ps[2].set_title("DOM, gC m-3")   
-    ps[3].set_title("POM, gC m-3")
-    ps[4].set_title("POM change, gC m-3")
+    ps[0].set_title("DOM additions, gC m-3 day -1")
+    ps[1].set_title("DOM, gC m-3") 
+    ps[2].set_title("Microbial biomass, gC m-3")
+    ps[3].set_title("Respiration, gC m-3 day-1")
+    ps[4].set_title("POM, gC m-3")
     ps[5].set_title("MAOM, gC m-3")
     
-    p1.plot(time_d, outResp, label="substrate-derived")
-    p1.plot(time_d, outRespPriming, label="soil-derived")
-    ps[0].legend(loc=(0.1, 0.7), shadow=True) #loc='upper left',
-
-    p2.plot(time_d, outBact_RS, label="bacterial biomass")
-    p3.plot(time_d, outDOM)
-    p4.plot(time_d, outPOM)
-    p5.plot(time_d, outPRIMING)
+    p1.plot(time_d, outDOMadded)
+    p2.plot(time_d, outDOM)
+    p3.plot(time_d, outBact_RS, label="bacterial biomass")
+    p4.plot(time_d, outResp, label="substrate-derived")
+    p4.plot(time_d, outRespPriming, label="soil-derived")
+    ps[3].legend(loc=(0.1, 0.7), shadow=True) #loc='upper left',
+    p5.plot(time_d, outPOM)
     p6.plot(time_d, outMAOM)
     # plt.legend(loc=(1.01, 0), shadow=True) #loc='upper right',
 
@@ -158,5 +161,5 @@ def Dailyplot2(outBact_RS2,outResp2, outRespPriming2): #plot in adjusted units m
     # plt.legend(loc=(1.01, 0), shadow=True) #loc='upper right',
     
 # Dailyplot(outBact_RS,outResp, outRespPriming)
-Dailyplot(outBact_RS, outResp, outRespPriming, outDOM, outPOM, outPRIMING, outMAOM)
+Dailyplot(outDOMadded, outDOM, outBact_RS, outResp, outRespPriming, outPOM, outMAOM)
 Dailyplot2(outBact_RS2,outResp2, outRespPriming2)
