@@ -6,6 +6,7 @@ Created on Fri Aug 18 15:08:20 2023
 """
 import keylink_functions as mf
 import matplotlib.pyplot as plt
+import numpy as np
 
 time_d=[]
 outMAOM=[]
@@ -36,7 +37,7 @@ KS=0.05  # concentration of ?substrate (DOM) for half speed growth, for growing 
 MCN=0.8 #???, KEYLINK
 CN_bact=4 #CN of bacteria, Jílková2022 initial is 10
 pH=4.1 #Jílková2022, was 3.5
-Nmin=0.00000001 # was 0.0005 [gN/m3]
+Nmin=0.00000001 # was 0.0005 [gN/m3] was 0.00000001
 SOMCN=24 #CN of SOM, Jílková2022, was 20
 PV=15 # volume of micropores [l/m3]
 primingIntensity=5 #ratio of POM decayed for DOM decayed [gC/gC, unitless], depends on DOM quality, we know DOM CN which is something else
@@ -69,8 +70,11 @@ for d in range(numDays):
 # plt.plot(outResp)
 # plt.plot(outRespPriming)   
 
+outResp2 =np.divide(outResp, 0.8*24) #change units from gC/m3/day to µg CO2-C/g soil/h
+outRespPriming2=np.divide(outRespPriming,0.8*24)
+outBact_RS2=np.divide(outBact_RS,0.8) #change units from gC/m3 µgC/g soil
 
-def Dailyplot(outBact_RS,outResp, outRespPriming):
+def Dailyplot(outBact_RS,outResp, outRespPriming): #plot in original KEYLINK units
     # df2 = pd.DataFrame(df)
     # x = []
     # y = []
@@ -81,7 +85,7 @@ def Dailyplot(outBact_RS,outResp, outRespPriming):
     ps = (p1, p2)
     # counter = count(0, 1)
     # columns = list(df)
-    ps[0].set_title("Respiration, gC-CO2 g-1 h-1")
+    ps[0].set_title("Respiration, gC m-3 day-1")
     ps[1].set_title("Microbial biomass, gC m-3")
    
     p1.plot(time_d, outResp, label="substrate-derived")
@@ -91,4 +95,26 @@ def Dailyplot(outBact_RS,outResp, outRespPriming):
     p2.plot(time_d, outBact_RS, label="bacterial biomass")
     # plt.legend(loc=(1.01, 0), shadow=True) #loc='upper right',
 
+def Dailyplot2(outBact_RS2,outResp2, outRespPriming2): #plot in adjusted units matching the data
+    # df2 = pd.DataFrame(df)
+    # x = []
+    # y = []
+    fig, (p1, p2) = plt.subplots(nrows=2,
+                                                                                      ncols=1,
+                                                                                      figsize=(10, 12))
+    fig.tight_layout(pad=2.0)
+    ps = (p1, p2)
+    # counter = count(0, 1)
+    # columns = list(df)
+    ps[0].set_title("Respiration, µg C-CO2 g-1 soil h-1")
+    ps[1].set_title("Microbial biomass, µgC g-1 soil")
+   
+    p1.plot(time_d, outResp2, label="substrate-derived")
+    p1.plot(time_d, outRespPriming2, label="soil-derived")
+    ps[0].legend(loc=(1.01, 0), shadow=True) #loc='upper right',
+
+    p2.plot(time_d, outBact_RS2, label="bacterial biomass")
+    # plt.legend(loc=(1.01, 0), shadow=True) #loc='upper right',
+    
 Dailyplot(outBact_RS,outResp, outRespPriming)
+Dailyplot2(outBact_RS2,outResp2, outRespPriming2)
