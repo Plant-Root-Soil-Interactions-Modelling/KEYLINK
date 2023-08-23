@@ -423,17 +423,19 @@ def calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, ExtraGrowth, Nmi
         # N shortage
         Nrequired=ExtraGrowth/CNbact
         Navail=ExtraGrowth/CN_DOM_RS + Nmin
+        DOM_N=DOM_RS/CN_DOM_RS
         Nshortage=Nrequired-Navail  # what is needed from POM
         
         POM=SOM-MAOM  # more SOM is recalcitrant
         potentialPOMdecay=ExtraGrowth*primingIntensity
         NavailPOM=potentialPOMdecay/CN_SOM   # how much N is avaialble by using the DOM
         wantedPOMdecay=Nshortage*CN_SOM
-        
+        respPrim=0
         if Nshortage>0:
             if NavailPOM>=Nshortage:   #enough Energy to decay all required POM
                 Cbact_RS=Cbact_RS+ExtraGrowth
                 DOM_RS=DOM_RS-ExtraGrowth
+                DOM_N=DOM_N-ExtraGrowth/CN_DOM_RS
                 if primingIntensity*ExtraGrowth<POM: #should never go below 0 
                     POM=POM-wantedPOMdecay
                     SOM=SOM-wantedPOMdecay
@@ -441,12 +443,14 @@ def calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, ExtraGrowth, Nmi
             else: # limited by N, decay all DOM, and as much possible POM
                 Cbact_RS=Cbact_RS+(Navail+NavailPOM)*CNbact
                 DOM_RS=DOM_RS-ExtraGrowth # use all avaialble DOM, is an assumption
+                DOM_N=DOM_N-ExtraGrowth/CN_DOM_RS
                 POM=POM-potentialPOMdecay
                 SOM=SOM-potentialPOMdecay
                 respPrim=potentialPOMdecay  # assumption: all C from primed pool is respired
         else:
             respPrim=0
-        return DOM_RS, SOM, Cbact_RS, respPrim
+        
+        return DOM_RS, DOM_N, SOM, Cbact_RS, respPrim
 
 def calcRhizosphere (MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact, CN_DOM_RS, pCN, pH, res, Ks, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity):  # extra bacteri, on top of bulk soil
     # rhizosphere bacterial gorwth on DOM
@@ -464,13 +468,13 @@ def calcRhizosphere (MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact
     SOM=SOM
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
     if mCN<1:  # if there was a shortage
-        DOM_RS, SOM, Cbact_RS, respPriming= calcPriming(MAOM, CN_bact,mCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, ExtraGrowth, Nmin, bact_RS, resp, primingIntensity)
+        DOM_RS, DOM_N, SOM, Cbact_RS, respPriming= calcPriming(MAOM, CN_bact,mCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, ExtraGrowth, Nmin, bact_RS, resp, primingIntensity)
     #calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, gmaxmodCN, Nmin, Cbact_RS, resp, primingIntensity)
     else:
        respPriming=0 
-    return  DOM_RS,CN_DOM_RS, bact_RS, SOM, resp, respPriming    
+    return  DOM_RS,DOM_N, bact_RS, SOM, resp, respPriming    
     
-def calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, bactTurnover, PV,RSbact, RSsurface, DOM_RS):
+def calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, bactTurnover, PV,RSbact, RSsurface, DOM_RS, DOM_N, CN_DOM_RS):
 #    Microporessaturated= PV[0]*MAOMsaturation/sum(PV[:])
     MAOM=MAOMsaturation*maxMAOM
 #    EmptyMicropores=PV*(1-MAOMsaturation)
@@ -479,5 +483,7 @@ def calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, bactT
     dMAOM=FractionRS*DOM_RS*MAOMmaxrate*(1-MAOM/maxMAOM)/ (MM_DOMtoMAOM + DOM_RS)
     MAOM+=dMAOM
     MAOMsaturation=MAOM/maxMAOM
+    DOM_RS=DOM_RS-dMAOM
+    DOM_N=DOM_N-dMAOM/CN_DOM_RS
     # gradual decrease in CN dom because bact respire and turnover
-    return MAOMsaturation
+    return MAOMsaturation,DOM_RS, DOM_N 
