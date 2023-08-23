@@ -33,7 +33,7 @@ SOMini=38400  # total SOM, only used for priming [gC/m3], Jílková2022, was 150
 resp=0 #respiration [gC/m3] ??is unit correct
 GMAX=10.8 #growth rate [gC/(gC day)], KEYLINK was 1.24
 DEATH=0.05 #death rate [gC/(gC day)], KEYLINK
-rRESP=0.8  #respiration rate resp, [gC/(gC day)], KEYLINK
+rRESP=0.5  #respiration rate resp, [gC/(gC day)], KEYLINK
 KS=0.001  # concentration of ?substrate (DOM) for half speed growth, for growing on DOM [gC/m3], related to substrate quality
 MCN=0.8 #???, KEYLINK
 CN_bact=4 #CN of bacteria, Jílková2022 initial is 10
@@ -44,7 +44,7 @@ PV=15 # volume of micropores [l/m3]
 CN_fungi=8
 GMAXfungi=0.6
 rRESPfungi=0.03
-DEATHfungi=0.01
+DEATHfungi=0.02
 primingIntensity=5 #ratio of POM decayed for DOM decayed [gC/gC, unitless], depends on DOM quality, we know DOM CN which is something else
 CN_DOM_RS=CN_DOM_RSinput # set inital DOM CN equal to input
 SOM=SOMini
@@ -53,7 +53,7 @@ DOM_N=DOM_RS/CN_DOM_RS
 bact=60
 fungi=4
 KSfungi=20000  # for decaying SOM
-KSbact=20000 #for decaying SOM
+KSbact=38000 #for decaying SOM
 
 for d in range(numDays):
       time_d.append(d)  #store days in an array for plotting
@@ -69,7 +69,7 @@ for d in range(numDays):
      
 
       #growth equations (dB/dt) for each functional group and for variations in C pools
-      dbact =  mf.calcgrowth(bact, SOM, 1, gmaxbSOM, KS)- DEATH*bact - rRESP*bact
+      dbact =  mf.calcgrowth(bact, SOM, 1, gmaxbSOM, KSbact)- DEATH*bact - rRESP*bact
       baselineRespBact=rRESP*bact
       bact+=dbact
  #             + mf.calcgrowth(bact, LIT, availSOMbact, gmaxblit, KS))
