@@ -16,7 +16,8 @@ outDOMadded=[]
 outDOM=[]
 outDOM_CN=[]
 outBact_RS=[]
-outPRIMING=[]
+outBact_Baseline=[]
+outFungi_Baseline=[]
 outRespSubstrate=[]
 outRespSoil=[]
 outRespSoilBaseline=[]
@@ -32,23 +33,23 @@ surface_RS= 10000   # surface area of all roots/hyphae [m2/m3] ??unit correct
 DOMinput=10 #DOM added in each addition [gC/m3], Jílková2022, was 0.5
 numDays=150 #number of days of incubation experiment/how long to run the model, Jílková2022
 POMini=38400  # total SOM, only used for priming [gC/m3], Jílková2022, was 150
-resp=0 #respiration [gC/m3] ??is unit correct
-GMAX=10.8 #growth rate [gC/(gC day)], KEYLINK was 1.24
+resp=0 #respiration [gC/m3]
+GMAX=1.24 #growth rate [gC/(gC day)], KEYLINK
 DEATH=0.05 #death rate [gC/(gC day)], KEYLINK
-rRESP=0.5  #respiration rate resp, [gC/(gC day)], KEYLINK
-KS=0.001  # concentration of ?substrate (DOM) for half speed growth, for growing on DOM [gC/m3], related to substrate quality
+rRESP=0.05  #respiration rate resp, [gC/(gC day)], KEYLINK
+KS=5  # concentration of ?substrate (DOM) for half speed growth, for growing on DOM [gC/m3], related to substrate quality was 0.001
 MCN=0.8 #???, KEYLINK
 CN_bact=4 #CN of bacteria, Jílková2022 initial is 10
 pH=4.1 #Jílková2022, was 3.5
 Nmin=0.00000001 # was 0.0005 [gN/m3] was 0.00000001
 POMCN=24 #CN of SOM, Jílková2022, was 20
 PV=15 # volume of micropores [l/m3]
-CN_fungi=8
-GMAXfungi=0.6
-rRESPfungi=0.03
-DEATHfungi=0.02
+CN_fungi=8 #KEYLINK
+GMAXfungi=0.6  #growth rate [gC/(gC day)], KEYLINK
+rRESPfungi=0.03 #respiration rate resp, [gC/(gC day)], KEYLINK
+DEATHfungi=0.02 #death rate [gC/(gC day)], KEYLINK
 primingIntensity=5 #ratio of POM decayed for DOM decayed [gC/gC, unitless], depends on DOM quality, we know DOM CN which is something else
-mRecBact=0.5  # how sensitive bact are to recaclcitrance
+mRecBact=0.5  # how sensitive bact are to recalcitrance
 mRecFungi=0.5
 recMAOM= 0.9
 MAOM_CN=15
@@ -61,7 +62,7 @@ CN_DOM_RS=CN_DOM_RSinput # set inital DOM CN equal to input
 POM=POMini
 MAOM=MAOMini
 DOM_N=DOM_RS/CN_DOM_RS
-bact=60
+bact=61 * 0.8 #80% of my bacteria are doing the baseline
 fungi=4
 KSfungi=20000  # for decaying SOM
 KSbact=38000 #for decaying SOM
@@ -79,7 +80,7 @@ for d in range(numDays):
       DOM_added = 0
       if d==0 or (d%14)==0: #where does this if end?
           DOM_added=DOMinput #to keep track of the additions
-          DOM_RS+=DOMinput #??why is DOMinput divided by CN
+          DOM_RS+=DOMinput 
           DOM_N+=DOMinput/CN_DOM_RSinput
       CN_DOM_RS=DOM_RS/ DOM_N
   # growth in soil matrix 
@@ -125,7 +126,8 @@ for d in range(numDays):
       outPOM.append(POM)
       outDOM.append(DOM_RS)
       outBact_RS.append(bact_RS)
-      # outPRIMING.append((POM)-(POMini))
+      outBact_Baseline.append(bact)
+      outFungi_Baseline.append(fungi)
       outRespSubstrate.append(resp)
       outRespSoilBaseline.append(baselineResp)
       outRespSoil.append(respSoil)
@@ -135,17 +137,25 @@ for d in range(numDays):
 # plt.plot(outPOM)
 # plt.plot(outMAOMsaturation) 
 # plt.plot(outBact_RS)   
-# plt.plot(outPRIMING) 
 # plt.plot(outResp)
 # plt.plot(outRespPriming)   
-# plt.plot(outDOMadded) 
+# plt.plot(outBact_Baseline) 
+plt.plot(outBact_RS) 
+# plt.plot(outFungi_Baseline) 
 
+outDOMadded2 = np.divide(outDOMadded,0.8) #change units from gC/m3 µgC/g soil
+outDOM2 = np.divide(outDOM,0.8) #change units from gC/m3 µgC/g soil
+outBact_RS2=np.divide(outBact_RS,0.8) #change units from gC/m3 µgC/g soil
+outBact_Baseline=np.divide(outBact_Baseline,0.8)
+outFungi_Baseline=np.divide(outBact_Baseline,0.8)
 outRespSubstrate2 =np.divide(outRespSubstrate, 0.8*24) #change units from gC/m3/day to µg CO2-C/g soil/h
 outRespSoilBaseline2=np.divide(outRespSoilBaseline, 0.8*24)
 outRespSoil2=np.divide(outRespSoil,0.8*24)
-outBact_RS2=np.divide(outBact_RS,0.8) #change units from gC/m3 µgC/g soil
+outDOM2 = np.divide(outDOM,0.8) #change units from gC/m3 µgC/g soil
+outPOM2 = np.divide(outPOM,0.8*1000) #change units from gC/m3 mgC/g soil
+outMAOM2 = np.divide(outMAOM,0.8*1000) #change units from gC/m3 mgC/g soil
 
-def Dailyplot(outDOMadded, outDOM, outBact_RS, outResp, outRespPriming, outPOM, outMAOM): #plot in original KEYLINK units
+def Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM): #plot in original KEYLINK units
     # df2 = pd.DataFrame(df)
     # x = []
     # y = []
@@ -166,34 +176,44 @@ def Dailyplot(outDOMadded, outDOM, outBact_RS, outResp, outRespPriming, outPOM, 
     p1.plot(time_d, outDOMadded)
     p2.plot(time_d, outDOM)
     p3.plot(time_d, outBact_RS, label="bacterial biomass")
-    p4.plot(time_d, outResp, label="substrate-derived")
-    p4.plot(time_d, outRespPriming, label="soil-derived")
+    p4.plot(time_d, outRespSubstrate, label="substrate-derived")
+    p4.plot(time_d, outRespSoil, label="soil-derived incl. priming")
+    p4.plot(time_d, outRespSoilBaseline, label="soil-derived baseline")
     ps[3].legend(loc=(0.1, 0.7), shadow=True) #loc='upper left',
     p5.plot(time_d, outPOM)
     p6.plot(time_d, outMAOM)
     # plt.legend(loc=(1.01, 0), shadow=True) #loc='upper right',
 
-def Dailyplot2(outBact_RS2,outResp2, outRespPriming2): #plot in adjusted units matching the data
+#plot in adjusted units matching the data
+def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOM2): #plot in original KEYLINK units
     # df2 = pd.DataFrame(df)
     # x = []
     # y = []
-    fig, (p1, p2) = plt.subplots(nrows=2,
-                                                                                      ncols=1,
-                                                                                      figsize=(10, 12))
+    # fig, ((p1, p2), (p3,p4),(p5,p6)) = plt.subplots(nrows=3,
+    #                                                                                   ncols=2,
+    #    figsize=(5, 6))
+    fig, ((p1, p2, p3), (p4, p5, p6)) = plt.subplots(nrows=2, ncols=3,figsize=(12, 7))#was 10,12
     fig.tight_layout(pad=2.0)
-    ps = (p1, p2)
+    ps = (p1, p2, p3, p4, p5, p6)
     # counter = count(0, 1)
     # columns = list(df)
-    ps[0].set_title("Respiration, µg C-CO2 g-1 soil h-1")
-    ps[1].set_title("Microbial biomass, µgC g-1 soil")
-   
-    p1.plot(time_d, outResp2, label="substrate-derived")
-    p1.plot(time_d, outRespPriming2, label="soil-derived")
-    ps[0].legend(loc=(1.01, 0), shadow=True) #loc='upper right',
-
-    p2.plot(time_d, outBact_RS2, label="bacterial biomass")
-    # plt.legend(loc=(1.01, 0), shadow=True) #loc='upper right',
+    ps[0].set_title("DOM additions, µgC g-1 soil")
+    ps[1].set_title("DOM, µgC g-1 soil") 
+    ps[2].set_title("Microbial biomass, µgC g-1 soil")
+    ps[3].set_title("Respiration, µg C-CO2 g-1 soil h-1")
+    ps[4].set_title("POM, mgC g-1 soil")
+    ps[5].set_title("MAOM, mgC g-1 soil")
     
-# Dailyplot(outBact_RS,outResp, outRespPriming)
-Dailyplot(outDOMadded, outDOM, outBact_RS, outResp, outRespPriming, outPOM, outMAOM)
-# Dailyplot2(outBact_RS2,outResp2, outRespPriming2)
+    p1.plot(time_d, outDOMadded2)
+    p2.plot(time_d, outDOM2)
+    p3.plot(time_d, outBact_RS2, label="bacterial biomass")
+    p4.plot(time_d, outRespSubstrate2, label="substrate-derived")
+    p4.plot(time_d, outRespSoil2, label="soil-derived incl. priming")
+    p4.plot(time_d, outRespSoilBaseline2, label="soil-derived baseline")
+    ps[3].legend(loc=(0.03, 0.7), shadow=True) #loc='upper left',
+    p5.plot(time_d, outPOM2)
+    p6.plot(time_d, outMAOM2)
+    
+
+# Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
+Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOM2)
