@@ -51,7 +51,11 @@ mRecBact=0.5  # how sensitive bact are to recaclcitrance
 mRecFungi=0.5
 recMAOM= 0.9
 MAOM_CN=15
-SAclaySilt=15000 #total surface area of clay and silt
+claySA=800000 #m²/kg was 8000000 cm²/g
+siltSA=45.4 #m²/kg
+fSilt=0.24 #weight fraction
+fCLay=0.17
+BD=800   # bulk density kg m³
 CN_DOM_RS=CN_DOM_RSinput # set inital DOM CN equal to input
 POM=POMini
 MAOM=MAOMini
@@ -65,6 +69,7 @@ PRadius=np.array([0.05,0.525,8,382.5,875])  #in µm
 PSA=np.zeros(5)
 PW=np.array([45/1000,37/1000,37/1000,200/1000,6/1000]) #☺assume all pores filled , but water is in m³ while volume was in l
 
+SAclaySilt=claySA*BD*fCLay+siltSA*BD*fSilt #total surface area of clay and silt in m²/m³
 PSA=mf.calcPoreSurfaceArea(PV, PRadius, PSA)
 availability=np.zeros(3)
 MAOMunavail = (PSA[0]/sum(PSA))*MAOMini
@@ -96,6 +101,7 @@ for d in range(numDays):
                + mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi
       POM+=-mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)-mf.calcgrowth(fungi, POM, 1, gmaxfPOM, KSfungi)  
       DOM_RS+=DEATH*bact+DEATHfungi*fungi
+      DOM_N+=DEATH*bact/CN_bact+DEATHfungi*fungi/CN_fungi
       MAOM+=-mf.calcgrowth(bact, MAOM-MAOMunavail, availability[0], gmaxbMAOM, KSbact)-   \
           mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi)
       baselineRespBact=rRESP*bact
