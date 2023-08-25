@@ -21,7 +21,7 @@ def calcPoreSurfaceArea (PV, PRadius, PSA):
     return PSA
 
 
-def calcAvailPot(PV, PW, MAOMini,  PSA, MAOM, MAOMunavail):
+def calcAvailPot(PV, PW):
      
     mwater = np.zeros(5)
     if sum(PW)/sum(PV) < 0.5:
@@ -41,7 +41,7 @@ def calcAvailPot(PV, PW, MAOMini,  PSA, MAOM, MAOMunavail):
     
 #    MAOMavail = MAOM - MAOMunavail
     availability    = np.array([availSOMbact, availSOMfungi])
-    return availability,MAOMunavail
+    return availability
 def calcAvail(PV, PW, SOMini, PSA):
  #TODO add MAOM saturation to avaialbility
     #units in water and porosity volumes: l/m3

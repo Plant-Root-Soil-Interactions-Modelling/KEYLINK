@@ -77,8 +77,8 @@ for d in range(numDays):
           DOM_N+=DOMinput/CN_DOM_RSinput
       CN_DOM_RS=DOM_RS/ DOM_N
   # growth in soil matrix 
-      MAOMunavail = max((PSA[0]/sum(PSA))*MAOM,MAOMunavail)   #unavail can only go up uness you disrupt
-      availability=mf.calcAvailPot(PV, PW, MAOMini,  PSA,MAOM, MAOMunavail)
+      MAOMunavail = max((PSA[0]/sum(PSA))*MAOM,MAOMunavail)   #unavail can only go up unless you disrupt
+      availability=mf.calcAvailPot(PV, PW)
   
       gmaxbPOM = mf.calcgmaxmod(CN_bact, POMCN, MCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
   #    gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
