@@ -30,7 +30,7 @@ MAOMmaxrate=0.2 # max proportion of DOM stabilized in MAOM per day [unitless]
 surface_RS= 10000   # surface area of all roots/hyphae [m2/m3] ??unit correct
 DOMinput=10 #DOM added in each addition [gC/m3], Jílková2022, was 0.5
 numDays=150 #number of days of incubation experiment/how long to run the model, Jílková2022
-SOMini=38400  # total SOM, only used for priming [gC/m3], Jílková2022, was 150
+POMini=38400  # total SOM, only used for priming [gC/m3], Jílková2022, was 150
 resp=0 #respiration [gC/m3] ??is unit correct
 GMAX=10.8 #growth rate [gC/(gC day)], KEYLINK was 1.24
 DEATH=0.05 #death rate [gC/(gC day)], KEYLINK
@@ -40,21 +40,33 @@ MCN=0.8 #???, KEYLINK
 CN_bact=4 #CN of bacteria, Jílková2022 initial is 10
 pH=4.1 #Jílková2022, was 3.5
 Nmin=0.00000001 # was 0.0005 [gN/m3] was 0.00000001
-SOMCN=24 #CN of SOM, Jílková2022, was 20
+POMCN=24 #CN of SOM, Jílková2022, was 20
 PV=15 # volume of micropores [l/m3]
 CN_fungi=8
 GMAXfungi=0.6
 rRESPfungi=0.03
 DEATHfungi=0.02
 primingIntensity=5 #ratio of POM decayed for DOM decayed [gC/gC, unitless], depends on DOM quality, we know DOM CN which is something else
+mRecBact=0.5  # how sensitive bact are to recaclcitrance
+mRecFungi=0.5
+recMAOM= 0.9
+MAOM_CN=15
+SAclaySilt=15000 #total surface area of clay and silt
 CN_DOM_RS=CN_DOM_RSinput # set inital DOM CN equal to input
-SOM=SOMini
+POM=POMini
 MAOM=MAOMini
 DOM_N=DOM_RS/CN_DOM_RS
 bact=60
 fungi=4
 KSfungi=20000  # for decaying SOM
 KSbact=38000 #for decaying SOM
+PV=np.array([45,37,37,200,6])
+PRadius=np.array([0.05,0.525,8,382.5,875])  #in µm
+PSA=np.zeros(5)
+PW=np.array([45/1000,37/1000,37/1000,200/1000,6/1000]) #☺assume all pores filled , but water is in m³ while volume was in l
+
+PSA=mf.calcPoreSurfaceArea(PV, PRadius, PSA)
+availability=np.zeros(3)
 
 for d in range(numDays):
       time_d.append(d)  #store days in an array for plotting
@@ -65,35 +77,43 @@ for d in range(numDays):
           DOM_N+=DOMinput/CN_DOM_RSinput
       CN_DOM_RS=DOM_RS/ DOM_N
   # growth in soil matrix 
-      gmaxbSOM = mf.calcgmaxmod(CN_bact, SOMCN, MCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on SOM
+      availability, MAOMunavail=mf.calcAvailPot(PV, PW, MAOMini,  PSA)
+  
+      gmaxbPOM = mf.calcgmaxmod(CN_bact, POMCN, MCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
   #    gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
-      gmaxfSOM = mf.calcgmaxmod(CN_fungi, SOMCN, MCN, 0.0, 0, pH, 2)*GMAXfungi #gmax for fung on SOM
-     
+      gmaxfPOM = mf.calcgmaxmod(CN_fungi, POMCN, MCN, 0.0, 0, pH, 2)*GMAXfungi #gmax for fung on SOM
+      gmaxbMAOM = mf.calcgmaxmod(CN_bact, MAOM_CN, MCN, recMAOM, mRecBact, pH, 1)*GMAX #gmax for bact on POM
+ #    gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
+      gmaxfMAOM = mf.calcgmaxmod(CN_fungi, MAOM_CN, MCN, recMAOM, mRecFungi, pH, 2)*GMAXfungi #gmax for fung on SOM
+    
 
       #growth equations (dB/dt) for each functional group and for variations in C pools
-      dbact =  mf.calcgrowth(bact, SOM, 1, gmaxbSOM, KSbact)- DEATH*bact - rRESP*bact
+      dbact =  mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)+ \
+              mf.calcgrowth(bact, MAOM-MAOMunavail, availability[0], gmaxbMAOM, KSbact)+ \
+              - DEATH*bact - rRESP*bact
+      
       baselineRespBact=rRESP*bact
       bact+=dbact
  #             + mf.calcgrowth(bact, LIT, availSOMbact, gmaxblit, KS))
               
-      dfungi = mf.calcgrowth(fungi, SOM, 1, gmaxfSOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi
-  #             + mf.calcgrowth(fungi, B[9], availSOMbact, gmaxflit, KS[1]))
+      dfungi = mf.calcgrowth(fungi, POM, 1, gmaxfPOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi \
+               + mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi)
       baselineRespFungi=rRESP*fungi
       fungi+=dfungi
-      SOM+=-dfungi-dbact          
+      POM+=-dfungi-dbact          
 
   # growth in rhizosphere    
-      DOM_RS,DOM_N, bact_RS, SOM, resp, respPriming= mf.calcRhizosphere(MAOMsaturation,maxMAOM, bact_RS, DOM_RS, GMAX, DEATH,CN_bact, CN_DOM_RS, MCN, pH, rRESP, KS, SOMCN, Nmin, SOM, PV, primingIntensity)
+      DOM_RS,DOM_N, bact_RS, POM, resp, respPriming= mf.calcRhizosphere(MAOMsaturation,maxMAOM, bact_RS, DOM_RS, GMAX, DEATH,CN_bact, CN_DOM_RS, MCN, pH, rRESP, KS, POMCN, Nmin, POM, PV, primingIntensity)
                                                          # ((MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact, CN_DOM_RS, pCN, pH, res, Ks, fCN, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity)        # MAOM formation
-      MAOMsaturation, DOM_RS,DOM_N=mf.calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, DEATH, PV,bact_RS, surface_RS, DOM_RS, DOM_N, CN_DOM_RS)
+      MAOMsaturation, DOM_RS,DOM_N=mf.calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, DEATH, SAclaySilt,bact_RS, surface_RS, DOM_RS, DOM_N, CN_DOM_RS)
       MAOM=MAOMsaturation*maxMAOM   
       outDOMadded.append(DOM_added)
       outMAOM.append(MAOM)
       outMAOMsaturation.append(MAOMsaturation)
-      outPOM.append(SOM-MAOM)
+      outPOM.append(POM)
       outDOM.append(DOM_RS)
       outBact_RS.append(bact_RS)
-      outPRIMING.append((SOM-MAOM)-(SOMini-MAOMini))
+      outPRIMING.append((POM)-(POMini))
       outResp.append(resp)
       outRespPriming.append(respPriming)
       

@@ -13,8 +13,36 @@ import math
 def calcKD(pH,fClay): #Cempirically from orchideeSOM model Cammino-serrano et al 2018
     Kd=0.001226-0.000212*pH+0.00374*fClay
     return Kd
+
+def calcPoreSurfaceArea (PV, PRadius, PSA):
+    for i in range(4):
+        PSA[i] = 2* PV[i]/PRadius[i]
     
-def calcAvail(PV, PW, SOMini, MAOMsaturation):
+    return PSA
+
+
+def calcAvailPot(PV, PW, MAOMini,  PSA):
+     
+    mwater = np.zeros(5)
+    if sum(PW)/sum(PV) < 0.5:
+        mwatertot = 4*sum(PW)/sum(PV)*(1-sum(PW)/sum(PV))
+    else:
+        mwatertot = 1
+    for i in range(4):
+        if PW[i]/PV[i] == 1:   # pore size that is filled
+            mwater[i] = 0
+        elif PW[i]/PV[i] > 0:
+            mwater[i] = mwatertot*PV[i]/(PV[i]+PW[i])
+            if i == 3:
+                mwater[i+1] = mwatertot*PW[i]/(PV[i]+PW[i])
+    availSOMbact    = np.sum([1, 1, 1, 1]*PV[1:]*mwater[1:]/sum(PV[1:])) #SOM availability to bact
+    availSOMfungi   = np.sum([0, 1, 1, 1]*PV[1:]*mwater[1:]/sum(PV[1:])) #SOM availability to fung
+         
+    MAOMunavail = (PSA[0]/sum(PSA))*MAOMini
+#    MAOMavail = MAOM - MAOMunavail
+    availability    = np.array([availSOMbact, availSOMfungi])
+    return availability,MAOMunavail
+def calcAvail(PV, PW, SOMini, PSA):
  #TODO add MAOM saturation to avaialbility
     #units in water and porosity volumes: l/m3
     mwater = np.zeros(5)
@@ -41,11 +69,13 @@ def calcAvail(PV, PW, SOMini, MAOMsaturation):
     availhvorespred = np.sum([0, 1, 1]*PV[2:]*mwater[2:]/sum(PV[2:])) #herbivores  availability to predators
     availsappred    = np.sum([1, 1]*PV[3:]*mwater[3:]/sum(PV[3:])) #sap  availability to predators (sap only in larger pores)
     availengpred    = 1 #engineers availability to predators (earthworms can't hide)
-    SOMunavail      = (PV[0]/sum(PV))*SOMini * MAOMsaturation #SOM in inaccesible pores
+#    SOMunavail      = (PV[0]/sum(PV))*SOMini * MAOMsaturation #SOM in inaccesible pores
+    MAOMunavail = (PSA[0]/sum(PSA))*SOMini
+#    MAOMavail = MAOM-MAOMunavail
     availability    = np.array([availSOMbact, availSOMfungi, availSOMeng,
                                 availSOMsap, availbbvores, availffvores,
                                 availfvorespred, availbvorespred,
-                                availhvorespred, availsappred, availengpred, SOMunavail])
+                                availhvorespred, availsappred, availengpred, MAOMunavail])
     return availability
 
 
@@ -474,12 +504,12 @@ def calcRhizosphere (MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact
        respPriming=0 
     return  DOM_RS,DOM_N, bact_RS, SOM, resp, respPriming    
     
-def calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, bactTurnover, PV,RSbact, RSsurface, DOM_RS, DOM_N, CN_DOM_RS):
+def calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, bactTurnover, SAclaySilt,RSbact, RSsurface, DOM_RS, DOM_N, CN_DOM_RS):
 #    Microporessaturated= PV[0]*MAOMsaturation/sum(PV[:])
     MAOM=MAOMsaturation*maxMAOM
 #    EmptyMicropores=PV*(1-MAOMsaturation)
-    totalSurface=PV*1000   #random, needs to be surface area clay & silt
-    FractionRS = RSsurface/totalSurface  # to find?
+       #random, needs to be surface area clay & silt
+    FractionRS = RSsurface/SAclaySilt  # to find?
     dMAOM=FractionRS*DOM_RS*MAOMmaxrate*(1-MAOM/maxMAOM)/ (MM_DOMtoMAOM + DOM_RS)
     MAOM+=dMAOM
     MAOMsaturation=MAOM/maxMAOM
