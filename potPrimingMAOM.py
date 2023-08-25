@@ -131,6 +131,9 @@ for d in range(numDays):
       outRespSubstrate.append(resp)
       outRespSoilBaseline.append(baselineResp)
       outRespSoil.append(respSoil)
+  
+      
+     
       
 # plt.plot(outMAOM)      
 # plt.plot(outDOM)
@@ -201,8 +204,8 @@ def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoi
     ps[1].set_title("DOM, µgC g-1 soil") 
     ps[2].set_title("Microbial biomass, µgC g-1 soil")
     ps[3].set_title("Respiration, µg C-CO2 g-1 soil h-1")
-    ps[4].set_title("POM, mgC g-1 soil")
-    ps[5].set_title("MAOM, mgC g-1 soil")
+    # ps[4].set_title("POM, mgC g-1 soil")
+    ps[4].set_title("SOM, mgC g-1 soil")
     
     p1.plot(time_d, outDOMadded2)
     p2.plot(time_d, outDOM2)
@@ -211,8 +214,10 @@ def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoi
     p4.plot(time_d, outRespSoil2, label="soil-derived incl. priming")
     p4.plot(time_d, outRespSoilBaseline2, label="soil-derived baseline")
     ps[3].legend(loc=(0.03, 0.7), shadow=True) #loc='upper left',
-    p5.plot(time_d, outPOM2)
-    p6.plot(time_d, outMAOM2)
+    p5.plot(time_d, outPOM2, label="POM")
+    p5.plot(time_d, outMAOM2, label="MAOM")
+    ps[4].legend(loc=(0.03, 0.03), shadow=True) #loc='upper left',
+    # p6.plot(time_d, outMAOM2)
     
 
 # Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
