@@ -17,8 +17,9 @@ outDOM=[]
 outDOM_CN=[]
 outBact_RS=[]
 outPRIMING=[]
-outResp=[]
-outRespPriming=[]
+outRespSubstrate=[]
+outRespSoil=[]
+outRespSoilBaseline=[]
 DOM_RS=0  # rhizosphere DOM [gC/m3]
 bact_RS=61*0.2 #bacterial biomass [gC/m3], noadd average from Jílková2022, was 2.4, *0.2 because most was li-ving on SOM, only 20% on new C
 CN_DOM_RSinput=80  #CN of the daily input [unitless], Jílková2022: leachates 80, exudates 6, was 50
@@ -109,15 +110,19 @@ for d in range(numDays):
                                                          # ((MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact, CN_DOM_RS, pCN, pH, res, Ks, fCN, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity)        # MAOM formation
       MAOMsaturation, DOM_RS,DOM_N=mf.calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, DEATH, SAclaySilt,bact_RS, surface_RS, DOM_RS, DOM_N, CN_DOM_RS)
       MAOM=MAOMsaturation*maxMAOM   
+      #add up soil-derived respiration
+      baselineResp = baselineRespBact + baselineRespFungi
+      respSoil = baselineResp + respPriming
       outDOMadded.append(DOM_added)
       outMAOM.append(MAOM)
       outMAOMsaturation.append(MAOMsaturation)
       outPOM.append(POM)
       outDOM.append(DOM_RS)
       outBact_RS.append(bact_RS)
-      outPRIMING.append((POM)-(POMini))
-      outResp.append(resp)
-      outRespPriming.append(respPriming)
+      # outPRIMING.append((POM)-(POMini))
+      outRespSubstrate.append(resp)
+      outRespSoilBaseline.append(baselineResp)
+      outRespSoil.append(respSoil)
       
 # plt.plot(outMAOM)      
 # plt.plot(outDOM)
@@ -129,8 +134,9 @@ for d in range(numDays):
 # plt.plot(outRespPriming)   
 # plt.plot(outDOMadded) 
 
-outResp2 =np.divide(outResp, 0.8*24) #change units from gC/m3/day to µg CO2-C/g soil/h
-outRespPriming2=np.divide(outRespPriming,0.8*24)
+outRespSubstrate2 =np.divide(outRespSubstrate, 0.8*24) #change units from gC/m3/day to µg CO2-C/g soil/h
+outRespSoilBaseline2=np.divide(outRespSoilBaseline, 0.8*24)
+outRespSoil2=np.divide(outRespSoil,0.8*24)
 outBact_RS2=np.divide(outBact_RS,0.8) #change units from gC/m3 µgC/g soil
 
 def Dailyplot(outDOMadded, outDOM, outBact_RS, outResp, outRespPriming, outPOM, outMAOM): #plot in original KEYLINK units
@@ -184,4 +190,4 @@ def Dailyplot2(outBact_RS2,outResp2, outRespPriming2): #plot in adjusted units m
     
 # Dailyplot(outBact_RS,outResp, outRespPriming)
 Dailyplot(outDOMadded, outDOM, outBact_RS, outResp, outRespPriming, outPOM, outMAOM)
-Dailyplot2(outBact_RS2,outResp2, outRespPriming2)
+# Dailyplot2(outBact_RS2,outResp2, outRespPriming2)
