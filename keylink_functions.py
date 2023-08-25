@@ -21,7 +21,7 @@ def calcPoreSurfaceArea (PV, PRadius, PSA):
     return PSA
 
 
-def calcAvailPot(PV, PW, MAOMini,  PSA):
+def calcAvailPot(PV, PW, MAOMini,  PSA, MAOM, MAOMunavail):
      
     mwater = np.zeros(5)
     if sum(PW)/sum(PV) < 0.5:
@@ -38,7 +38,7 @@ def calcAvailPot(PV, PW, MAOMini,  PSA):
     availSOMbact    = np.sum([1, 1, 1, 1]*PV[1:]*mwater[1:]/sum(PV[1:])) #SOM availability to bact
     availSOMfungi   = np.sum([0, 1, 1, 1]*PV[1:]*mwater[1:]/sum(PV[1:])) #SOM availability to fung
          
-    MAOMunavail = (PSA[0]/sum(PSA))*MAOMini
+    
 #    MAOMavail = MAOM - MAOMunavail
     availability    = np.array([availSOMbact, availSOMfungi])
     return availability,MAOMunavail

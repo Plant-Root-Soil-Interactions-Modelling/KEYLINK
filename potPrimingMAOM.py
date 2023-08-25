@@ -67,7 +67,7 @@ PW=np.array([45/1000,37/1000,37/1000,200/1000,6/1000]) #☺assume all pores fill
 
 PSA=mf.calcPoreSurfaceArea(PV, PRadius, PSA)
 availability=np.zeros(3)
-
+MAOMunavail = (PSA[0]/sum(PSA))*MAOMini
 for d in range(numDays):
       time_d.append(d)  #store days in an array for plotting
       DOM_added = 0
@@ -77,7 +77,8 @@ for d in range(numDays):
           DOM_N+=DOMinput/CN_DOM_RSinput
       CN_DOM_RS=DOM_RS/ DOM_N
   # growth in soil matrix 
-      availability, MAOMunavail=mf.calcAvailPot(PV, PW, MAOMini,  PSA)
+      MAOMunavail = max((PSA[0]/sum(PSA))*MAOM,MAOMunavail)   #unavail can only go up uness you disrupt
+      availability=mf.calcAvailPot(PV, PW, MAOMini,  PSA,MAOM, MAOMunavail)
   
       gmaxbPOM = mf.calcgmaxmod(CN_bact, POMCN, MCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
   #    gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
@@ -88,19 +89,20 @@ for d in range(numDays):
     
 
       #growth equations (dB/dt) for each functional group and for variations in C pools
-      dbact =  mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)+ \
+      dbact = mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)+ \
               mf.calcgrowth(bact, MAOM-MAOMunavail, availability[0], gmaxbMAOM, KSbact)+ \
               - DEATH*bact - rRESP*bact
-      
+      dfungi = mf.calcgrowth(fungi, POM, 1, gmaxfPOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi \
+               + mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi
+      POM+=-mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)-mf.calcgrowth(fungi, POM, 1, gmaxfPOM, KSfungi)  
+      DOM_RS+=DEATH*bact+DEATHfungi*fungi
+      MAOM+=-mf.calcgrowth(bact, MAOM-MAOMunavail, availability[0], gmaxbMAOM, KSbact)-   \
+          mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi)
       baselineRespBact=rRESP*bact
       bact+=dbact
- #             + mf.calcgrowth(bact, LIT, availSOMbact, gmaxblit, KS))
-              
-      dfungi = mf.calcgrowth(fungi, POM, 1, gmaxfPOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi \
-               + mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi)
       baselineRespFungi=rRESP*fungi
       fungi+=dfungi
-      POM+=-dfungi-dbact          
+              
 
   # growth in rhizosphere    
       DOM_RS,DOM_N, bact_RS, POM, resp, respPriming= mf.calcRhizosphere(MAOMsaturation,maxMAOM, bact_RS, DOM_RS, GMAX, DEATH,CN_bact, CN_DOM_RS, MCN, pH, rRESP, KS, POMCN, Nmin, POM, PV, primingIntensity)
