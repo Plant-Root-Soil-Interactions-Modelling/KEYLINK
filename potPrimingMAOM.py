@@ -136,9 +136,7 @@ for d in range(numDays):
       outRespSubstrate.append(resp)
       outRespSoilBaseline.append(baselineResp)
       outRespSoil.append(respSoil)
-  
-      
-     
+       
       
 # plt.plot(outMAOM)      
 # plt.plot(outDOM)
@@ -148,9 +146,10 @@ for d in range(numDays):
 # plt.plot(outResp)
 # plt.plot(outRespPriming)   
 # plt.plot(outBact_Baseline) 
-plt.plot(outBact_RS) 
+# plt.plot(outBact_RS) 
 # plt.plot(outFungi_Baseline) 
 
+#change units to easily understandable for the plot
 outDOMadded2 = np.divide(outDOMadded,0.8) #change units from gC/m3 µgC/g soil
 outDOM2 = np.divide(outDOM,0.8) #change units from gC/m3 µgC/g soil
 outBact_RS2=np.divide(outBact_RS,0.8) #change units from gC/m3 µgC/g soil
@@ -163,33 +162,33 @@ outDOM2 = np.divide(outDOM,0.8) #change units from gC/m3 µgC/g soil
 outPOM2 = np.divide(outPOM,0.8*1000) #change units from gC/m3 mgC/g soil
 outMAOM2 = np.divide(outMAOM,0.8*1000) #change units from gC/m3 mgC/g soil
 
-def Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM): #plot in original KEYLINK units
-    # df2 = pd.DataFrame(df)
-    # x = []
-    # y = []
-    fig, ((p1, p2), (p3,p4),(p5,p6)) = plt.subplots(nrows=3,
-                                                                                      ncols=2,
-                                                                                      figsize=(10, 12))
-    fig.tight_layout(pad=2.0)
-    ps = (p1, p2, p3, p4, p5, p6)
-    # counter = count(0, 1)
-    # columns = list(df)
-    ps[0].set_title("DOM additions, gC m-3 day -1")
-    ps[1].set_title("DOM, gC m-3") 
-    ps[2].set_title("Microbial biomass, gC m-3")
-    ps[3].set_title("Respiration, gC m-3 day-1")
-    ps[4].set_title("POM, gC m-3")
-    ps[5].set_title("MAOM, gC m-3")
+# def Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM): #plot in original KEYLINK units
+#     # df2 = pd.DataFrame(df)
+#     # x = []
+#     # y = []
+#     fig, ((p1, p2), (p3,p4),(p5,p6)) = plt.subplots(nrows=3,
+#                                                                                       ncols=2,
+#                                                                                       figsize=(10, 12))
+#     fig.tight_layout(pad=2.0)
+#     ps = (p1, p2, p3, p4, p5, p6)
+#     # counter = count(0, 1)
+#     # columns = list(df)
+#     ps[0].set_title("DOM additions, gC m-3 day -1")
+#     ps[1].set_title("DOM, gC m-3") 
+#     ps[2].set_title("Microbial biomass, gC m-3")
+#     ps[3].set_title("Respiration, gC m-3 day-1")
+#     ps[4].set_title("POM, gC m-3")
+#     ps[5].set_title("MAOM, gC m-3")
     
-    p1.plot(time_d, outDOMadded)
-    p2.plot(time_d, outDOM)
-    p3.plot(time_d, outBact_RS, label="bacterial biomass")
-    p4.plot(time_d, outRespSubstrate, label="substrate-derived")
-    p4.plot(time_d, outRespSoil, label="soil-derived incl. priming")
-    p4.plot(time_d, outRespSoilBaseline, label="soil-derived baseline")
-    ps[3].legend(loc=(0.1, 0.7), shadow=True) #loc='upper left',
-    p5.plot(time_d, outPOM)
-    p6.plot(time_d, outMAOM)
+#     p1.plot(time_d, outDOMadded)
+#     p2.plot(time_d, outDOM)
+#     p3.plot(time_d, outBact_RS, label="bacterial biomass")
+#     p4.plot(time_d, outRespSubstrate, label="substrate-derived")
+#     p4.plot(time_d, outRespSoil, label="soil-derived incl. priming")
+#     p4.plot(time_d, outRespSoilBaseline, label="soil-derived baseline")
+#     ps[3].legend(loc=(0.1, 0.7), shadow=True) #loc='upper left',
+#     p5.plot(time_d, outPOM)
+#     p6.plot(time_d, outMAOM)
     # plt.legend(loc=(1.01, 0), shadow=True) #loc='upper right',
 
 #plot in adjusted units matching the data
@@ -227,3 +226,4 @@ def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoi
 
 # Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
 Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOM2)
+plt.savefig("output/figures/Dailyplot2.png")
