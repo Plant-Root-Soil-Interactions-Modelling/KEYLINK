@@ -7,6 +7,7 @@ Created on Fri Aug 18 15:08:20 2023
 import keylink_functions as mf
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 #initialization
 #output objects initialized as empty
@@ -151,7 +152,6 @@ for d in range(numDays):
 
 #change units to easily understandable for the plot
 outDOMadded2 = np.divide(outDOMadded,0.8) #change units from gC/m3 µgC/g soil
-outDOM2 = np.divide(outDOM,0.8) #change units from gC/m3 µgC/g soil
 outBact_RS2=np.divide(outBact_RS,0.8) #change units from gC/m3 µgC/g soil
 outBact_Baseline=np.divide(outBact_Baseline,0.8)
 outFungi_Baseline=np.divide(outBact_Baseline,0.8)
@@ -161,6 +161,19 @@ outRespSoil2=np.divide(outRespSoil,0.8*24)
 outDOM2 = np.divide(outDOM,0.8) #change units from gC/m3 µgC/g soil
 outPOM2 = np.divide(outPOM,0.8*1000) #change units from gC/m3 mgC/g soil
 outMAOM2 = np.divide(outMAOM,0.8*1000) #change units from gC/m3 mgC/g soil
+
+#combine output arrays into a dataframe and save it to csv
+df = pd.DataFrame({"DOMaddition" : outDOMadded2,
+                   "DOM" : outDOM2,
+                   "bact_RS" : outBact_RS2,
+                   "bact_Baseline" : outBact_Baseline,
+                   "resp_substrate" : outRespSubstrate2,
+                   "resp_soil_baseline" : outRespSoilBaseline2,
+                   "resp_soil" : outRespSoil2,
+                   "POM" : outPOM2,
+                   "MAOM" : outMAOM2
+                   })
+df.to_csv(".\output\data\Output.csv", index=False)
 
 # def Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM): #plot in original KEYLINK units
 #     # df2 = pd.DataFrame(df)
