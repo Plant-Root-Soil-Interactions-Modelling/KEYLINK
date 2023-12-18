@@ -447,7 +447,7 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
 def calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, ExtraGrowth, Nmin, Cbact_RS, resp, primingIntensity):
     
     # define oPOM as aggregated SOM 
-        primingIntensity # ratio of POM decayed for DOM decayed, depends on DOM quality, we know DOM CN which is something else
+        # primingIntensity = ratio of POM decayed for DOM decayed, depends on DOM quality, we know DOM CN which is something else
         # how much bact could grow on DOM if N were unlimiting
         # what I didn't grow yet because of N shortage, calculated in call
         # N shortage
@@ -505,9 +505,9 @@ def calcRhizosphere (MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact
     return  DOM_RS,DOM_N, bact_RS, SOM, resp, respPriming    
     
 def calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, bactTurnover, SAclaySilt,RSbact, RSsurface, DOM_RS, DOM_N, CN_DOM_RS):
-#    Microporessaturated= PV[0]*MAOMsaturation/sum(PV[:])
+    
     MAOM=MAOMsaturation*maxMAOM
-#    EmptyMicropores=PV*(1-MAOMsaturation)
+    
        #random, needs to be surface area clay & silt
     FractionRS = RSsurface/SAclaySilt  # to find?
     dMAOM=FractionRS*DOM_RS*MAOMmaxrate*(1-MAOM/maxMAOM)/ (MM_DOMtoMAOM + DOM_RS)

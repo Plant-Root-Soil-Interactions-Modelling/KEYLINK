@@ -75,6 +75,9 @@ SAclaySilt=claySA*BD*fCLay+siltSA*BD*fSilt #total surface area of clay and silt 
 PSA=mf.calcPoreSurfaceArea(PV, PRadius, PSA)
 availability=np.zeros(3)
 MAOMunavail = (PSA[0]/sum(PSA))*MAOMini
+Microporessaturated= PV[0]*MAOMsaturation/sum(PV[:])
+EmptyMicropores=PV[0]*(1-MAOMsaturation)
+
 for d in range(numDays):
       time_d.append(d)  #store days in an array for plotting
       DOM_added = 0
@@ -207,6 +210,7 @@ def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoi
     # ps[4].set_title("POM, mgC g-1 soil")
     ps[4].set_title("SOM, mgC g-1 soil")
     
+
     p1.plot(time_d, outDOMadded2)
     p2.plot(time_d, outDOM2)
     p3.plot(time_d, outBact_RS2, label="bacterial biomass")
@@ -222,3 +226,4 @@ def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoi
 
 # Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
 Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOM2)
+
