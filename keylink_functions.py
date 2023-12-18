@@ -447,10 +447,10 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
 def calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, ExtraGrowth, Nmin, Cbact_RS, resp, primingIntensity):
     
     # define oPOM as aggregated SOM 
-        primingIntensity # ratio of POM decayed for DOM decayed, depends on DOM quality, we know DOM CN which is something else
+       # primingIntensity = ratio of POM decayed for DOM decayed, depends on DOM quality, we know DOM CN which is something else
         # how much bact could grow on DOM if N were unlimiting
-        # what I didn't grow yet because of N shortage, calculated in call
-        # N shortage
+        
+        # next N shortage is calculated = what I didn't grow yet because of N shortage
         Nrequired=ExtraGrowth/CNbact
         Navail=ExtraGrowth/CN_DOM_RS + Nmin
         DOM_N=DOM_RS/CN_DOM_RS

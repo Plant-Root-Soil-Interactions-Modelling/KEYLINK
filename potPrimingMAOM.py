@@ -8,6 +8,8 @@ import keylink_functions as mf
 import matplotlib.pyplot as plt
 import numpy as np
 
+#initialization
+#output objects initialized as empty
 time_d=[]
 outMAOM=[]
 outMAOMsaturation=[]
@@ -21,6 +23,7 @@ outFungi_Baseline=[]
 outRespSubstrate=[]
 outRespSoil=[]
 outRespSoilBaseline=[]
+#variables 
 DOM_RS=0  # rhizosphere DOM [gC/m3]
 bact_RS=61*0.2 #bacterial biomass [gC/m3], noadd average from Jílková2022, was 2.4, *0.2 because most was li-ving on SOM, only 20% on new C
 CN_DOM_RSinput=80  #CN of the daily input [unitless], Jílková2022: leachates 80, exudates 6, was 50
@@ -66,15 +69,16 @@ bact=61 * 0.8 #80% of my bacteria are doing the baseline
 fungi=4
 KSfungi=20000  # for decaying SOM
 KSbact=38000 #for decaying SOM
-PV=np.array([45,37,37,200,6])
+PV=np.array([45,37,37,200,6]) 
 PRadius=np.array([0.05,0.525,8,382.5,875])  #in µm
 PSA=np.zeros(5)
 PW=np.array([45/1000,37/1000,37/1000,200/1000,6/1000]) #☺assume all pores filled , but water is in m³ while volume was in l
-
 SAclaySilt=claySA*BD*fCLay+siltSA*BD*fSilt #total surface area of clay and silt in m²/m³
 PSA=mf.calcPoreSurfaceArea(PV, PRadius, PSA)
 availability=np.zeros(3)
-MAOMunavail = (PSA[0]/sum(PSA))*MAOMini
+MAOMunavail = (PSA[0]/sum(PSA))*MAOMini #MAOM stored in the smallest pores is really unavailable, 
+
+#on day 0 and then every 14 days, add DOM
 for d in range(numDays):
       time_d.append(d)  #store days in an array for plotting
       DOM_added = 0
@@ -99,7 +103,7 @@ for d in range(numDays):
       dbact = mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)+ \
               mf.calcgrowth(bact, MAOM-MAOMunavail, availability[0], gmaxbMAOM, KSbact)+ \
               - DEATH*bact - rRESP*bact
-      dfungi = mf.calcgrowth(fungi, POM, 1, gmaxfPOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi \
+      dfungi = mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi \
                + mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi
       POM+=-mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)-mf.calcgrowth(fungi, POM, 1, gmaxfPOM, KSfungi)  
       DOM_RS+=DEATH*bact+DEATHfungi*fungi
