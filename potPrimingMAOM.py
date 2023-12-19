@@ -24,6 +24,7 @@ outFungi_Baseline=[]
 outRespSubstrate=[]
 outRespSoil=[]
 outRespSoilBaseline=[]
+
 #variables 
 DOM_RS=0  # rhizosphere DOM [gC/m3]
 bact_RS=5*0.2 #bacterial biomass [gC/m3], final noadd average from Jílková2022, was 61, *0.2 because most was li-ving on SOM, only 20% on new DOM
@@ -67,7 +68,7 @@ POM=POMini
 MAOM=MAOMini
 DOM_N=DOM_RS/CN_DOM_RS
 bact=5 * 0.8 #80% of my bacteria are doing the baseline decomposition
-fungi=1
+fungi=1 #based on final noadd in Jílková et al. 2022
 KSfungi=20000  # for decaying SOM
 KSbact=38000 #for decaying SOM
 PV=np.array([45,37,37,200,6]) 
@@ -77,27 +78,26 @@ PW=np.array([45/1000,37/1000,37/1000,200/1000,6/1000]) #☺assume all pores fill
 SAclaySilt=claySA*BD*fCLay+siltSA*BD*fSilt #total surface area of clay and silt in m²/m³
 PSA=mf.calcPoreSurfaceArea(PV, PRadius, PSA)
 availability=np.zeros(3)
-MAOMunavail = (PSA[0]/sum(PSA))*MAOMini #MAOM stored in the smallest pores is really unavailable, 
+MAOMunavail = (PSA[0]/sum(PSA))*MAOMini #the portion of MAOM stored in the smallest pores is really unavailable 
 
-#on day 0 and then every 14 days, add DOM
+#run the daily calculations
 for d in range(numDays):
       time_d.append(d)  #store days in an array for plotting
       DOM_added = 0
+      #on day 0 and then every 14 days, add DOM
       if d==0 or (d%14)==0: #where does this if end?
           DOM_added=DOMinput #to keep track of the additions
-          DOM_RS+=DOMinput 
-          DOM_N+=DOMinput/CN_DOM_RSinput
-      CN_DOM_RS=DOM_RS/ DOM_N
-  # growth in soil matrix 
-      MAOMunavail = max((PSA[0]/sum(PSA))*MAOM,MAOMunavail)   #unavail can only go up unless you disrupt
-      availability=mf.calcAvailPot(PV, PW)
-  
+          DOM_RS+=DOMinput #add input to the DOM carbon pool
+          DOM_N+=DOMinput/CN_DOM_RSinput #add equivalent amount of N to DON pool
+      CN_DOM_RS=DOM_RS/ DOM_N #calculate new CN of DOM pool
+  # baseline microbial growth on SOM (without substrate DOM additions)
+      MAOMunavail = max((PSA[0]/sum(PSA))*MAOM,MAOMunavail)   #unavail can only go up (unless you disrupt which is not implemented yet), so if more MAOM is stored, equivalent amount will be be always unavailable
+      availability=mf.calcAvailPot(PV, PW) #calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
+      #calculate maximal growth (gmax) for bacteria/fungi on POM/MAOM separately
       gmaxbPOM = mf.calcgmaxmod(CN_bact, POMCN, MCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
-  #    gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
-      gmaxfPOM = mf.calcgmaxmod(CN_fungi, POMCN, MCN, 0.0, 0, pH, 2)*GMAXfungi #gmax for fung on SOM
-      gmaxbMAOM = mf.calcgmaxmod(CN_bact, MAOM_CN, MCN, recMAOM, mRecBact, pH, 1)*GMAX #gmax for bact on POM
- #    gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
-      gmaxfMAOM = mf.calcgmaxmod(CN_fungi, MAOM_CN, MCN, recMAOM, mRecFungi, pH, 2)*GMAXfungi #gmax for fung on SOM
+      gmaxfPOM = mf.calcgmaxmod(CN_fungi, POMCN, MCN, 0.0, 0, pH, 2)*GMAXfungi #gmax for fungi on POM
+      gmaxbMAOM = mf.calcgmaxmod(CN_bact, MAOM_CN, MCN, recMAOM, mRecBact, pH, 1)*GMAX #gmax for bact on MAOM
+      gmaxfMAOM = mf.calcgmaxmod(CN_fungi, MAOM_CN, MCN, recMAOM, mRecFungi, pH, 2)*GMAXfungi #gmax for fungi on MAOM
     
 
       #growth equations (dB/dt) for each functional group and for variations in C pools
@@ -106,7 +106,7 @@ for d in range(numDays):
               - DEATH*bact - rRESP*bact
       dfungi = mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi \
                + mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi
-      POM+=-mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)-mf.calcgrowth(fungi, POM, 1, gmaxfPOM, KSfungi)  
+      POM+=-mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)-mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi)  
       DOM_RS+=DEATH*bact+DEATHfungi*fungi
       print(DOM_RS, bact)
       DOM_N+=DEATH*bact/CN_bact+DEATHfungi*fungi/CN_fungi
