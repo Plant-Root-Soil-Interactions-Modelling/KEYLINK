@@ -148,11 +148,11 @@ for d in range(numDays):
   # microbial growth on DOM and priming
       DOM_RS,DOM_N, bact_RS, POM, resp, respPriming= mf.calcRhizosphere(MAOMsaturation,maxMAOM, bact_RS, DOM_RS, GMAX, DEATH,CN_bact, CN_DOM_RS, MCN, pH, rRESP, KS, POMCN, Nmin, POM, PV, primingIntensity, MAOM_CN, DOM_sub, bact_RS_sub)
                                                          # ((MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact, CN_DOM_RS, pCN, pH, res, Ks, fCN, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity)        # MAOM formation
-      #MAOM formation
-      MAOMsaturation, DOM_RS,DOM_N, MAOM_sub=mf.calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, DEATH, SAclaySilt,bact_RS, surface_RS, DOM_RS, DOM_N, CN_DOM_RS, MAOM_sub, DOM_sub)
-      MAOM=MAOMsaturation*maxMAOM  
-      
-   #add up soil-derived respiration
+
+      #MAOMsaturation, DOM_RS,DOM_N=mf.calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, DEATH, SAclaySilt,bact_RS, surface_RS, DOM_RS, DOM_N, CN_DOM_RS)
+      MAOM=MAOMsaturation*maxMAOM   
+      #add up soil-derived respiration
+
       baselineResp = baselineRespBact + baselineRespFungi
       respSoil = baselineResp + respPriming
       outDOMadded.append(DOM_added)
@@ -221,17 +221,50 @@ df.to_csv(".\output\data\Output.csv", index=False)
 #     ps[3].set_title("Respiration, gC m-3 day-1")
 #     ps[4].set_title("POM, gC m-3")
 #     ps[5].set_title("MAOM, gC m-3")
-    
-#     p1.plot(time_d, outDOMadded)
-#     p2.plot(time_d, outDOM)
-#     p3.plot(time_d, outBact_RS, label="bacterial biomass")
-#     p4.plot(time_d, outRespSubstrate, label="substrate-derived")
-#     p4.plot(time_d, outRespSoil, label="soil-derived incl. priming")
-#     p4.plot(time_d, outRespSoilBaseline, label="soil-derived baseline")
-#     ps[3].legend(loc=(0.1, 0.7), shadow=True) #loc='upper left',
-#     p5.plot(time_d, outPOM)
-#     p6.plot(time_d, outMAOM)
-    # plt.legend(loc=(1.01, 0), shadow=True) #loc='upper right',
+
+def CalcMAOMformation (bact, N, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM):
+    # MAOM formation towards saturation
+    # depending on available decaying FOM and DOM, mineral N, bacteria and the size of the rhizosphere/surface area
+         # Flow from disolved (DOM) to MAOM (mineral associated) organic matter
+         # TODO DOM to MAOMo,chek function! is towards max, not decay but Michaelis-Menten
+         # MAOMp = primary, needs to be formed first from DOM, MAOMs = secondary, depends on MAOMp
+         fMic=max(0,min (1, 1-0.1*(0.000001/bact+0.000001)))  # between 0 and 1
+         fN=max(0,min (1, 1-0.1*(0.0001/N+0.0001)))
+                             
+     #fraction of the soil layer rooted/hyphenated, eefect of surface area included using that of hyphae as max
+         #maxSurfaceArea= soil_input.get('layerThickness') * plant_input.get('maxRootDensity') * soilbiota_input.get('HyphalExploration') * 2 * variables_df.get('PlantWaterFraction') / ((1-variables_df.get('PlantWaterFraction')) * 1000 * soilbiota_input.get('HyphalRadius'))
+ #        if (variables_df.get('AMvolume')[i])>0:
+         fRhizosphere=min(1,max(0.0001, fractionSA))
+             
+    #     else:
+     #        fRhizosphere=min(1,max(0.0001,0.01*variables_df.get('RootSurfaceLayer')[i]/maxSurfaceArea))
+     
+     # both MAOMp and MAOMs saturate, calculate fSatMAOMp that is 0 when reaches saturation
+     #first calculate the potential current rate of formation as michaelis menten equation so depending on DOM concentration and going to a maximum   
+     
+         fSatMAOMp= 1 - (MAOMp / maxMAOMp)
+         Pot_dMAOMp_dt = DOM * fMic * fRhizosphere * fN * fSatMAOMp * MAOMpmaxrate * DOM / (DOM + MM_DOM_MAOM)
+         #if (variables_df.get('DOM')[i])>0.1
+
+     #    if i==0:
+    #         print(variables_df.get('DOM')[0])
+
+    # then the same for MAOMs, not influenced by fN
+         
+         fSatMAOMs = 1-(MAOMs/(maxMAOM-maxMAOMp))
+         Pot_dMAOMs_dt = DOM * fSatMAOMs * fMic * fRhizosphere * MAOMsmaxrate * DOM / (DOM + MM_DOM_MAOM)
+             
+                 
+    # if not yet saturated 
+         if Pot_dMAOMs_dt >0:
+             MAOMs = MAOMs + Pot_dMAOMs_dt
+             DOM = DOM-Pot_dMAOMs_dt
+         if Pot_dMAOMp_dt >0:
+             MAOMp = MAOMp + Pot_dMAOMp_dt
+             DOM = DOM - Pot_dMAOMp_dt
+         return DOM    
+
+
 
 #plot in adjusted units matching the data
 def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOM2): #plot in original KEYLINK units
