@@ -45,7 +45,7 @@ GMAX=1.24 #growth rate [gC/(gC day)], KEYLINK
 DEATH=0.05 #death rate [gC/(gC day)], KEYLINK
 rRESP=0.05  #respiration rate resp, [gC/(gC day)], KEYLINK
 KS=5  # concentration of ?substrate (DOM) for half speed growth, for growing on DOM [gC/m3], related to substrate quality was 0.001
-MCN=0.8 #???, KEYLINK
+pCN=0.8 #???, KEYLINK
 CN_bact=4 #CN of bacteria, Jílková2022 initial is 10
 pH=4.1 #Jílková2022, was 3.5
 Nmin=0.00000001 # was 0.0005 [gN/m3] was 0.00000001
@@ -84,6 +84,10 @@ SAclaySilt=claySA*BD*fCLay+siltSA*BD*fSilt #total surface area of clay and silt 
 PSA=mf.calcPoreSurfaceArea(PV, PRadius, PSA)
 availability=np.zeros(3)
 MAOMunavail = (PSA[0]/sum(PSA))*MAOMini #the portion of MAOM stored in the smallest pores is really unavailable 
+DOM_EC = 5 # DOM energetic quality = energy stored per one gram of DOM [J/g]
+Pmax=10 #maximum decay price [J/gC]
+k=0.3 #decay rate of negative exponential decay curve of decay price
+kPOM_MAOM = 8 #ratio of POM to MAOM decayed / overall SOM decay is partitioned using this fixed ratio
 
 #run the daily calculations
 for d in range(numDays):
@@ -103,10 +107,10 @@ for d in range(numDays):
       MAOMunavail = max((PSA[0]/sum(PSA))*MAOM,MAOMunavail)   #unavail can only go up (unless you disrupt which is not implemented yet), so if more MAOM is stored, equivalent amount will be be always unavailable
       availability=mf.calcAvailPot(PV, PW) #calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
       #calculate maximal growth (gmax) for bacteria/fungi on POM/MAOM separately
-      gmaxbPOM = mf.calcgmaxmod(CN_bact, POMCN, MCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
-      gmaxfPOM = mf.calcgmaxmod(CN_fungi, POMCN, MCN, 0.0, 0, pH, 2)*GMAXfungi #gmax for fungi on POM
-      gmaxbMAOM = mf.calcgmaxmod(CN_bact, MAOM_CN, MCN, recMAOM, mRecBact, pH, 1)*GMAX #gmax for bact on MAOM
-      gmaxfMAOM = mf.calcgmaxmod(CN_fungi, MAOM_CN, MCN, recMAOM, mRecFungi, pH, 2)*GMAXfungi #gmax for fungi on MAOM
+      gmaxbPOM = mf.calcgmaxmod(CN_bact, POMCN, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
+      gmaxfPOM = mf.calcgmaxmod(CN_fungi, POMCN, pCN, 0.0, 0, pH, 2)*GMAXfungi #gmax for fungi on POM
+      gmaxbMAOM = mf.calcgmaxmod(CN_bact, MAOM_CN, pCN, recMAOM, mRecBact, pH, 1)*GMAX #gmax for bact on MAOM
+      gmaxfMAOM = mf.calcgmaxmod(CN_fungi, MAOM_CN, pCN, recMAOM, mRecFungi, pH, 2)*GMAXfungi #gmax for fungi on MAOM
     
 
       # MAOM_sub_abs = MAOM * MAOM_sub  #absolute substrate derived C in MAOM [gC/m3](for now no pathway for substrate to enter POM)
@@ -146,8 +150,7 @@ for d in range(numDays):
       fungi_sub= fungi_sub_abs/fungi #update relative substrate derived C in fungi       
 
   # microbial growth on DOM and priming
-      DOM_RS,DOM_N, bact_RS, POM, resp, respPriming= mf.calcRhizosphere(MAOMsaturation,maxMAOM, bact_RS, DOM_RS, GMAX, DEATH,CN_bact, CN_DOM_RS, MCN, pH, rRESP, KS, POMCN, Nmin, POM, PV, primingIntensity, MAOM_CN, DOM_sub, bact_RS_sub)
-                                                         # ((MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact, CN_DOM_RS, pCN, pH, res, Ks, fCN, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity)        # MAOM formation
+      DOM_RS,DOM_N, bact_RS, POM, MAOM, resp, respPriming = mf.calcRhizosphere(POM, POMCN, MAOM, MAOM_CN, bact_RS, CN_bact, DOM_RS, CN_DOM_RS, GMAX, DEATH, pCN, pH, rRESP, KSbact, DOM_EC, Pmax, k, kPOM_MAOM)
 
       #MAOMsaturation, DOM_RS,DOM_N=mf.calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, DEATH, SAclaySilt,bact_RS, surface_RS, DOM_RS, DOM_N, CN_DOM_RS)
       MAOM=MAOMsaturation*maxMAOM   

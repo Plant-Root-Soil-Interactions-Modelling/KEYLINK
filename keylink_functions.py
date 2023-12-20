@@ -7,7 +7,6 @@ Created on 01.06.2017 last write 18/11/2021
 """
 
 import numpy as np
-import random
 import math
 
 def calcKD(pH,fClay): #Cempirically from orchideeSOM model Cammino-serrano et al 2018
@@ -444,63 +443,84 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
             eng, hvores, pred, litter, som, roots, co2,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
 
-def calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, ExtraGrowth, Nmin, Cbact_RS, resp, primingIntensity, MAOM_CN):
-    
-    # define oPOM as aggregated SOM 
-       # primingIntensity = ratio of POM decayed for DOM decayed, depends on DOM quality, we know DOM CN which is something else
-        # how much bact could grow on DOM if N were unlimiting
+def calcPriming(POM, POMCN, MAOM, MAOM_CN, bact_RS, CN_bact, DOM_RS,CN_DOM_RS, ExtraGrowth, DOM_EC, Pmax, k, kPOM_MAOM):
+        #not sure how to use ExtraGrowth below but I have a feeling I should:D
+        #how much nitrogen can be released from SOM with the energy in remaining DOM:
+        DOM_E = DOM_RS/DOM_EC # total energy stored in the remaining DOM pool [J]
+        #SOMdecayed = [gC] how much gC in POM or MAOM can be decayed with energy in DOM (DOM_E)
+        #DecayCost = how much energy will be spent on SOM decay, definite integral of a decay price function [J]
+              
+        #numerically solve this definite integral by increasing x (decayed SOM) until the result,y = DecayCost become slightly bigger than energy available
+        #this gives me how much SOM I can decay with the energy available in DOM:
+        SOMdecayed = 0.001 # starting value
+        DecayCost=0 #starting value
+        P0 = Pmax*(0 + (1/k)*math.exp(-k*0)) 
+        while DecayCost < DOM_E:
+            DecayCost = Pmax*(SOMdecayed + (1/k)*math.exp(-k*SOMdecayed)) - P0
+            #print(SOMdecayed, DecayCost)
+            SOMdecayed += 0.001
         
-        # next N shortage is calculated = what I didn't grow yet because of N shortage
-        Nrequired=ExtraGrowth/CNbact
-        # Navail=ExtraGrowth/CN_DOM_RS + Nmin
-        # DOM_N=DOM_RS/CN_DOM_RS
-        #Nshortage=Nrequired-Navail  # what is needed from POM
+        #how much of SOMdecayed will be from POM and how much from MAOM
         
-        POM=SOM-MAOM  # more SOM is recalcitrant
-        #decayCost= integral of price, which increases
-        #potentialPOMdecay=ExtraGrowth*primingIntensity
-        #potentialMAOMdecay=ExtraGrowth*primingIntensity
-        NavailPOM=potentialPOMdecay/CN_SOM   # how much N is avaialble by using the DOM
-        NavailMAOM=potentialMAOMdecay/MAOM_CN
-        wantedPOMMAOMdecay=Nshortage*CN_SOM
+        POMdecayed=SOMdecayed * (kPOM_MAOM/(kPOM_MAOM+1))
+        MAOMdecayed=SOMdecayed-POMdecayed
+        #how much will this SOM decay provide N
+        NavailPOM=POMdecayed/POMCN
+        NavailMAOM=MAOMdecayed/MAOM_CN
+        Navail=NavailPOM+NavailMAOM
+        #how much bacterial biomass can be grown from this N
+        PrimingGrowth = Navail*CN_bact
         respPrim=0
-        
-        if Nshortage>0:
-            if NavailPOM>=Nshortage:   #enough Energy to decay all required POM
-                Cbact_RS=Cbact_RS+ExtraGrowth
-                DOM_RS=DOM_RS-ExtraGrowth
-                DOM_N=DOM_N-ExtraGrowth/CN_DOM_RS
-                if primingIntensity*ExtraGrowth<POM: #should never go below 0 
-                    POM=POM-wantedPOMMAOMdecay
-                    SOM=SOM-wantedPOMMAOMdecay
-                    respPrim=wantedPOMMAOMdecay
-            elif NavailPOM+NavailMAOM>=Nshortage: # limited by N, decay all DOM, and as much possible POM, and required MAOM
-                Cbact_RS=Cbact_RS+ExtraGrowth
-                DOM_RS=DOM_RS-ExtraGrowth # use all avaialble DOM, is an assumption
-                DOM_N=DOM_N-ExtraGrowth/CN_DOM_RS
-                POM=POM-potentialPOMdecay
-                SOM=SOM-potentialPOMdecay
-                MAOM=MAOM-(wantedPOMMAOMdecay-potentialPOMdecay)
-                respPrim=wantedPOMMAOMdecay  # assumption: all C from primed pool is respired
-            else: # not enough N, decay all potential MAOM and POM
-                Cbact_RS=Cbact_RS+(Navail+NavailPOM+NavailMAOM)*CNbact
-                DOM_RS=DOM_RS-ExtraGrowth # use all avaialble DOM, is an assumption
-                DOM_N=DOM_N-ExtraGrowth/CN_DOM_RS
-                POM=POM-potentialPOMdecay
-                SOM=SOM-potentialPOMdecay
-                MAOM=MAOM-potentialMAOMdecay
-                respPrim=potentialPOMdecay+potentialMAOMdecay  # assumption: all C from primed pool is respired
+        #if there is enough DOM C around to build new biomass thanks to priming
+        if PrimingGrowth > 0: #this should always be true, but let's check
+            bact_RS += PrimingGrowth #grow new microbes thanks to priming, but where does this C come from? from POM/MAOM?
+            respPrim=SOMdecayed-PrimingGrowth #C for new growth is taken from SOM, so only the rest is respired, 
+            #??at which point should we let the new RS bacteria biomass respire?
+            DOM_RS = 0.0001 # quick fix not to divide by zero I burnt off all C in DOM to get N?? is that okay?? this respiration unaccounted for yet
+            POM-=POMdecayed 
+            MAOM-=MAOMdecayed
+            print("how much was grown from potential growth", PrimingGrowth, ExtraGrowth) #let's see if we always realize all 
         else:
-            respPrim=0
-            Cbact_RS=Cbact_RS+ExtraGrowth
-        return DOM_RS, DOM_N, SOM, Cbact_RS, respPrim
+            print("priming should be active but is not", PrimingGrowth, ExtraGrowth)
+       
+         
+                   
+        # if Nshortage>0:
+        #     if NavailPOM>=Nshortage:   #enough Energy to decay all required POM
+        #         Cbact_RS=Cbact_RS+ExtraGrowth
+        #         DOM_RS=DOM_RS-ExtraGrowth
+        #         DOM_N=DOM_N-ExtraGrowth/CN_DOM_RS
+        #         if primingIntensity*ExtraGrowth<POM: #should never go below 0 
+        #             POM=POM-wantedPOMMAOMdecay
+        #             SOM=SOM-wantedPOMMAOMdecay
+        #             respPrim=wantedPOMMAOMdecay
+        #     elif NavailPOM+NavailMAOM>=Nshortage: # limited by N, decay all DOM, and as much possible POM, and required MAOM
+        #         Cbact_RS=Cbact_RS+ExtraGrowth
+        #         DOM_RS=DOM_RS-ExtraGrowth # use all avaialble DOM, is an assumption
+        #         DOM_N=DOM_N-ExtraGrowth/CN_DOM_RS
+        #         POM=POM-potentialPOMdecay
+        #         SOM=SOM-potentialPOMdecay
+        #         MAOM=MAOM-(wantedPOMMAOMdecay-potentialPOMdecay)
+        #         respPrim=wantedPOMMAOMdecay  # assumption: all C from primed pool is respired
+        #     else: # not enough N, decay all potential MAOM and POM
+        #         Cbact_RS=Cbact_RS+(Navail+NavailPOM+NavailMAOM)*CNbact
+        #         DOM_RS=DOM_RS-ExtraGrowth # use all avaialble DOM, is an assumption
+        #         DOM_N=DOM_N-ExtraGrowth/CN_DOM_RS
+        #         POM=POM-potentialPOMdecay
+        #         SOM=SOM-potentialPOMdecay
+        #         MAOM=MAOM-potentialMAOMdecay
+        #         respPrim=potentialPOMdecay+potentialMAOMdecay  # assumption: all C from primed pool is respired
+        # else:
+        #     respPrim=0
+        #     Cbact_RS=Cbact_RS+ExtraGrowth
+        return DOM_RS, POM, MAOM, bact_RS, respPrim
 
-def calcRhizosphere (MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact, CN_DOM_RS, pCN, pH, res, Ks, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity, MAOM_CN):  # extra bacteri, on top of bulk soil
+def calcRhizosphere (POM, POMCN, MAOM, MAOM_CN, bact_RS, CN_bact, DOM_RS, CN_DOM_RS, GMAX, DEATH, pCN, pH, res, KSbact, DOM_EC, Pmax, k, kPOM_MAOM):  
     # rhizosphere bacterial gorwth on DOM
-    MAOM=MAOMsaturation*maxMAOM
     DOM_Nini=DOM_RS/CN_DOM_RS
-    gmaxmod= calcgmaxmod(CN_bact, CN_DOM_RS, pCN, 0, 0, pH, 1)*gmax  #growth per unit of bacterial biomass g/(g day)
-    growth= calcgrowth(bact_RS, DOM_RS, 1, gmaxmod, Ks*bact_RS) #Monod kinetic equation of growth  # g day net
+    #gmaxbPOM = mf.calcgmaxmod(CN_bact, POMCN, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
+    gmaxmod= calcgmaxmod(CN_bact, CN_DOM_RS, pCN, 0, 0, pH, 1)*GMAX  #growth per unit of bacterial biomass g/(g day)
+    growth= calcgrowth(bact_RS, DOM_RS, 1, gmaxmod, KSbact*bact_RS) #Monod kinetic equation of growth  # g day net
     BactTurnover=DEATH*bact_RS
     bact_RS+=growth-BactTurnover-res*bact_RS
     DOM_RS+=-growth+BactTurnover
@@ -509,15 +529,14 @@ def calcRhizosphere (MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact
     CN_DOM_RS=DOM_RS/DOM_N
     resp=res*bact_RS  # from eating DOM
     mCN = min(1, (CN_bact/CN_DOM_RS)**pCN) #effect of CN
-    SOM=SOM
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
     if mCN<1:  # if there was a shortage
         print ('priming active')
-        DOM_RS, DOM_N, SOM, Cbact_RS, respPriming= calcPriming(MAOM, CN_bact,mCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, ExtraGrowth, Nmin, bact_RS, resp, primingIntensity, MAOM_CN)
+        DOM_RS, POM, MAOM, bact_RS, respPriming = calcPriming(POM, POMCN, MAOM, MAOM_CN, bact_RS, CN_bact, DOM_RS,CN_DOM_RS, ExtraGrowth, DOM_EC, Pmax, k, kPOM_MAOM)
     #calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, gmaxmodCN, Nmin, Cbact_RS, resp, primingIntensity)
     else:
        respPriming=0 
-    return  DOM_RS,DOM_N, bact_RS, SOM, resp, respPriming    
+    return  DOM_RS,DOM_N, bact_RS, POM, MAOM, resp, respPriming    
     
 def calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, bactTurnover, SAclaySilt,RSbact, RSsurface, DOM_RS, DOM_N, CN_DOM_RS):
 #    Microporessaturated= PV[0]*MAOMsaturation/sum(PV[:])
