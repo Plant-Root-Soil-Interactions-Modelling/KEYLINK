@@ -27,7 +27,9 @@ outRespSoilBaseline=[]
 
 #variables 
 DOM_RS=0  # rhizosphere DOM [gC/m3]
-bact_RS=5*0.2 #bacterial biomass [gC/m3], final noadd average from Jílková2022, was 61, *0.2 because most was li-ving on SOM, only 20% on new DOM
+DOM_sub = 0 #proportion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
+bact_RS=5*0.2 #biomass of bacteria growing on DOM [gC/m3], final noadd average from Jílková2022, was 61, *0.2 because most was li-ving on SOM, only 20% on new DOM
+bact_RS_sub = 0 # proportion of bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
 CN_DOM_RSinput=80  #CN of the daily input [unitless], Jílková2022: leachates 80, exudates 6, was 50
 MAOMsaturation=0.9 #proportion of MAOM capacity filled [unitless], based on MAOM content from Jílková2022, was 0.5
 maxMAOM=  28208 #MAOM capacity [gC/m3] based on silt+clay from Jílková2022 and Georgiou et al. 2022, was 100
@@ -66,9 +68,12 @@ BD=800   # bulk density kg m³
 CN_DOM_RS=CN_DOM_RSinput # set inital DOM CN equal to input
 POM=POMini
 MAOM=MAOMini
+MAOM_sub = 0 # proportion of MAOM that is substrate derived in contrast to soil-derived / values 0 to 1/
 DOM_N=DOM_RS/CN_DOM_RS
 bact=5 * 0.8 #80% of my bacteria are doing the baseline decomposition
+bact_sub = 0 # proportion of this bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
 fungi=1 #based on final noadd in Jílková et al. 2022
+fungi_sub = 0 # proportion of this bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
 KSfungi=20000  # for decaying SOM
 KSbact=38000 #for decaying SOM
 PV=np.array([45,37,37,200,6]) 
@@ -87,8 +92,12 @@ for d in range(numDays):
       #on day 0 and then every 14 days, add DOM
       if d==0 or (d%14)==0: #where does this if end?
           DOM_added=DOMinput #to keep track of the additions
+          DOM_sub_abs= DOM_RS*DOM_sub #absolute substrate derived C in DOM [gC/m3]
           DOM_RS+=DOMinput #add input to the DOM carbon pool
+          DOM_sub_abs+=DOMinput #add all input as substrate derived C
+          DOM_sub= DOM_sub_abs/DOM_RS #update relative substrate derived C in DOM
           DOM_N+=DOMinput/CN_DOM_RSinput #add equivalent amount of N to DON pool
+          
       CN_DOM_RS=DOM_RS/ DOM_N #calculate new CN of DOM pool
   # baseline microbial growth on SOM (without substrate DOM additions)
       MAOMunavail = max((PSA[0]/sum(PSA))*MAOM,MAOMunavail)   #unavail can only go up (unless you disrupt which is not implemented yet), so if more MAOM is stored, equivalent amount will be be always unavailable
@@ -100,30 +109,50 @@ for d in range(numDays):
       gmaxfMAOM = mf.calcgmaxmod(CN_fungi, MAOM_CN, MCN, recMAOM, mRecFungi, pH, 2)*GMAXfungi #gmax for fungi on MAOM
     
 
-      #growth equations (dB/dt) for each functional group and for variations in C pools
-      dbact = mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)+ \
-              mf.calcgrowth(bact, MAOM-MAOMunavail, availability[0], gmaxbMAOM, KSbact)+ \
-              - DEATH*bact - rRESP*bact
-      dfungi = mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi \
-               + mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi) - DEATHfungi*fungi - rRESPfungi*fungi
+      # MAOM_sub_abs = MAOM * MAOM_sub  #absolute substrate derived C in MAOM [gC/m3](for now no pathway for substrate to enter POM)
+      # MAOM_sub_abs+=DOMinput #add the corresponding part of growth on MAOM as substrate derived C
+      # MAOM_sub= MAOM_sub_abs/MAOM #update relative substrate derived C in DOM
+     
+      bact_sub_abs = bact * bact_sub  #absolute substrate derived C in bacteria [gC/m3]
+      fungi_sub_abs = fungi * fungi_sub  #absolute substrate derived C in fungi [gC/m3]
+      
+      #growth equations (dB/dt) for each functional group and for variations in C and N pools
+      bactPOMgrowth = mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)
+      bactMAOMgrowth = mf.calcgrowth(bact, MAOM-MAOMunavail, availability[0], gmaxbMAOM, KSbact)
+      dbact = bactPOMgrowth + bactMAOMgrowth - DEATH*bact - rRESP*bact
+      
+      bact_sub_abs += bactMAOMgrowth*MAOM_sub - DEATH*bact*bact_sub - rRESP*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
+      
+      
+      fungiPOMgrowth = mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi)
+      fungiMAOMgrowth = mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi)
+      dfungi =  fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi*fungi - rRESPfungi*fungi 
+      fungi_sub_abs+=fungiMAOMgrowth*MAOM_sub - DEATHfungi*fungi*fungi_sub - rRESPfungi*fungi*fungi_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
+      
+         
       POM+=-mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)-mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi)  
-      DOM_RS+=DEATH*bact+DEATHfungi*fungi
-      print(DOM_RS, bact)
+      DOM_RS+=DEATH*bact+DEATHfungi*fungi #add dead bacteria and fungi to DOM
+      DOM_sub_abs+=DEATH*bact*bact_sub+DEATHfungi*fungi*fungi_sub #add corresponding part of substrate derived C to DOM 
+      DOM_sub= DOM_sub_abs/DOM_RS #relative substrate derived C in DOM
+      #print(DOM_RS, bact)
       DOM_N+=DEATH*bact/CN_bact+DEATHfungi*fungi/CN_fungi
       MAOM+=-mf.calcgrowth(bact, MAOM-MAOMunavail, availability[0], gmaxbMAOM, KSbact)-   \
           mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi)
       baselineRespBact=rRESP*bact
       bact+=dbact
+      bact_sub= bact_sub_abs/bact #update relative substrate derived C in bacteria
       baselineRespFungi=rRESP*fungi
       fungi+=dfungi
-              
+      fungi_sub= fungi_sub_abs/fungi #update relative substrate derived C in fungi       
 
-  # growth in rhizosphere    
-      DOM_RS,DOM_N, bact_RS, POM, resp, respPriming= mf.calcRhizosphere(MAOMsaturation,maxMAOM, bact_RS, DOM_RS, GMAX, DEATH,CN_bact, CN_DOM_RS, MCN, pH, rRESP, KS, POMCN, Nmin, POM, PV, primingIntensity, MAOM_CN)
+  # microbial growth on DOM and priming
+      DOM_RS,DOM_N, bact_RS, POM, resp, respPriming= mf.calcRhizosphere(MAOMsaturation,maxMAOM, bact_RS, DOM_RS, GMAX, DEATH,CN_bact, CN_DOM_RS, MCN, pH, rRESP, KS, POMCN, Nmin, POM, PV, primingIntensity, MAOM_CN, DOM_sub, bact_RS_sub)
                                                          # ((MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact, CN_DOM_RS, pCN, pH, res, Ks, fCN, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity)        # MAOM formation
-      MAOMsaturation, DOM_RS,DOM_N=mf.calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, DEATH, SAclaySilt,bact_RS, surface_RS, DOM_RS, DOM_N, CN_DOM_RS)
-      MAOM=MAOMsaturation*maxMAOM   
-      #add up soil-derived respiration
+      #MAOM formation
+      MAOMsaturation, DOM_RS,DOM_N, MAOM_sub=mf.calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, DEATH, SAclaySilt,bact_RS, surface_RS, DOM_RS, DOM_N, CN_DOM_RS, MAOM_sub, DOM_sub)
+      MAOM=MAOMsaturation*maxMAOM  
+      
+   #add up soil-derived respiration
       baselineResp = baselineRespBact + baselineRespFungi
       respSoil = baselineResp + respPriming
       outDOMadded.append(DOM_added)
