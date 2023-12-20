@@ -444,34 +444,33 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
             eng, hvores, pred, litter, som, roots, co2,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
 
-def calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, POMCN, ExtraGrowth, Nmin, Cbact_RS, resp, primingIntensity, MAOM_CN):
-        # primingIntensity = ratio of POM or MAOM decayed for DOM decayed, depends on DOM quality, we know DOM CN which is something else
+def calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, ExtraGrowth, Nmin, Cbact_RS, resp, primingIntensity, MAOM_CN):
+    
+    # define oPOM as aggregated SOM 
+       # primingIntensity = ratio of POM decayed for DOM decayed, depends on DOM quality, we know DOM CN which is something else
         # how much bact could grow on DOM if N were unlimiting
-        #ExtraGrowth = what was not grown yet because of N shortage
-        # next N shortage is calculated
-        Nshortage=ExtraGrowth/CNbact #how much N is required for extra growth
-        DOM_N=DOM_RS/CN_DOM_RS #DOM N
-          
+        
+        # next N shortage is calculated = what I didn't grow yet because of N shortage
+        Nrequired=ExtraGrowth/CNbact
+        # Navail=ExtraGrowth/CN_DOM_RS + Nmin
+        # DOM_N=DOM_RS/CN_DOM_RS
+        #Nshortage=Nrequired-Navail  # what is needed from POM
+        
         POM=SOM-MAOM  # more SOM is recalcitrant
-        #decayCost = [J/gC] grams of DOM carbon needed to decay 1 gram of POM C / = integral of energy price of decay, which increases with the amount of OM decayed, the more is decayed, the more difficult it is to decay more 
-        decayCost = 5 # set it to constant before Gaby puts fancy solver loop
-        #DOM_EC = the DOM quality, how much energy is stored per gram of C [J/gC]
-        #DOM_E = DOM*DOM_EC, the amount of energy available to decay POM or MAOM
-        #potentialPOMMAOMdecay = how much will actually be decayed for the energy available in DOM_E, find for which x (amount of C) does decayCost reach DOM_E
-        kPOM_MAOM = 10 # ratio of decay rate of POM to MAOM
-        #using this ratio, calculate how much C will be taken from POM and how much from MAOM to obtain POMdecay and MAOMdecay
-        #using CN ratio of POM and MAOM, calculate how much you got nitrogen and use it to grow           
-        NavailPOM=POMdecay/POMCN   # how much N obtained from POM
-        NavailMAOM=MAOMdecay/MAOM_CN # how much N obtained from MAOM
-        #wantedPOMMAOMdecay=Nshortage*CN_SOM #how much POM or MAOM needs to be decayed to cover the N shortage
+        #decayCost= integral of price, which increases
+        #potentialPOMdecay=ExtraGrowth*primingIntensity
+        #potentialMAOMdecay=ExtraGrowth*primingIntensity
+        NavailPOM=potentialPOMdecay/CN_SOM   # how much N is avaialble by using the DOM
+        NavailMAOM=potentialMAOMdecay/MAOM_CN
+        wantedPOMMAOMdecay=Nshortage*CN_SOM
         respPrim=0
-        if Nshortage>0: #if there is N shortage
-            if NavailPOM>=Nshortage:   #if decaying all POM would satisfy the N shortage
-                Cbact_RS=Cbact_RS+ExtraGrowth #realize the extra growth
-                DOM_RS=DOM_RS-ExtraGrowth #get all the carbon for it from DOM
-                DOM_N=DOM_N-ExtraGrowth/CN_DOM_RS #??get all the N for extra growth from DOM / weird?
-                #if there is not enough POM 
-                if primingIntensity*ExtraGrowth<POM: #should never go below 0
+        
+        if Nshortage>0:
+            if NavailPOM>=Nshortage:   #enough Energy to decay all required POM
+                Cbact_RS=Cbact_RS+ExtraGrowth
+                DOM_RS=DOM_RS-ExtraGrowth
+                DOM_N=DOM_N-ExtraGrowth/CN_DOM_RS
+                if primingIntensity*ExtraGrowth<POM: #should never go below 0 
                     POM=POM-wantedPOMMAOMdecay
                     SOM=SOM-wantedPOMMAOMdecay
                     respPrim=wantedPOMMAOMdecay
@@ -492,53 +491,44 @@ def calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, POMCN, ExtraGrowth, Nmin
                 MAOM=MAOM-potentialMAOMdecay
                 respPrim=potentialPOMdecay+potentialMAOMdecay  # assumption: all C from primed pool is respired
         else:
-            respPrim=0 #should there be growth realized here using N avail? 
-        
+            respPrim=0
+            Cbact_RS=Cbact_RS+ExtraGrowth
         return DOM_RS, DOM_N, SOM, Cbact_RS, respPrim
 
-def calcRhizosphere (MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact, CN_DOM_RS, pCN, pH, res, Ks, POMCN, Nmin, SOM,PVstruct,  primingIntensity, MAOM_CN, DOM_sub, bact_RS_sub):  # extra bacteri, on top of bulk soil
+def calcRhizosphere (MAOMsaturation,maxMAOM,bact_RS, DOM_RS, gmax, DEATH,CN_bact, CN_DOM_RS, pCN, pH, res, Ks, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity, MAOM_CN):  # extra bacteri, on top of bulk soil
     # rhizosphere bacterial gorwth on DOM
     MAOM=MAOMsaturation*maxMAOM
     DOM_Nini=DOM_RS/CN_DOM_RS
-    bact_RS_sub_abs = bact_RS * bact_RS_sub  #absolute substrate derived C in bacteria [gC/m3]
-    DOM_sub_abs = DOM_RS * DOM_sub #absolute substrate derived C in DOM [gC/m3]
     gmaxmod= calcgmaxmod(CN_bact, CN_DOM_RS, pCN, 0, 0, pH, 1)*gmax  #growth per unit of bacterial biomass g/(g day)
     growth= calcgrowth(bact_RS, DOM_RS, 1, gmaxmod, Ks*bact_RS) #Monod kinetic equation of growth  # g day net
     BactTurnover=DEATH*bact_RS
     bact_RS+=growth-BactTurnover-res*bact_RS
-    bact_RS_sub_abs+=growth*DOM_sub - BactTurnover*bact_RS_sub - res*bact_RS*bact_RS_sub#add the corresponding part of growth on DOM as substrate derived bacterial C and subtract corresponding death and respired C 
     DOM_RS+=-growth+BactTurnover
-    DOM_sub_abs+= -growth*DOM_sub + BactTurnover*bact_RS_sub #subtract corresponding part of eaten DOM and add corresponding part of turnover substrate derived C to DOM 
-    DOM_sub= DOM_sub_abs/DOM_RS #update relative substrate derived C in DOM
-    bact_RS_sub= bact_RS_sub_abs/bact_RS #update relative substrate derived C in bacteria
     # print(bact_RS, growth, BactTurnover)
     DOM_N=DOM_Nini-growth/CN_DOM_RS+BactTurnover/CN_bact
     CN_DOM_RS=DOM_RS/DOM_N
-    resp=res*bact_RS  # from eating DOM ??calculate sooner in line 505?
+    resp=res*bact_RS  # from eating DOM
     mCN = min(1, (CN_bact/CN_DOM_RS)**pCN) #effect of CN
     SOM=SOM
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
     if mCN<1:  # if there was a shortage
         print ('priming active')
-        DOM_RS, DOM_N, SOM, Cbact_RS, respPriming= calcPriming(MAOM, CN_bact,mCN, DOM_RS,CN_DOM_RS, SOM, POMCN, ExtraGrowth, Nmin, bact_RS, resp, primingIntensity, MAOM_CN)
+        DOM_RS, DOM_N, SOM, Cbact_RS, respPriming= calcPriming(MAOM, CN_bact,mCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, ExtraGrowth, Nmin, bact_RS, resp, primingIntensity, MAOM_CN)
     #calcPriming(MAOM,CNbact,fCN, DOM_RS,CN_DOM_RS, SOM, CN_SOM, gmaxmodCN, Nmin, Cbact_RS, resp, primingIntensity)
     else:
        respPriming=0 
-    return  DOM_RS,DOM_N, bact_RS, SOM, resp, respPriming, DOM_sub, bact_RS_sub    
+    return  DOM_RS,DOM_N, bact_RS, SOM, resp, respPriming    
     
-def calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, bactTurnover, SAclaySilt,RSbact, RSsurface, DOM_RS, DOM_N, CN_DOM_RS, MAOM_sub, DOM_sub):
+def calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, bactTurnover, SAclaySilt,RSbact, RSsurface, DOM_RS, DOM_N, CN_DOM_RS):
 #    Microporessaturated= PV[0]*MAOMsaturation/sum(PV[:])
     MAOM=MAOMsaturation*maxMAOM
 #    EmptyMicropores=PV*(1-MAOMsaturation)
        #random, needs to be surface area clay & silt
     FractionRS = RSsurface/SAclaySilt  # to find?
-    MAOM_sub_abs = MAOM * MAOM_sub #absolute substrate derived C in MAOM [gC/m3]
-    dMAOM=FractionRS*DOM_RS*MAOMmaxrate*(1-MAOM/maxMAOM)/ (MM_DOMtoMAOM + DOM_RS) #newly formed MAOM
+    dMAOM=FractionRS*DOM_RS*MAOMmaxrate*(1-MAOM/maxMAOM)/ (MM_DOMtoMAOM + DOM_RS)
     MAOM+=dMAOM
-    MAOM_sub_abs+=dMAOM*DOM_sub #add the corresponding part of MAOM formation as substrate derived C, based on the proportion of substrate in the source (DOM)
-    MAOM_sub= MAOM_sub_abs/MAOM #update relative substrate derived C in DOM
     MAOMsaturation=MAOM/maxMAOM
     DOM_RS=DOM_RS-dMAOM
     DOM_N=DOM_N-dMAOM/CN_DOM_RS
     # gradual decrease in CN dom because bact respire and turnover
-    return MAOMsaturation,DOM_RS, DOM_N, MAOM_sub 
+    return MAOMsaturation,DOM_RS, DOM_N 
