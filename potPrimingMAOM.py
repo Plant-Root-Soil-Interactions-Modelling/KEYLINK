@@ -19,8 +19,8 @@ outDOMadded=[]
 outDOM=[]
 outDOM_CN=[]
 outBact_RS=[]
-outBact_Baseline=[]
-outFungi_Baseline=[]
+outBact=[]
+outFungi=[]
 outRespSubstrate=[]
 outRespSoil=[]
 outRespSoilBaseline=[]
@@ -184,8 +184,8 @@ for d in range(numDays):
     outPOM.append(POM)
     outDOM.append(DOM)
     outBact_RS.append(bact_RS)
-    outBact_Baseline.append(bact)
-    outFungi_Baseline.append(fungi)
+    outBact.append(bact)
+    outFungi.append(fungi)
     outRespSubstrate.append(resp)
     outRespSoilBaseline.append(baselineResp)
     outRespSoil.append(respSoil)
@@ -205,8 +205,8 @@ for d in range(numDays):
 #change units to easily understandable for the plot
 outDOMadded2 = np.divide(outDOMadded,0.8) #change units from gC/m3 µgC/g soil
 outBact_RS2=np.divide(outBact_RS,0.8) #change units from gC/m3 µgC/g soil
-outBact_Baseline=np.divide(outBact_Baseline,0.8)
-outFungi_Baseline=np.divide(outBact_Baseline,0.8)
+outBact2=np.divide(outBact,0.8)
+outFungi2=np.divide(outFungi,0.8)
 outRespSubstrate2 =np.divide(outRespSubstrate, 0.8*24) #change units from gC/m3/day to µg CO2-C/g soil/h
 outRespSoilBaseline2=np.divide(outRespSoilBaseline, 0.8*24)
 outRespSoil2=np.divide(outRespSoil,0.8*24)
@@ -218,7 +218,8 @@ outMAOM2 = np.divide(outMAOM,0.8*1000) #change units from gC/m3 mgC/g soil
 df = pd.DataFrame({"DOMaddition" : outDOMadded2,
                    "DOM" : outDOM2,
                    "bact_RS" : outBact_RS2,
-                   "bact_Baseline" : outBact_Baseline,
+                   "bact" : outBact2,
+                   "fungi" : outFungi2,
                    "resp_substrate" : outRespSubstrate2,
                    "resp_soil_baseline" : outRespSoilBaseline2,
                    "resp_soil" : outRespSoil2,
@@ -250,7 +251,7 @@ df.to_csv(".\output\data\Output.csv", index=False)
 
 
 #plot in adjusted units matching the data
-def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOM2): #plot in original KEYLINK units
+def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOM2): #plot in original KEYLINK units
     # df2 = pd.DataFrame(df)
     # x = []
     # y = []
@@ -266,22 +267,26 @@ def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoi
     ps[1].set_title("DOM, µgC g-1 soil") 
     ps[2].set_title("Microbial biomass, µgC g-1 soil")
     ps[3].set_title("Respiration, µg C-CO2 g-1 soil h-1")
-    # ps[4].set_title("POM, mgC g-1 soil")
-    ps[4].set_title("SOM, mgC g-1 soil")
+    ps[4].set_title("POM, mgC g-1 soil")
+    # ps[4].set_title("SOM, mgC g-1 soil")
+    ps[5].set_title("MAOM, mgC g-1 soil")
     
     p1.plot(time_d, outDOMadded2)
     p2.plot(time_d, outDOM2)
-    p3.plot(time_d, outBact_RS2, label="bacterial biomass")
+    p3.plot(time_d, outBact_RS2, label="bacteria RS")
+    p3.plot(time_d, outBact2, label="bacteria")
+    p3.plot(time_d, outFungi2, label="fungi")
+    ps[2].legend(loc=(0.03, 0.7), shadow=True) #loc='upper left',
     p4.plot(time_d, outRespSubstrate2, label="substrate-derived")
     p4.plot(time_d, outRespSoil2, label="soil-derived incl. priming")
     p4.plot(time_d, outRespSoilBaseline2, label="soil-derived baseline")
     ps[3].legend(loc=(0.03, 0.7), shadow=True) #loc='upper left',
     p5.plot(time_d, outPOM2, label="POM")
-    p5.plot(time_d, outMAOM2, label="MAOM")
+    # p5.plot(time_d, outMAOM2, label="MAOM")
     ps[4].legend(loc=(0.03, 0.03), shadow=True) #loc='upper left',
-    # p6.plot(time_d, outMAOM2)
+    p6.plot(time_d, outMAOM2, label="MAOM")
     
 
 # Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
-Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOM2)
+Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOM2)
 plt.savefig("output/figures/Dailyplot2.png")
