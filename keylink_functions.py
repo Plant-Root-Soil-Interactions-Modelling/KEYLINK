@@ -473,6 +473,7 @@ def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, Extra
         respPrim=0
         #if there is enough DOM C around to build new biomass thanks to priming
         if PrimingGrowth > 0: #this should always be true, but let's check
+            PrimingGrowth = min(PrimingGrowth, ExtraGrowth)
             bact_RS += PrimingGrowth #grow new microbes thanks to priming, but where does this C come from? from POM/MAOM?
             respPrim=SOMdecayed-PrimingGrowth #C for new growth is taken from SOM, so only the rest is respired, 
             #??at which point should we let the new RS bacteria biomass respire?

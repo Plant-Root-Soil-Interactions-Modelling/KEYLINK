@@ -13,6 +13,8 @@ import pandas as pd
 #output objects initialized as empty
 time_d=[]
 outMAOM=[]
+outMAOMp=[]
+outMAOMs=[]
 outMAOMsaturation=[]
 outPOM=[]
 outDOMadded=[]
@@ -175,11 +177,12 @@ for d in range(numDays):
 
  
     #add up soil-derived respiration
-
     baselineResp = baselineRespBact + baselineRespFungi
     respSoil = baselineResp + respPriming
     outDOMadded.append(DOM_added)
     outMAOM.append(MAOM)
+    outMAOMp.append(MAOMp)
+    outMAOMs.append(MAOMs)
     outMAOMsaturation.append(MAOMsaturation)
     outPOM.append(POM)
     outDOM.append(DOM)
@@ -213,6 +216,8 @@ outRespSoil2=np.divide(outRespSoil,0.8*24)
 outDOM2 = np.divide(outDOM,0.8) #change units from gC/m3 µgC/g soil
 outPOM2 = np.divide(outPOM,0.8*1000) #change units from gC/m3 mgC/g soil
 outMAOM2 = np.divide(outMAOM,0.8*1000) #change units from gC/m3 mgC/g soil
+outMAOMp2 = np.divide(outMAOMp,0.8*1000) #change units from gC/m3 mgC/g soil
+outMAOMs2 = np.divide(outMAOMs,0.8*1000) #change units from gC/m3 mgC/g soil
 
 #combine output arrays into a dataframe and save it to csv
 df = pd.DataFrame({"DOMaddition" : outDOMadded2,
@@ -224,7 +229,9 @@ df = pd.DataFrame({"DOMaddition" : outDOMadded2,
                    "resp_soil_baseline" : outRespSoilBaseline2,
                    "resp_soil" : outRespSoil2,
                    "POM" : outPOM2,
-                   "MAOM" : outMAOM2
+                   "MAOM" : outMAOM2,
+                   "MAOMp" : outMAOMp2,
+                   "MAOMs" : outMAOMs2
                    })
 df.to_csv(".\output\data\Output.csv", index=False)
 
@@ -251,7 +258,7 @@ df.to_csv(".\output\data\Output.csv", index=False)
 
 
 #plot in adjusted units matching the data
-def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOM2): #plot in original KEYLINK units
+def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs): #plot in original KEYLINK units
     # df2 = pd.DataFrame(df)
     # x = []
     # y = []
@@ -284,9 +291,10 @@ def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespS
     p5.plot(time_d, outPOM2, label="POM")
     # p5.plot(time_d, outMAOM2, label="MAOM")
     ps[4].legend(loc=(0.03, 0.03), shadow=True) #loc='upper left',
-    p6.plot(time_d, outMAOM2, label="MAOM")
-    
+    p6.plot(time_d, outMAOMp2, label="primary MAOM")
+    p6.plot(time_d, outMAOMs2, label="secondary MAOM")    
+    ps[5].legend(loc=(0.03, 0.03), shadow=True) #loc='upper left',
 
 # Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
-Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOM2)
+Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
 plt.savefig("output/figures/Dailyplot2.png")
