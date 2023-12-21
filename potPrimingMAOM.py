@@ -88,6 +88,13 @@ DOM_EC = 5 # DOM energetic quality = energy stored per one gram of DOM [J/g]
 Pmax=10 #maximum decay price [J/gC]
 k=0.3 #decay rate of negative exponential decay curve of decay price
 kPOM_MAOM = 8 #ratio of POM to MAOM decayed / overall SOM decay is partitioned using this fixed ratios really unavailable 
+maxEffectBactMAOM=0.9 #(half as slow when no bacteria, rate becomes 1-value)
+MM_BactMAOM = 1.10  #bact amount for half speed
+maxEffectN_MAOM = 0.9
+MM_N_MAOM =  1
+maxEffectSA_MAOM = 0.9
+MM_SA_MAOM = 0.001  # ratio of SA of hyphae/roots to claysiltSA where half max speed of MAOM formation is reached
+
 
 #run the daily calculations
 for d in range(numDays):
