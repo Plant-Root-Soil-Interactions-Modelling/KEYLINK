@@ -102,7 +102,7 @@ PRadius=np.array([0.05,0.525,8,382.5,875])  #in µm
 PSA=np.zeros(5)
 PSA=mf.calcPoreSurfaceArea(PV, PRadius, PSA)
 MAOMunavail = (PSA[0]/sum(PSA))*MAOMini #the portion of MAOM stored in the smallest pores is really unavailable 
-PW=np.array([45/1000,37/1000,37/1000,200/1000,6/1000]) #pore water volume, assume all pores filled , but water is in m³ while volume was in l
+PW=np.array([45/2,37/2,37/2,200/2,6/2]) #pore water volume, assume all pores half filled , but water is in m³ while volume was in l
 siltSA=45.4 #m²/kg
 SAclaySilt=claySA*BD*fClay+siltSA*BD*fSilt #total surface area of clay and silt in m²/m³
 surface_RS= 10000   # surface area of all roots/hyphae [m2/m3] ??unit correct / look up roots surface area equivalent to that amount of DOM input
@@ -145,15 +145,15 @@ for d in range(numDays):
     fungi_sub_abs = fungi * fungi_sub  #absolute substrate derived C in fungi [gC/m3]
     
     #growth equations (dB/dt) for each functional group and for variations in C and N pools
-    bactPOMgrowth = mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)
-    bactMAOMgrowth = mf.calcgrowth(bact, MAOM-MAOMunavail, availability[0], gmaxbMAOM, KSbact)
+    bactPOMgrowth = mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact*bact)
+    bactMAOMgrowth = mf.calcgrowth(bact, MAOM-MAOMunavail, availability[0], gmaxbMAOM, KSbact*bact)
     dbact = bactPOMgrowth + bactMAOMgrowth - DEATH*bact - rRESP*bact
     
     bact_sub_abs += bactMAOMgrowth*MAOM_sub - DEATH*bact*bact_sub - rRESP*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
     
     
-    fungiPOMgrowth = mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi)
-    fungiMAOMgrowth = mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi)
+    fungiPOMgrowth = mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi*fungi)
+    fungiMAOMgrowth = mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi*fungi)
     dfungi =  fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi*fungi - rRESPfungi*fungi 
     fungi_sub_abs+=fungiMAOMgrowth*MAOM_sub - DEATHfungi*fungi*fungi_sub - rRESPfungi*fungi*fungi_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
     
