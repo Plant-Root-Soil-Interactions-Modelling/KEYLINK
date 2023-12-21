@@ -443,10 +443,10 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
             eng, hvores, pred, litter, som, roots, co2,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
 
-def calcPriming(POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Pmax, k, kPOM_MAOM):
+def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Pmax, k, kPOM_MAOM):
         #not sure how to use ExtraGrowth below but I have a feeling I should:D
         #how much nitrogen can be released from SOM with the energy in remaining DOM:
-        DOM_E = DOM/DOM_EC # total energy stored in the remaining DOM pool [J]
+        DOM_E = ExtraGrowth/DOM_EC # total energy stored in the remaining DOM pool [J]
         #SOMdecayed = [gC] how much gC in POM or MAOM can be decayed with energy in DOM (DOM_E)
         #DecayCost = how much energy will be spent on SOM decay, definite integral of a decay price function [J]
               
@@ -476,9 +476,9 @@ def calcPriming(POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, ExtraG
             bact_RS += PrimingGrowth #grow new microbes thanks to priming, but where does this C come from? from POM/MAOM?
             respPrim=SOMdecayed-PrimingGrowth #C for new growth is taken from SOM, so only the rest is respired, 
             #??at which point should we let the new RS bacteria biomass respire?
-            DOM = 0.0001 # quick fix not to divide by zero I burnt off all C in DOM to get N?? is that okay?? this respiration unaccounted for yet
+            DOM-=ExtraGrowth  # quick fix not to divide by zero I burnt off all C in DOM to get N?? is that okay?? this respiration unaccounted for yet
             POM-=POMdecayed 
-            MAOM-=MAOMdecayed
+            MAOMs-=MAOMdecayed
             print("how much was grown from potential growth", PrimingGrowth, ExtraGrowth) #let's see if we always realize all 
         else:
 
@@ -514,7 +514,7 @@ def calcPriming(POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, ExtraG
         # else:
         #     respPrim=0
         #     Cbact_RS=Cbact_RS+ExtraGrowth
-        return DOM, POM, MAOM, bact_RS, respPrim
+        return DOM, POM, MAOMs, bact_RS, respPrim
 
 def calcRhizosphere (POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, res, KSbact, DOM_EC, Pmax, k, kPOM_MAOM):  
 
@@ -594,4 +594,4 @@ def calcMAOMformation (bact_RS, DOM_N, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, 
          if Pot_dMAOMp_dt >0:
              MAOMp = MAOMp + Pot_dMAOMp_dt
              DOM = DOM - Pot_dMAOMp_dt
-         return DOM    
+         return DOM, DOM_N, MAOMp, MAOMs   
