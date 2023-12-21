@@ -256,7 +256,7 @@ def CalcMAOMformation (bact_RS, DOMN, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, M
     # then the same for MAOMs, not influenced by fN
          
          fSatMAOMs = 1-(MAOMs/(maxMAOM-maxMAOMp))
-         Pot_dMAOMs_dt = DOM * fSatMAOMs * fMic * fRhizosphere * MAOMsmaxrate * DOM / (DOM + MM_DOM_MAOM)
+         Pot_dMAOMs_dt = DOM * fSatMAOMs * fBact * fRhizosphere * MAOMsmaxrate * DOM / (DOM + MM_DOM_MAOM)
              
                  
     # if not yet saturated 
