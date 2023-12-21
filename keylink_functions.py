@@ -481,6 +481,7 @@ def calcPriming(POM, POMCN, MAOM, MAOM_CN, bact_RS, CN_bact, DOM_RS,CN_DOM_RS, E
             MAOM-=MAOMdecayed
             print("how much was grown from potential growth", PrimingGrowth, ExtraGrowth) #let's see if we always realize all 
         else:
+
             print("priming should be active but is not", PrimingGrowth, ExtraGrowth)
        
          
@@ -516,6 +517,7 @@ def calcPriming(POM, POMCN, MAOM, MAOM_CN, bact_RS, CN_bact, DOM_RS,CN_DOM_RS, E
         return DOM_RS, POM, MAOM, bact_RS, respPrim
 
 def calcRhizosphere (POM, POMCN, MAOM, MAOM_CN, bact_RS, CN_bact, DOM_RS, CN_DOM_RS, GMAX, DEATH, pCN, pH, res, KSbact, DOM_EC, Pmax, k, kPOM_MAOM):  
+
     # rhizosphere bacterial gorwth on DOM
     DOM_Nini=DOM_RS/CN_DOM_RS
     #gmaxbPOM = mf.calcgmaxmod(CN_bact, POMCN, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM

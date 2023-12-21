@@ -225,16 +225,16 @@ df.to_csv(".\output\data\Output.csv", index=False)
 #     ps[4].set_title("POM, gC m-3")
 #     ps[5].set_title("MAOM, gC m-3")
 
-def CalcMAOMformation (bact, N, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM):
+def CalcMAOMformation (bact_RS, DOMN, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM):
     # MAOM formation towards saturation
     # depending on available decaying FOM and DOM, mineral N, bacteria and the size of the rhizosphere/surface area
          # Flow from disolved (DOM) to MAOM (mineral associated) organic matter
          # TODO DOM to MAOMo,chek function! is towards max, not decay but Michaelis-Menten
          # MAOMp = primary, needs to be formed first from DOM, MAOMs = secondary, depends on MAOMp
-         fMic=max(0,min (1, 1-0.1*(0.000001/bact+0.000001)))  # between 0 and 1
-         fN=max(0,min (1, 1-0.1*(0.0001/N+0.0001)))
+         fBact=max(0,min (1, 1-0.1*(0.000001/(bact)+0.000001)))  # between 0 and 1
+         fN=max(0,min (1, 1-0.1*(0.0001/DOMN+0.0001)))
                              
-     #fraction of the soil layer rooted/hyphenated, eefect of surface area included using that of hyphae as max
+     #fraction of the soil layer rooted/hyphenated, effect of surface area included using that of hyphae as max
          #maxSurfaceArea= soil_input.get('layerThickness') * plant_input.get('maxRootDensity') * soilbiota_input.get('HyphalExploration') * 2 * variables_df.get('PlantWaterFraction') / ((1-variables_df.get('PlantWaterFraction')) * 1000 * soilbiota_input.get('HyphalRadius'))
  #        if (variables_df.get('AMvolume')[i])>0:
          fRhizosphere=min(1,max(0.0001, fractionSA))
