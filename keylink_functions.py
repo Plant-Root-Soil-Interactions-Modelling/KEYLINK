@@ -530,7 +530,6 @@ def calcRhizosphere (POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, 
     # print(bact_RS, growth, BactTurnover)
     DOM_N=DOM_Nini-growth/CN_DOM+BactTurnover/CN_bact
     CN_DOM=DOM/DOM_N
-    resp=res*bact_RS  # from eating DOM
     mCN = min(1, (CN_bact/CN_DOM)**pCN) #effect of CN
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
     if mCN<1:  # if there was a shortage
@@ -539,7 +538,8 @@ def calcRhizosphere (POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, 
     #calcPriming(MAOM,CNbact,fCN, DOM,CN_DOM, SOM, CN_SOM, gmaxmodCN, Nmin, Cbact_RS, resp, primingIntensity)
     else:
        respPriming=0 
-    return  DOM,DOM_N, bact_RS, POM, MAOM, resp, respPriming    
+    resp=res*bact_RS  # from eating DOM
+    return  DOM,DOM_N, CN_DOM, bact_RS, POM, MAOM, resp, respPriming    
     
 # def calcMAOMsaturation (maxMAOM,MM_DOMtoMAOM, MAOMsaturation, MAOMmaxrate, bactTurnover, SAclaySilt,RSbact, RSsurface, DOM, DOM_N, CN_DOM):
 # #    Microporessaturated= PV[0]*MAOMsaturation/sum(PV[:])
@@ -555,7 +555,7 @@ def calcRhizosphere (POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, 
 #     # gradual decrease in CN dom because bact respire and turnover
 #     return MAOMsaturation,DOM, DOM_N 
 
-def calcMAOMformation (bact_RS, DOM_N, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_BactMAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM):
+def calcMAOMformation (bact_RS, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_BactMAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM):
     # MAOM formation towards saturation
     # depending on available decaying FOM and DOM, mineral N, bacteria and the size of the rhizosphere/surface area
          # Flow from disolved (DOM) to MAOM (mineral associated) organic matter
@@ -577,22 +577,23 @@ def calcMAOMformation (bact_RS, DOM_N, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, 
      
          fSatMAOMp= 1 - (MAOMp / maxMAOMp)
          Pot_dMAOMp_dt = DOM * fBact * fRhizosphere * fN * fSatMAOMp * MAOMpmaxrate * DOM / (DOM + MM_DOM_MAOM)
-         #if (variables_df.get('DOM')[i])>0.1
+ 
 
-     #    if i==0:
-    #         print(variables_df.get('DOM')[0])
-
-    # then the same for MAOMs, not influenced by fN
-         
+    # then the same for MAOMs, not influenced by fN, based on the study of Koppitke et al.2020         
          fSatMAOMs = 1-(MAOMs/maxMAOMs)
          Pot_dMAOMs_dt = DOM * fSatMAOMs * fBact * fRhizosphere * MAOMsmaxrate * DOM / (DOM + MM_DOM_MAOM)
              
                  
-    # if not yet saturated 
+    # if not yet saturated so there is still some potential rate of MAOM formation
          if Pot_dMAOMs_dt >0:
              MAOMs = MAOMs + Pot_dMAOMs_dt
              DOM = DOM-Pot_dMAOMs_dt
+             DOM_N-=Pot_dMAOMs_dt/CN_DOM
+             CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
          if Pot_dMAOMp_dt >0:
              MAOMp = MAOMp + Pot_dMAOMp_dt
              DOM = DOM - Pot_dMAOMp_dt
-         return DOM, DOM_N, MAOMp, MAOMs   
+             DOM_N-=Pot_dMAOMs_dt/CN_DOM
+             CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
+             
+         return DOM, DOM_N, CN_DOM, MAOMp, MAOMs   

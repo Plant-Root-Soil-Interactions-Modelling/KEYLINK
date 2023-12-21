@@ -126,16 +126,15 @@ for d in range(numDays):
         DOM_sub= DOM_sub_abs/DOM #update relative substrate derived C in DOM
         DOM_N+=DOMinput/CN_DOMinput #add equivalent amount of N to DON pool
         CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
-          
+        # print(d, "1", CN_DOM)  
     # microbial growth on DOM and priming
-    DOM,DOM_N, bact_RS, POM, MAOMs, resp, respPriming= mf.calcRhizosphere(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Pmax, k, kPOM_MAOM)
+    DOM,DOM_N, CN_DOM, bact_RS, POM, MAOM, resp, respPriming= mf.calcRhizosphere(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Pmax, k, kPOM_MAOM)
                                                                    # ((MAOMsaturation,maxMAOM,bact_RS, DOM, gmax, DEATH,CN_bact, CN_DOM, pCN, pH, res, Ks, fCN, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity)        # MAOM formation
-
+    # print(d, "2", CN_DOM)                                                                 
     #MAOM formation
-    DOM, DOM_N, MAOMp, MAOMs =mf.calcMAOMformation (bact_RS, DOM_N, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_BactMAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM)
-    
+    DOM, DOM_N, CN_DOM, MAOMp, MAOMs =mf.calcMAOMformation (bact_RS, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_BactMAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM)
+    # print(d, "3", CN_DOM) 
     # baseline microbial growth on SOM (without substrate DOM additions)
-    #MAOMunavail = MAOMp #max((PSA[0]/sum(PSA))*MAOM,MAOMunavail)   #unavail can only go up (unless you disrupt which is not implemented yet), so if more MAOM is stored, equivalent amount will be be always unavailable
     availability=mf.calcAvailPot(PV, PW) #calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
     #calculate maximal growth (gmax) for bacteria/fungi on POM/MAOM separately
     gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
@@ -147,12 +146,11 @@ for d in range(numDays):
     fungi_sub_abs = fungi * fungi_sub  #absolute substrate derived C in fungi [gC/m3]
     
     #growth equations (dB/dt) for each functional group and for variations in C and N pools
+    #only feed on secondary MAOM
     bactPOMgrowth = mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact*bact)
     bactMAOMgrowth = mf.calcgrowth(bact, MAOMs, availability[0], gmaxbMAOM, KSbact*bact)
     dbact = bactPOMgrowth + bactMAOMgrowth - DEATH*bact - rRESP*bact
-    
     bact_sub_abs += bactMAOMgrowth*MAOM_sub - DEATH*bact*bact_sub - rRESP*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
-    
     
     fungiPOMgrowth = mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi*fungi)
     fungiMAOMgrowth = mf.calcgrowth(fungi,MAOMs, availability[1], gmaxfMAOM, KSfungi*fungi)
@@ -283,17 +281,16 @@ def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespS
     p3.plot(time_d, outBact_RS2, label="bacteria RS")
     p3.plot(time_d, outBact2, label="bacteria")
     p3.plot(time_d, outFungi2, label="fungi")
-    ps[2].legend(loc=(0.03, 0.7), shadow=True) #loc='upper left',
+    ps[2].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
     p4.plot(time_d, outRespSubstrate2, label="substrate-derived")
     p4.plot(time_d, outRespSoil2, label="soil-derived incl. priming")
     p4.plot(time_d, outRespSoilBaseline2, label="soil-derived baseline")
-    ps[3].legend(loc=(0.03, 0.7), shadow=True) #loc='upper left',
+    ps[3].legend(loc=(0.25, 0.03), shadow=True) #loc='bottom right',
     p5.plot(time_d, outPOM2, label="POM")
-    # p5.plot(time_d, outMAOM2, label="MAOM")
     ps[4].legend(loc=(0.03, 0.03), shadow=True) #loc='upper left',
     p6.plot(time_d, outMAOMp2, label="primary MAOM")
     p6.plot(time_d, outMAOMs2, label="secondary MAOM")    
-    ps[5].legend(loc=(0.03, 0.03), shadow=True) #loc='upper left',
+    ps[5].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
 
 # Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
 Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
