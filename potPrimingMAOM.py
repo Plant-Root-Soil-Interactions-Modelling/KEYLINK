@@ -128,7 +128,7 @@ for d in range(numDays):
         CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
           
     # microbial growth on DOM and priming
-    DOM,DOM_N, bact_RS, POM, MAOMs, resp, respPriming= mf.calcRhizosphere(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KSbact, DOM_EC, Pmax, k, kPOM_MAOM)
+    DOM,DOM_N, bact_RS, POM, MAOMs, resp, respPriming= mf.calcRhizosphere(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Pmax, k, kPOM_MAOM)
                                                                    # ((MAOMsaturation,maxMAOM,bact_RS, DOM, gmax, DEATH,CN_bact, CN_DOM, pCN, pH, res, Ks, fCN, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity)        # MAOM formation
 
     #MAOM formation

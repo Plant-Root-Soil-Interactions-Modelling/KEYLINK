@@ -517,13 +517,13 @@ def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, Extra
         #     Cbact_RS=Cbact_RS+ExtraGrowth
         return DOM, POM, MAOMs, bact_RS, respPrim
 
-def calcRhizosphere (POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, res, KSbact, DOM_EC, Pmax, k, kPOM_MAOM):  
+def calcRhizosphere (POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, res, KS, DOM_EC, Pmax, k, kPOM_MAOM):  
 
     # rhizosphere bacterial gorwth on DOM
     DOM_Nini=DOM/CN_DOM
     #gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
     gmaxmod= calcgmaxmod(CN_bact, CN_DOM, pCN, 0, 0, pH, 1)*GMAX  #growth per unit of bacterial biomass g/(g day)
-    growth= calcgrowth(bact_RS, DOM, 1, gmaxmod, KSbact*bact_RS) #Monod kinetic equation of growth  # g day net
+    growth= calcgrowth(bact_RS, DOM, 1, gmaxmod, KS*bact_RS) #Monod kinetic equation of growth  # g day net
     BactTurnover=DEATH*bact_RS
     bact_RS+=growth-BactTurnover-res*bact_RS
     DOM+=-growth+BactTurnover
