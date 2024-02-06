@@ -444,8 +444,8 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
 
 def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Priming_max, k_priming, kPOM_MAOM):
-        #not sure how to use ExtraGrowth below but I have a feeling I should:D
-        #how much nitrogen can be released from SOM with the energy in remaining DOM:
+         #how much nitrogen can be released from SOM with the energy in remaining DOM:
+             
         DOM_E = ExtraGrowth/DOM_EC # total energy stored in the remaining DOM pool [J]
         #SOMdecayed = [gC] how much gC in POM or MAOM can be decayed with energy in DOM (DOM_E)
         #DecayCost = how much energy will be spent on SOM decay, definite integral of a decay price function [J]
@@ -464,15 +464,13 @@ def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, Extra
         
         SOM=POM+MAOMs  # to be decided is MAOMp is primed or not
         SOMprimed=Priming_max*SOM*(1-math.exp(-k_priming*DOM_E)) 
-        #how much of SOMdecayed will be from POM and how much from MAOM? Assume according to diificulty = k 
-        
-                                              #how much will this SOM decay provide N
+        print('SOMprimed',SOMprimed, 'available SOM',SOM)
+        #how much of SOMdecayed will be from POM and how much from MAOM? Assume according to difficulty = k             
         POMprimed=SOMprimed * (kPOM_MAOM/(kPOM_MAOM+1))
         MAOMprimed=SOMprimed-POMprimed
-        
+        #how much will this SOM decay provide N
         NavailPOM=POMprimed/CN_POM
         NavailMAOM=MAOMprimed/CN_MAOM
-        Navail=NavailPOM+NavailMAOM
         Navail=NavailPOM+NavailMAOM
         #how much bacterial biomass can be grown from this N
         PrimingGrowth = Navail*CN_bact
@@ -524,7 +522,7 @@ def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, Extra
         #     Cbact_RS=Cbact_RS+ExtraGrowth
         return DOM, POM, MAOMs, bact_RS, respPrim
 
-def calcRhizosphere (POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, res, KS, DOM_EC, Pmax, k, kPOM_MAOM):  
+def calcRhizosphere (POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, res, KS, DOM_EC, Priming_max, k_priming, kPOM_MAOM):  
 
     # rhizosphere bacterial gorwth on DOM
     DOM_Nini=DOM/CN_DOM
@@ -541,7 +539,7 @@ def calcRhizosphere (POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, 
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
     if mCN<1:  # if there was a shortage
         print ('priming active')
-        DOM, POM, MAOM, bact_RS, respPriming = calcPriming(POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Pmax, k, kPOM_MAOM)
+        DOM, POM, MAOM, bact_RS, respPriming = calcPriming(POM, CN_POM, MAOM, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Priming_max, k_priming, kPOM_MAOM)
     #calcPriming(MAOM,CNbact,fCN, DOM,CN_DOM, SOM, CN_SOM, gmaxmodCN, Nmin, Cbact_RS, resp, primingIntensity)
     else:
        respPriming=0 

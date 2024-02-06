@@ -57,7 +57,7 @@ fClay=0.17 #weight fraction
 fSilt=0.24 #weight fraction
 GMAX=1.24 #growth rate (DOM) for half speed growth, for growing on DOM [gC/m3], related to substrate quality was 0.001
 GMAXfungi=0.6  #growth rate [gC/(gC day)], KEYLINK
-k=0.3 #decay rate of negative exponential decay curve of decay price
+k_priming=0.3 #decay rate of negative exponential decay curve of decay price
 KS=5  # concentration of ?ortion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
 KSfungi=20000  # for decaying SOM
 KSbact=38000 #for decaying SOM
@@ -92,7 +92,7 @@ numDays=150 #number of days of incubation experiment/how long to run the model, 
 pCN=0.8 #???, KEYLINK
 PV=15 # volume of micropores [l/m3]
 pH=4.1 #Jílková2022, was 3.5
-Pmax=10 #maximum decay price [J/gC]
+Priming_max=10 #maximum decay price [J/gC]
 POMini=38400  # total SOM, only used for priming [gC/m3], Jílková2022, was 150
 POM=POMini
 resp=0 #respiration [gC/m3]
@@ -128,7 +128,7 @@ for d in range(numDays):
         CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
         # print(d, "1", CN_DOM)  
     # microbial growth on DOM and priming
-    DOM,DOM_N, CN_DOM, bact_RS, POM, MAOM, resp, respPriming= mf.calcRhizosphere(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Pmax, k, kPOM_MAOM)
+    DOM,DOM_N, CN_DOM, bact_RS, POM, MAOM, resp, respPriming= mf.calcRhizosphere(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, k_priming, kPOM_MAOM)
                                                                    # ((MAOMsaturation,maxMAOM,bact_RS, DOM, gmax, DEATH,CN_bact, CN_DOM, pCN, pH, res, Ks, fCN, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity)        # MAOM formation
     # print(d, "2", CN_DOM)                                                                 
     #MAOM formation
