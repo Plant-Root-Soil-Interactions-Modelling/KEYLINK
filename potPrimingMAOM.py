@@ -61,7 +61,7 @@ k=0.3 #decay rate of negative exponential decay curve of decay price
 KS=5  # concentration of ?ortion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
 KSfungi=20000  # for decaying SOM
 KSbact=38000 #for decaying SOM
-kPOM_MAOM = 8 #ratio of POM to MAOM decayed / overall SOM decay is partitioned using this fixed ratios really unavailable 
+kPOM_MAOM = 8 #ratio of POM to MAOM decayed / overall SOM decay is partitioned using this fixed ratios really unavailable, is k-POM/k_MAOM in israel code 
 mRecBact=0.5  # how sensitive bact are to recalcitrance
 mRecFungi=0.5
 

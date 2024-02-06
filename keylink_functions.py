@@ -443,43 +443,50 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
             eng, hvores, pred, litter, som, roots, co2,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
 
-def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Pmax, k, kPOM_MAOM):
+def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Priming_max, k_priming, kPOM_MAOM):
         #not sure how to use ExtraGrowth below but I have a feeling I should:D
         #how much nitrogen can be released from SOM with the energy in remaining DOM:
         DOM_E = ExtraGrowth/DOM_EC # total energy stored in the remaining DOM pool [J]
         #SOMdecayed = [gC] how much gC in POM or MAOM can be decayed with energy in DOM (DOM_E)
         #DecayCost = how much energy will be spent on SOM decay, definite integral of a decay price function [J]
               
-        #numerically solve this definite integral by increasing x (decayed SOM) until the result,y = DecayCost become slightly bigger than energy available
-        #this gives me how much SOM I can decay with the energy available in DOM:
-        SOMdecayed = 0.001 # starting value
-        DecayCost=0 #starting value
-        P0 = Pmax*(0 + (1/k)*math.exp(-k*0)) 
-        while DecayCost < DOM_E:
-            DecayCost = Pmax*(SOMdecayed + (1/k)*math.exp(-k*SOMdecayed)) - P0
-            #print(SOMdecayed, DecayCost)
-            SOMdecayed += 0.001
+        # #numerically solve this definite integral by increasing x (decayed SOM) until the result,y = DecayCost become slightly bigger than energy available
+        # #this gives me how much SOM I can decay with the energy available in DOM:
+        # SOMdecayed = 0.001 # starting value
+        # DecayCost=0 #starting value
+        # P0 = Pmax*(0 + (1/k)*math.exp(-k*0)) 
+        # while DecayCost < DOM_E:
+        #     DecayCost = Pmax*(SOMdecayed + (1/k)*math.exp(-k*SOMdecayed)) - P0
+        #     #print(SOMdecayed, DecayCost)
+        #     SOMdecayed += 0.001
         
-        #how much of SOMdecayed will be from POM and how much from MAOM
+        # #how much of SOMdecayed will be from POM and how much from MAOM
         
-        POMdecayed=SOMdecayed * (kPOM_MAOM/(kPOM_MAOM+1))
-        MAOMdecayed=SOMdecayed-POMdecayed
-        #how much will this SOM decay provide N
-        NavailPOM=POMdecayed/CN_POM
-        NavailMAOM=MAOMdecayed/CN_MAOM
+        SOM=POM+MAOMs  # to be decided is MAOMp is primed or not
+        SOMprimed=Priming_max*SOM*(1-math.exp(-k_priming*DOM_E)) 
+        #how much of SOMdecayed will be from POM and how much from MAOM? Assume according to diificulty = k 
+        
+                                              #how much will this SOM decay provide N
+        POMprimed=SOMprimed * (kPOM_MAOM/(kPOM_MAOM+1))
+        MAOMprimed=SOMprimed-POMprimed
+        
+        NavailPOM=POMprimed/CN_POM
+        NavailMAOM=MAOMprimed/CN_MAOM
+        Navail=NavailPOM+NavailMAOM
         Navail=NavailPOM+NavailMAOM
         #how much bacterial biomass can be grown from this N
         PrimingGrowth = Navail*CN_bact
         respPrim=0
+           
         #if there is enough DOM C around to build new biomass thanks to priming
         if PrimingGrowth > 0: #this should always be true, but let's check
             PrimingGrowth = min(PrimingGrowth, ExtraGrowth)
             bact_RS += PrimingGrowth #grow new microbes thanks to priming, but where does this C come from? from POM/MAOM?
-            respPrim=SOMdecayed-PrimingGrowth #C for new growth is taken from SOM, so only the rest is respired, 
+            respPrim=SOMprimed-PrimingGrowth #C for new growth is taken from SOM, so only the rest is respired, 
             #??at which point should we let the new RS bacteria biomass respire?
             DOM-=ExtraGrowth  # quick fix not to divide by zero I burnt off all C in DOM to get N?? is that okay?? this respiration unaccounted for yet
-            POM-=POMdecayed 
-            MAOMs-=MAOMdecayed
+            POM-=POMprimed 
+            MAOMs-=MAOMprimed
             print("how much was grown from potential growth", PrimingGrowth, ExtraGrowth) #let's see if we always realize all 
         else:
 
