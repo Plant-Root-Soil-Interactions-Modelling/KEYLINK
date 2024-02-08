@@ -466,7 +466,7 @@ def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM,CN_DOM, Extra
         SOMprimed=Priming_max*SOM*(1-math.exp(-k_priming*DOM_E)) 
         print('SOMprimed',SOMprimed, 'available SOM',SOM)
         #how much of SOMdecayed will be from POM and how much from MAOM? Assume according to difficulty = k             
-        POMprimed=SOMprimed * (kPOM_MAOM/(kPOM_MAOM+1))
+        POMprimed=SOMprimed*(kPOM_MAOM/(kPOM_MAOM+1))*(POM/(POM+MAOMs))
         MAOMprimed=SOMprimed-POMprimed
         #how much will this SOM decay provide N
         NavailPOM=POMprimed/CN_POM
