@@ -20,7 +20,7 @@ outPOM=[]
 outDOMadded=[]
 outDOM=[]
 outDOM_CN=[]
-outBact_RS=[]
+outbact_DOM=[]
 outBact=[]
 outFungi=[]
 outRespSubstrate=[]
@@ -30,10 +30,10 @@ outRespSoilBaseline=[]
 #variables 
 availability=np.zeros(3)
 bact_total = 5 #total biomass of bacteria [gC/m3]
-bact_RS_rel = 0.2 #proportion of rhizosphere bacteria, i.e. those that are able to feed on DOM
-bact_RS = bact_total*bact_RS_rel #biomass of bacteria growing on DOM [gC/m3], final noadd average from Jílková2022, was 61, *0.2 because most was li-ving on SOM, only 20% on new DOM
-bact_RS_sub = 0 # proportion of bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
-bact = bact_total * (1-bact_RS_rel) #80% of my bacteria are decomposing only POM and MAOM
+bact_DOM_rel = 0.2 #proportion of bacteria that have access to feeding on DOM (e.g. that are present in rhizophere)
+bact_DOM = bact_total*bact_DOM_rel #biomass of bacteria growing on DOM [gC/m3], final noadd average from Jílková2022, was 61, *0.2 because most was li-ving on SOM, only 20% on new DOM
+bact_DOM_sub = 0 # proportion of bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
+bact = bact_total * (1-bact_DOM_rel) #80% of my bacteria are decomposing only POM and MAOM
 bact_sub = 0 # proportion of this bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
 BD=800   # bulk density kg m³
 claySA=800000 #m²/kg was 8000000 cm²/g
@@ -57,7 +57,7 @@ fClay=0.17 #weight fraction
 fSilt=0.24 #weight fraction
 GMAX=1.24 #growth rate (DOM) for half speed growth, for growing on DOM [gC/m3], related to substrate quality was 0.001
 GMAXfungi=0.6  #growth rate [gC/(gC day)], KEYLINK
-k_priming=0.3 #decay rate of negative exponential decay curve of decay price
+kpriming=0.3 #decay rate of negative exponential decay curve of decay price
 KS=5  # concentration of ?ortion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
 KSfungi=20000  # for decaying SOM
 KSbact=38000 #for decaying SOM
@@ -82,7 +82,7 @@ MAOMpmaxrate = 0.1 #maximum rate of primary MAOM formation
 MAOMsmaxrate = 0.1 #maximum rate of secondary MAOM formation
 
 maxEffectBactMAOM=0.9 #(half as slow when no bacteria, rate becomes 1-value)
-MM_BactMAOM = 1.10  #bact amount for half speed
+MM_Bact_MAOM = 1.10  #bact amount for half speed
 maxEffectN_MAOM = 0.9
 MM_N_MAOM =  1
 maxEffectSA_MAOM = 0.9
@@ -106,11 +106,9 @@ PSA=mf.calcPoreSurfaceArea(PV, PRadius, PSA)
 MAOMunavail = (PSA[0]/sum(PSA))*MAOMini #the portion of MAOM stored in the smallest pores is really unavailable 
 PW=np.array([45/2,37/2,37/2,200/2,6/2]) #pore water volume, assume all pores half filled , but water is in m³ while volume was in l
 siltSA=45.4 #m²/kg
-SAclaySilt=claySA*BD*fClay+siltSA*BD*fSilt #total surface area of clay and silt in m²/m³
-surface_RS= 10000   # surface area of all roots/hyphae [m2/m3] ??unit correct / look up roots surface area equivalent to that amount of DOM input
-fractionSA = surface_RS/SAclaySilt #used in calcMAOMformation? fraction of mineral surface area occupied by roots/hyphae
-
-
+maxSurfaceArea=claySA*BD*fClay+siltSA*BD*fSilt #total surface area of clay and silt in m²/m³
+RootHyphaeSurface= 10000   # surface area of all roots/hyphae [m2/m3] ??unit correct / look up roots surface area equivalent to that amount of DOM input
+fractionSA = RootHyphaeSurface/maxSurfaceArea #used in calcMAOM/ fraction of mineral surface area occupied by roots/hyphae
 
 
 #run the daily calculations
@@ -126,14 +124,10 @@ for d in range(numDays):
         DOM_sub= DOM_sub_abs/DOM #update relative substrate derived C in DOM
         DOM_N+=DOMinput/CN_DOMinput #add equivalent amount of N to DON pool
         CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
-        # print(d, "1", CN_DOM)  
     # microbial growth on DOM and priming
-    DOM,DOM_N, CN_DOM, bact_RS, POM, MAOM, resp, respPriming= mf.calcRhizosphere(POM, CN_POM, MAOMs, CN_MAOM, bact_RS, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, k_priming, kPOM_MAOM)
-                                                                   # ((MAOMsaturation,maxMAOM,bact_RS, DOM, gmax, DEATH,CN_bact, CN_DOM, pCN, pH, res, Ks, fCN, CN_SOM, Nmin, SOM,PVstruct,  primingIntensity)        # MAOM formation
-    # print(d, "2", CN_DOM)                                                                 
+    DOM,DOM_N, CN_DOM, bact_DOM, POM, MAOM, resp, respPriming = mf.calcRhizosphere(POM, CN_POM, MAOM, CN_MAOM, bact_DOM, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, resp, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM)
     #MAOM formation
-    DOM, DOM_N, CN_DOM, MAOMp, MAOMs =mf.calcMAOMformation (bact_RS, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_BactMAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM)
-    # print(d, "3", CN_DOM) 
+    DOM, DOM_N, CN_DOM, MAOMp, MAOMs =mf.calcMAOM(bact_DOM, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM)
     # baseline microbial growth on SOM (without substrate DOM additions)
     availability=mf.calcAvailPot(PV, PW) #calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
     #calculate maximal growth (gmax) for bacteria/fungi on POM/MAOM separately
@@ -184,7 +178,7 @@ for d in range(numDays):
     outMAOMsaturation.append(MAOMsaturation)
     outPOM.append(POM)
     outDOM.append(DOM)
-    outBact_RS.append(bact_RS)
+    outbact_DOM.append(bact_DOM)
     outBact.append(bact)
     outFungi.append(fungi)
     outRespSubstrate.append(resp)
@@ -196,16 +190,16 @@ for d in range(numDays):
 # plt.plot(outDOM)
 # plt.plot(outPOM)
 # plt.plot(outMAOMsaturation) 
-# plt.plot(outBact_RS)   
+# plt.plot(outbact_DOM)   
 # plt.plot(outResp)
 # plt.plot(outRespPriming)   
 # plt.plot(outBact_Baseline) 
-# plt.plot(outBact_RS) 
+# plt.plot(outbact_DOM) 
 # plt.plot(outFungi_Baseline) 
 
 #change units to easily understandable for the plot
 outDOMadded2 = np.divide(outDOMadded,0.8) #change units from gC/m3 µgC/g soil
-outBact_RS2=np.divide(outBact_RS,0.8) #change units from gC/m3 µgC/g soil
+outbact_DOM2=np.divide(outbact_DOM,0.8) #change units from gC/m3 µgC/g soil
 outBact2=np.divide(outBact,0.8)
 outFungi2=np.divide(outFungi,0.8)
 outRespSubstrate2 =np.divide(outRespSubstrate, 0.8*24) #change units from gC/m3/day to µg CO2-C/g soil/h
@@ -220,7 +214,7 @@ outMAOMs2 = np.divide(outMAOMs,0.8*1000) #change units from gC/m3 mgC/g soil
 #combine output arrays into a dataframe and save it to csv
 df = pd.DataFrame({"DOMaddition" : outDOMadded2,
                    "DOM" : outDOM2,
-                   "bact_RS" : outBact_RS2,
+                   "bact_DOM" : outbact_DOM2,
                    "bact" : outBact2,
                    "fungi" : outFungi2,
                    "resp_substrate" : outRespSubstrate2,
@@ -233,7 +227,7 @@ df = pd.DataFrame({"DOMaddition" : outDOMadded2,
                    })
 df.to_csv(".\output\data\Output.csv", index=False)
 
-# def Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM): #plot in original KEYLINK units
+# def Dailyplot(outDOMadded, outDOM, outbact_DOM, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM): #plot in original KEYLINK units
 #     # df2 = pd.DataFrame(df)
 #     # x = []
 #     # y = []
@@ -256,7 +250,7 @@ df.to_csv(".\output\data\Output.csv", index=False)
 
 
 #plot in adjusted units matching the data
-def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs): #plot in original KEYLINK units
+def Dailyplot2(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs): #plot in original KEYLINK units
     # df2 = pd.DataFrame(df)
     # x = []
     # y = []
@@ -278,7 +272,7 @@ def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespS
     
     p1.plot(time_d, outDOMadded2)
     p2.plot(time_d, outDOM2)
-    p3.plot(time_d, outBact_RS2, label="bacteria RS")
+    p3.plot(time_d, outbact_DOM2, label="bacteria RS")
     p3.plot(time_d, outBact2, label="bacteria")
     p3.plot(time_d, outFungi2, label="fungi")
     ps[2].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
@@ -292,6 +286,6 @@ def Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespS
     p6.plot(time_d, outMAOMs2, label="secondary MAOM")    
     ps[5].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
 
-# Dailyplot(outDOMadded, outDOM, outBact_RS, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
-Dailyplot2(outDOMadded2, outDOM2, outBact_RS2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
+# Dailyplot(outDOMadded, outDOM, outbact_DOM, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
+Dailyplot2(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
 plt.savefig("output/figures/Dailyplot2.png")
