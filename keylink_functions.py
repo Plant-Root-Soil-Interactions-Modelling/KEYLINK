@@ -484,28 +484,31 @@ def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_DOM, CN_bact, DOM,CN_DOM, Extr
 
         return DOM, POM, MAOMs, bact_DOM, respPrim
 
-def calcRhizosphere (POM, CN_POM, MAOM, CN_MAOM, bact_DOM, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, resp, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM):  
+def calcRhizosphere (Priming, POM, CN_POM, MAOM, CN_MAOM, bact_DOM, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM):  
 
     # rhizosphere bacterial gorwth on DOM
     DOM_Nini=DOM/CN_DOM
+    # calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id)
     #gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
-    gmaxmod= calcgmaxmod(CN_bact, CN_DOM, pCN, 0, 0, pH, 1)*GMAX  #growth per unit of bacterial biomass g/(g day)
+    gmaxmod= calcgmaxmod(CN_bact, CN_DOM, pCN, 0, 0, pH, 1)*GMAX  #maximum growth for bacteria growing on DOM g/(g day)
+    # def calcgrowth(biomass, source, avail, gmaxmod, Ks):
     growth= calcgrowth(bact_DOM, DOM, 1, gmaxmod, KS*bact_DOM) #Monod kinetic equation of growth  # g day net
     BactTurnover=DEATH*bact_DOM
-    bact_DOM+=growth-BactTurnover-resp*bact_DOM
+    respDOM=rRESP*bact_DOM #respiration of DOM-feeding bacteria without priming effect yet
+    bact_DOM+=growth-BactTurnover-respDOM
     DOM+=-growth+BactTurnover
     # print(bact_DOM, growth, BactTurnover)
     DOM_N=DOM_Nini-growth/CN_DOM+BactTurnover/CN_bact
     CN_DOM=DOM/DOM_N
     mCN = min(1, (CN_bact/CN_DOM)**pCN) #effect of CN
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
-    if mCN<1:  # if there was a shortage
+    if Priming==1 and mCN<1:  # if Priming is allowed and there was a shortage
         print ('priming active')
         DOM, POM, MAOM, bact_DOM, respPriming = calcPriming(POM, CN_POM, MAOM, CN_MAOM, bact_DOM, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM)
     #calcPriming(MAOM,CNbact,fCN, DOM,CN_DOM, SOM, CN_SOM, gmaxmodCN, Nmin, Cbact_DOM, resp, primingIntensity)
     else:
        respPriming=0 
-    resp=resp*bact_DOM  # from eating DOM
+    resp=respDOM + respPriming  # add respiration from priming to the total respiration
     return  DOM,DOM_N, CN_DOM, bact_DOM, POM, MAOM, resp, respPriming
     
 
