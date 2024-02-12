@@ -156,7 +156,7 @@ for i in range(len(DOMinput_treatments)):
             DOM_N+=DOMinput/CN_DOMinput #add equivalent amount of N to DON pool
             CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
         # microbial growth on DOM and priming
-        DOM,DOM_N, CN_DOM, bact_DOM, POM, MAOM, resp, respPriming = mf.calcRhizosphere(Priming, POM, CN_POM, MAOM, CN_MAOM, bact_DOM, CN_bact, DOM, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM)
+        DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOM, respDOM, respDOM_sub, respPriming = mf.calcRhizosphere(Priming, POM, CN_POM, MAOM, CN_MAOM, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM)
         #MAOM formation
         DOM, DOM_N, CN_DOM, MAOMp, MAOMs =mf.calcMAOM(bact_DOM, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM)
         
@@ -199,7 +199,8 @@ for i in range(len(DOMinput_treatments)):
         fungi+=dfungi
         fungi_sub= fungi_sub_abs/fungi #update relative substrate derived C in fungi       
     
-     
+        #add up substrate derived respiration
+        respSubstrate = respDOM*respDOM_sub
         #add up soil-derived respiration
         baselineResp = baselineRespBact + baselineRespFungi
         respSoil = baselineResp + respPriming
@@ -212,7 +213,7 @@ for i in range(len(DOMinput_treatments)):
         outbact_DOM.append(bact_DOM)
         outBact.append(bact)
         outFungi.append(fungi)
-        outRespSubstrate.append(resp)
+        outRespSubstrate.append(respSubstrate)
         outRespSoilBaseline.append(baselineResp)
         outRespSoil.append(respSoil)
        
