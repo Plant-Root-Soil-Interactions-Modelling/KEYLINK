@@ -67,7 +67,7 @@ fClay=0.17 #weight fraction [g/g], Jílková2022
 fSilt=0.24 #weight fraction [g/g], Jílková2022
 maxMAOM = 0.86 * (fClay + fSilt)*100 * BD #[gC/m3] maximum MAOM, 28208 for Jílková et al. 2022 Georgiou et al. 2022: 86 ± 9 and 48 ± 6 mg C/g silt+clay mineral for HM and LM,
 maxMAOMp = maxMAOM/(MAOMratioSP+1)  # maximum primary MAOM
-maxMAOMs = maxMAOM-maxMAOMp  # maximum primary MAOM
+
 siltSA=45.4 #m²/kg
 maxSurfaceArea=claySA*BD*fClay+siltSA*BD*fSilt #total surface area of clay and silt in m²/m³
 PV=15 #!TODO volume of micropores [l/m3] but overwritten by next line
@@ -137,7 +137,7 @@ for i in range(len(DOMinput_treatments)):
     MAOM=25368 #C in MAOM [gC/m3] average noAdd Jílková2022 
     MAOM_sub = 0 # proportion of MAOM that is substrate derived in contrast to soil-derived / values 0 to 1/
     MAOMunavail = (PSA[0]/sum(PSA))*MAOM #the portion of MAOM stored in the smallest pores is really unavailable
-    MAOMp = MAOM/(MAOMratioSP+1) #primary MAOM [gC/m3]
+    MAOMp = MAOM/(MAOMratioSP+1) #primary MAOM [gC/m3] initialised at the ratio of saturation
     MAOMs = MAOM-MAOMp #secondary MAOM[gC/m3]
     POM=13032  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
 
@@ -155,6 +155,8 @@ for i in range(len(DOMinput_treatments)):
             DOM_sub= DOM_sub_abs/DOM #update relative substrate derived C in DOM
             DOM_N+=DOMinput/CN_DOMinput #add equivalent amount of N to DON pool
             CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
+        # saturation of MAOMs depends on amount of MAOMp so recalculated every day
+        maxMAOMs = MAOMp*MAOMratioSP  # maximum primary MAOM
         # microbial growth on DOM and priming
         DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOM, respDOM, respDOM_sub, respPriming = mf.calcRhizosphere(Priming, POM, CN_POM, MAOM, CN_MAOM, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM)
         #MAOM formation
