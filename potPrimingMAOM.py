@@ -8,6 +8,7 @@ import keylink_functions as mf
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import copy
 
 #output dataframe list
 outDataframes=[]
@@ -97,7 +98,63 @@ DOMinput_treatments=np.array([10,10,0]) #exudates, leachates, control
 CN_DOMinput_treatments = np.array([6, 80, 80])  #exudates, leachates, control, CN od control DOMinput can't be zero because of dividing by it in DOM_N calculation
 treatments = np.array(["exudates", "leachates", "control"])
 
-for i in range(len(DOMinput_treatments)):
+sensitivity=True
+   
+
+if sensitivity:
+  
+  paramsToTestValues=(bact_DOM_rel, DOM_EC, kpriming, KS, KSfungi,KSbact,
+                      kPOM_MAOM ,MAOMpmaxrate,MAOMsmaxrate,MAOMmaxrate,MAOMratioSP,maxEffectBactMAOM,
+                      maxEffectSA_MAOM,maxEffectN_MAOM,MM_N_MAOM,MM_Bact_MAOM,MM_SA_MAOM,MM_DOM_MAOM,Priming_max)
+  paramsToTestNames=('bact_DOM_rel', 'DOM_EC', 'kpriming', 'KS', 'KSfungi','KSbact',
+                      'kPOM_MAOM' ,'MAOMpmaxrate','MAOMsmaxrate','MAOMmaxrate','MAOMratioSP','maxEffectBactMAOM',
+                      'maxEffectSA_MAOM','maxEffectN_MAOM','MM_N_MAOM','MM_Bact_MAOM','MM_SA_MAOM','MM_DOM_MAOM','Priming_max')
+  paramsToTestDict=dict(zip(paramsToTestNames, paramsToTestValues))
+  paramChanges=np.array([0])  #% changes to try for each parameter
+  numParams = len(paramsToTestValues)
+  numValues = len(paramChanges)
+  numRuns= len(paramChanges) * len(paramsToTestValues)  # number of sensitivity runs
+  column_names=['Parameter','Level', 	'value',	'day'	, 'DOMaddition','DOM',
+                't_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMMp','MAOMs']
+
+  results_df = pd.DataFrame(columns=column_names)
+  origValues=copy.deepcopy(paramsToTestDict)   # need deepcopy to not have a pointer but really full copy of values
+  print('initial',paramsToTestDict)  # check
+else:
+  numruns=1
+  numParams=1
+  numValues=1      
+
+    
+for param in (paramsToTestNames):
+ for value in (paramChanges):  
+   paramsToTestDict[param]+=paramsToTestDict[param]*value/100  # I change 1 parameter value
+   for i in range(len(DOMinput_treatments)):
+    
+    # I want to use thevalues from the dict, for sensitivity, so i put all of the values back in the variable (not the fastest way)
+    # needs to be changed ifyou change the parameters to test
+    if(sensitivity):
+        bact_DOM_rel = paramsToTestDict['bact_DOM_rel']
+        DOM_EC = paramsToTestDict['DOM_EC']
+        kpriming= paramsToTestDict['kpriming']
+        KS= paramsToTestDict['KS']
+        KSfungi= paramsToTestDict['KSfungi']
+        KSbact= paramsToTestDict['KSbact']
+        kPOM_MAOM = paramsToTestDict['kPOM_MAOM'] 
+        MAOMpmaxrate = paramsToTestDict['MAOMpmaxrate']
+        MAOMsmaxrate = paramsToTestDict['MAOMsmaxrate']
+        MAOMmaxrate= paramsToTestDict['MAOMmaxrate']
+        MAOMratioSP = paramsToTestDict['MAOMratioSP'] 
+        maxEffectBactMAOM = paramsToTestDict['maxEffectBactMAOM'] 
+        maxEffectSA_MAOM = paramsToTestDict['maxEffectSA_MAOM']
+        maxEffectN_MAOM = paramsToTestDict['maxEffectN_MAOM']
+        MM_N_MAOM = paramsToTestDict['MM_N_MAOM']
+        MM_Bact_MAOM = paramsToTestDict['MM_Bact_MAOM']
+        MM_SA_MAOM = paramsToTestDict['MM_SA_MAOM']
+        MM_DOM_MAOM = paramsToTestDict['MM_DOM_MAOM']
+        Priming_max =  paramsToTestDict['Priming_max']
+        
+    
     DOMinput = DOMinput_treatments[i]
     CN_DOMinput = CN_DOMinput_treatments[i]
     
@@ -152,9 +209,15 @@ for i in range(len(DOMinput_treatments)):
             DOM_sub_abs= DOM*DOM_sub #absolute substrate derived C in DOM [gC/m3]
             DOM+=DOMinput #add input to the DOM carbon pool
             DOM_sub_abs+=DOMinput #add all input as substrate derived C
-            DOM_sub= DOM_sub_abs/DOM #update relative substrate derived C in DOM
+            if DOM>0:
+                DOM_sub= DOM_sub_abs/DOM #update relative substrate derived C in DOM
+            else:
+                DOM_sub=0
             DOM_N+=DOMinput/CN_DOMinput #add equivalent amount of N to DON pool
-            CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
+            if DOM_N>0:
+                CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
+            else:
+                CN_DOM=0
         # saturation of MAOMs depends on amount of MAOMp so recalculated every day
         maxMAOMs = MAOMp*MAOMratioSP  # maximum primary MAOM
         # microbial growth on DOM and priming
@@ -218,7 +281,16 @@ for i in range(len(DOMinput_treatments)):
         outRespSubstrate.append(respSubstrate)
         outRespSoilBaseline.append(baselineResp)
         outRespSoil.append(respSoil)
-       
+        if(sensitivity):
+           # column_names=['Parameter','Level', 	'value',	'day'	, 'DOMaddition','DOM',
+           #               't_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMMp','MAOMs']
+
+            results_df.loc[len(results_df)] = [param, value, '?', d, DOM_added,DOM,'t_DOM', bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOM,MAOMs
+                                               ]
+
+#            results_df.to_csv(os.path.join(path, 'Sensitivity_df.csv'), mode='a', index=False,
+#                              header=False)
+#            results_df.drop(results_df.index,inplace=True)
       
 # plt.plot(outMAOM)      
 # plt.plot(outDOM)
@@ -260,7 +332,8 @@ for i in range(len(DOMinput_treatments)):
                        "MAOMs" : outMAOMs2
                        })
     outDataframes.append(df)
-    
+    if(sensitivity):
+       paramsToTestDict =copy.deepcopy(origValues)   # reset to original if we were doing sensitivity
      
     # def Dailyplot(outDOMadded, outDOM, outbact_DOM, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM): #plot in original KEYLINK units
     #     # df2 = pd.DataFrame(df)
