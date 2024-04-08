@@ -86,6 +86,7 @@ pH=4.1 #Jílková2022
 Priming=1 #flag to enable Priming effect
 Plotting=1 # flag 1 to enable making of plots, so that this can be turned off during sensitivity analysis etc.
 
+numruns=0
 # sensitivityAnalyses==False
 # if sensitivityAnalyses==False
 # else # sensitivity Analysis
@@ -110,27 +111,29 @@ if sensitivity:
                       'kPOM_MAOM' ,'MAOMpmaxrate','MAOMsmaxrate','MAOMmaxrate','MAOMratioSP','maxEffectBactMAOM',
                       'maxEffectSA_MAOM','maxEffectN_MAOM','MM_N_MAOM','MM_Bact_MAOM','MM_SA_MAOM','MM_DOM_MAOM','Priming_max')
   paramsToTestDict=dict(zip(paramsToTestNames, paramsToTestValues))
-  paramChanges=np.array([0])  #% changes to try for each parameter
+  paramChanges=np.array([50,100,200])  #% changes to try for each parameter
   numParams = len(paramsToTestValues)
   numValues = len(paramChanges)
-  numRuns= len(paramChanges) * len(paramsToTestValues)  # number of sensitivity runs
-  column_names=['Parameter','Level', 	'value',	'day'	, 'DOMaddition','DOM',
-                't_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMMp','MAOMs']
+  # numRuns_total= len(paramChanges) * len(paramsToTestValues)  # number of sensitivity runs
+  column_names=['Parameter','Parameter_change', 	'value', 'treatment',	'day'	, 'DOMaddition','DOM',
+                'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMp','MAOMs']
 
   results_df = pd.DataFrame(columns=column_names)
   origValues=copy.deepcopy(paramsToTestDict)   # need deepcopy to not have a pointer but really full copy of values
   print('initial',paramsToTestDict)  # check
 else:
-  numruns=1
+  # numruns=1
   numParams=1
   numValues=1      
 
-    
+
+   
 for param in (paramsToTestNames):
- for value in (paramChanges):  
-   paramsToTestDict[param]+=paramsToTestDict[param]*value/100  # I change 1 parameter value
+ for paramChange in (paramChanges):  
+   value = paramsToTestDict[param]*paramChange/100  # I change 1 parameter value
+   paramsToTestDict[param]+= value
    for i in range(len(DOMinput_treatments)):
-    
+    numruns = numruns + 1
     # I want to use thevalues from the dict, for sensitivity, so i put all of the values back in the variable (not the fastest way)
     # needs to be changed ifyou change the parameters to test
     if(sensitivity):
@@ -157,11 +160,12 @@ for param in (paramsToTestNames):
     
     DOMinput = DOMinput_treatments[i]
     CN_DOMinput = CN_DOMinput_treatments[i]
+    treatment = treatments[i]
     
     #initialization
     #output objects initialized as empty
     time_d=[]
-    treatment=[]
+    outtreatment=[]
     outMAOM=[]
     outMAOMp=[]
     outMAOMs=[]
@@ -200,7 +204,7 @@ for param in (paramsToTestNames):
 
     # function coreMAOM
     for d in range(numDays):
-        treatment.append(treatments[i])
+        outtreatment.append(treatment)
         time_d.append(d)  #store days in an array for plotting
         DOM_added = 0
         #on day 0 and then every 14 days, add DOM
@@ -221,9 +225,10 @@ for param in (paramsToTestNames):
         # saturation of MAOMs depends on amount of MAOMp so recalculated every day
         maxMAOMs = MAOMp*MAOMratioSP  # maximum primary MAOM
         # microbial growth on DOM and priming
-        DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOM, respDOM, respDOM_sub, respPriming = mf.calcRhizosphere(Priming, POM, CN_POM, MAOM, CN_MAOM, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM)
+        
+        if CN_DOM>0: DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOM, respDOM, respDOM_sub, respPriming = mf.calcRhizosphere(Priming, POM, CN_POM, MAOM, CN_MAOM, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM)
         #MAOM formation
-        DOM, DOM_N, CN_DOM, MAOMp, MAOMs =mf.calcMAOM(bact_DOM, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM)
+        if CN_DOM>0: DOM, DOM_N, CN_DOM, MAOMp, MAOMs =mf.calcMAOM(bact_DOM, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM)
         
         # baseline microbial growth on SOM (without substrate DOM additions)
         availability=mf.calcAvailPot(PV, PW) #calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
@@ -282,10 +287,10 @@ for param in (paramsToTestNames):
         outRespSoilBaseline.append(baselineResp)
         outRespSoil.append(respSoil)
         if(sensitivity):
-           # column_names=['Parameter','Level', 	'value',	'day'	, 'DOMaddition','DOM',
-           #               't_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMMp','MAOMs']
-
-            results_df.loc[len(results_df)] = [param, value, '?', d, DOM_added,DOM,'t_DOM', bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOM,MAOMs
+# column_names=['Parameter','Parameter_change_relative', 	'value', 'treatment',	'day'	, 'DOMaddition','DOM',
+              # 'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMMp','MAOMs']
+# paramsToTestDict[param]
+            results_df.loc[len(results_df)] = [param, paramChange, value, treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOM,MAOMs
                                                ]
 
 #            results_df.to_csv(os.path.join(path, 'Sensitivity_df.csv'), mode='a', index=False,
@@ -317,7 +322,7 @@ for param in (paramsToTestNames):
     outMAOMs2 = np.divide(outMAOMs,0.8*1000) #change units from gC/m3 mgC/g soil
     
     #combine output arrays into a dataframe and save it to csv
-    df = pd.DataFrame({"treatment" : treatment,
+    df = pd.DataFrame({"treatment" : outtreatment,
                        "DOMaddition" : outDOMadded2,
                        "DOM" : outDOM2,
                        "bact_DOM" : outbact_DOM2,
@@ -334,7 +339,8 @@ for param in (paramsToTestNames):
     outDataframes.append(df)
     if(sensitivity):
        paramsToTestDict =copy.deepcopy(origValues)   # reset to original if we were doing sensitivity
-     
+       results_df.to_csv(".\output\data\Sensitivity.csv", index=False)
+        
     # def Dailyplot(outDOMadded, outDOM, outbact_DOM, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM): #plot in original KEYLINK units
     #     # df2 = pd.DataFrame(df)
     #     # x = []
@@ -393,7 +399,7 @@ for param in (paramsToTestNames):
         ps[5].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
     
     # Dailyplot(outDOMadded, outDOM, outbact_DOM, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
-    if Plotting == 1: #if you want plotting to be active
+    if Plotting == 0: #if you want plotting to be active
         Dailyplot2(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
         plt.savefig("output/figures/Dailyplot_" + treatments[i] +".png")
 
