@@ -111,7 +111,7 @@ if sensitivity:
                       'kPOM_MAOM' ,'MAOMpmaxrate','MAOMsmaxrate','MAOMmaxrate','MAOMratioSP','maxEffectBactMAOM',
                       'maxEffectSA_MAOM','maxEffectN_MAOM','MM_N_MAOM','MM_Bact_MAOM','MM_SA_MAOM','MM_DOM_MAOM','Priming_max')
   paramsToTestDict=dict(zip(paramsToTestNames, paramsToTestValues))
-  paramChanges=np.array([50,100,200])  #% changes to try for each parameter
+  paramChanges=np.array([-50,0,100])  #% changes to try for each parameter
   numParams = len(paramsToTestValues)
   numValues = len(paramChanges)
   # numRuns_total= len(paramChanges) * len(paramsToTestValues)  # number of sensitivity runs
@@ -129,282 +129,258 @@ else:
 
    
 for param in (paramsToTestNames):
- for paramChange in (paramChanges):  
-   value = paramsToTestDict[param]*paramChange/100  # I change 1 parameter value
-   paramsToTestDict[param]+= value
-   for i in range(len(DOMinput_treatments)):
-    numruns = numruns + 1
-    # I want to use thevalues from the dict, for sensitivity, so i put all of the values back in the variable (not the fastest way)
-    # needs to be changed ifyou change the parameters to test
-    if(sensitivity):
-        bact_DOM_rel = paramsToTestDict['bact_DOM_rel']
-        DOM_EC = paramsToTestDict['DOM_EC']
-        kpriming= paramsToTestDict['kpriming']
-        KS= paramsToTestDict['KS']
-        KSfungi= paramsToTestDict['KSfungi']
-        KSbact= paramsToTestDict['KSbact']
-        kPOM_MAOM = paramsToTestDict['kPOM_MAOM'] 
-        MAOMpmaxrate = paramsToTestDict['MAOMpmaxrate']
-        MAOMsmaxrate = paramsToTestDict['MAOMsmaxrate']
-        MAOMmaxrate= paramsToTestDict['MAOMmaxrate']
-        MAOMratioSP = paramsToTestDict['MAOMratioSP'] 
-        maxEffectBactMAOM = paramsToTestDict['maxEffectBactMAOM'] 
-        maxEffectSA_MAOM = paramsToTestDict['maxEffectSA_MAOM']
-        maxEffectN_MAOM = paramsToTestDict['maxEffectN_MAOM']
-        MM_N_MAOM = paramsToTestDict['MM_N_MAOM']
-        MM_Bact_MAOM = paramsToTestDict['MM_Bact_MAOM']
-        MM_SA_MAOM = paramsToTestDict['MM_SA_MAOM']
-        MM_DOM_MAOM = paramsToTestDict['MM_DOM_MAOM']
-        Priming_max =  paramsToTestDict['Priming_max']
+    for paramChange in (paramChanges):  
+        #calculate by how much to change the parameter value, using a relative parameter change 
+        delta = paramsToTestDict[param]*paramChange/100  # I change 1 parameter value
+        #caculate new value of parameter
+        value = paramsToTestDict[param] + delta
+        paramsToTestDict[param]= value
+
+        for i in range(len(DOMinput_treatments)):
+            numruns = numruns + 1
+            # I want to use thevalues from the dict, for sensitivity, so i put all of the values back in the variable (not the fastest way)
+            # needs to be changed ifyou change the parameters to test
+            if(sensitivity):
+                bact_DOM_rel = paramsToTestDict['bact_DOM_rel']
+                DOM_EC = paramsToTestDict['DOM_EC']
+                kpriming= paramsToTestDict['kpriming']
+                KS= paramsToTestDict['KS']
+                KSfungi= paramsToTestDict['KSfungi']
+                KSbact= paramsToTestDict['KSbact']
+                kPOM_MAOM = paramsToTestDict['kPOM_MAOM'] 
+                MAOMpmaxrate = paramsToTestDict['MAOMpmaxrate']
+                MAOMsmaxrate = paramsToTestDict['MAOMsmaxrate']
+                MAOMmaxrate= paramsToTestDict['MAOMmaxrate']
+                MAOMratioSP = paramsToTestDict['MAOMratioSP'] 
+                maxEffectBactMAOM = paramsToTestDict['maxEffectBactMAOM'] 
+                maxEffectSA_MAOM = paramsToTestDict['maxEffectSA_MAOM']
+                maxEffectN_MAOM = paramsToTestDict['maxEffectN_MAOM']
+                MM_N_MAOM = paramsToTestDict['MM_N_MAOM']
+                MM_Bact_MAOM = paramsToTestDict['MM_Bact_MAOM']
+                MM_SA_MAOM = paramsToTestDict['MM_SA_MAOM']
+                MM_DOM_MAOM = paramsToTestDict['MM_DOM_MAOM']
+                Priming_max =  paramsToTestDict['Priming_max']
         
     
-    DOMinput = DOMinput_treatments[i]
-    CN_DOMinput = CN_DOMinput_treatments[i]
-    treatment = treatments[i]
+            DOMinput = DOMinput_treatments[i]
+            CN_DOMinput = CN_DOMinput_treatments[i]
+            treatment = treatments[i]
     
-    #initialization
-    #output objects initialized as empty
-    time_d=[]
-    outtreatment=[]
-    outMAOM=[]
-    outMAOMp=[]
-    outMAOMs=[]
-    outPOM=[]
-    outDOMadded=[]
-    outDOM=[]
-    outDOM_CN=[]
-    outbact_DOM=[]
-    outBact=[]
-    outFungi=[]
-    outRespSubstrate=[]
-    outRespSoil=[]
-    outRespSoilBaseline=[]
+            #initialization
+            #output objects initialized as empty
+            time_d=[]
+            outtreatment=[]
+            outMAOM=[]
+            outMAOMp=[]
+            outMAOMs=[]
+            outPOM=[]
+            outDOMadded=[]
+            outDOM=[]
+            outDOM_CN=[]
+            outbact_DOM=[]
+            outBact=[]
+            outFungi=[]
+            outRespSubstrate=[]
+            outRespSoil=[]
+            outRespSoilBaseline=[]
 
 #*************************************************************************
 # variables (what changes during run)
 
-    availability=np.zeros(3)
-    bact_total = 5 #total biomass of bacteria [gC/m3], final noadd average from Jílková2022
-    bact = bact_total * (1-bact_DOM_rel) #biomass of bacteria growing on POM and MAOM but not on DOM [gC/m3]
-    bact_sub = 0 # proportion of this bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
-    bact_DOM = bact_total*bact_DOM_rel #biomass of bacteria growing on DOM [gC/m3]
-    bact_DOM_sub = 0 # proportion of bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
-    CN_DOM=CN_DOMinput # set inital DOM CN equal to input
-    DOM=0  # DOM [gC/m3]
-    DOM_sub = 0 # relative substrate derived C in DOM /values 0 to 1/, portion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
-    DOM_N=DOM/CN_DOM
-    fungi=1 #biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
-    fungi_sub = 0 # proportion of fungal carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
-    MAOM=25368 #C in MAOM [gC/m3] average noAdd Jílková2022 
-    MAOM_sub = 0 # proportion of MAOM that is substrate derived in contrast to soil-derived / values 0 to 1/
-    MAOMunavail = (PSA[0]/sum(PSA))*MAOM #the portion of MAOM stored in the smallest pores is really unavailable
-    MAOMp = MAOM/(MAOMratioSP+1) #primary MAOM [gC/m3] initialised at the ratio of saturation
-    MAOMs = MAOM-MAOMp #secondary MAOM[gC/m3]
-    POM=13032  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
+            availability=np.zeros(3)
+            bact_total = 5 #total biomass of bacteria [gC/m3], final noadd average from Jílková2022
+            bact = bact_total * (1-bact_DOM_rel) #biomass of bacteria growing on POM and MAOM but not on DOM [gC/m3]
+            bact_sub = 0 # proportion of this bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
+            bact_DOM = bact_total*bact_DOM_rel #biomass of bacteria growing on DOM [gC/m3]
+            bact_DOM_sub = 0 # proportion of bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
+            CN_DOM=CN_DOMinput # set inital DOM CN equal to input
+            DOM=0  # DOM [gC/m3]
+            DOM_sub = 0 # relative substrate derived C in DOM /values 0 to 1/, portion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
+            DOM_N=DOM/CN_DOM
+            fungi=1 #biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
+            fungi_sub = 0 # proportion of fungal carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
+            MAOM=25368 #C in MAOM [gC/m3] average noAdd Jílková2022 
+            MAOM_sub = 0 # proportion of MAOM that is substrate derived in contrast to soil-derived / values 0 to 1/
+            MAOMunavail = (PSA[0]/sum(PSA))*MAOM #the portion of MAOM stored in the smallest pores is really unavailable
+            MAOMp = MAOM/(MAOMratioSP+1) #primary MAOM [gC/m3] initialised at the ratio of saturation
+            MAOMs = MAOM-MAOMp #secondary MAOM[gC/m3]
+            POM=13032  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
 
-    # function coreMAOM
-    for d in range(numDays):
-        outtreatment.append(treatment)
-        time_d.append(d)  #store days in an array for plotting
-        DOM_added = 0
-        #on day 0 and then every 14 days, add DOM
-        if d==0 or (d%14)==0: #where does this if end?
-            DOM_added=DOMinput #to keep track of the additions
-            DOM_sub_abs= DOM*DOM_sub #absolute substrate derived C in DOM [gC/m3]
-            DOM+=DOMinput #add input to the DOM carbon pool
-            DOM_sub_abs+=DOMinput #add all input as substrate derived C
-            if DOM>0:
-                DOM_sub= DOM_sub_abs/DOM #update relative substrate derived C in DOM
-            else:
-                DOM_sub=0
-            DOM_N+=DOMinput/CN_DOMinput #add equivalent amount of N to DON pool
-            if DOM_N>0:
-                CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
-            else:
-                CN_DOM=0
-        # saturation of MAOMs depends on amount of MAOMp so recalculated every day
-        maxMAOMs = MAOMp*MAOMratioSP  # maximum primary MAOM
-        # microbial growth on DOM and priming
-        
-        if CN_DOM>0: DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOM, respDOM, respDOM_sub, respPriming = mf.calcRhizosphere(Priming, POM, CN_POM, MAOM, CN_MAOM, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM)
-        #MAOM formation
-        if CN_DOM>0: DOM, DOM_N, CN_DOM, MAOMp, MAOMs =mf.calcMAOM(bact_DOM, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM)
-        
-        # baseline microbial growth on SOM (without substrate DOM additions)
-        availability=mf.calcAvailPot(PV, PW) #calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
-        #calculate maximal growth (gmax) for bacteria/fungi on POM/MAOM separately
-        gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
-        gmaxfPOM = mf.calcgmaxmod(CN_fungi, CN_POM, pCN, 0.0, 0, pH, 2)*GMAXfungi #gmax for fungi on POM
-        gmaxbMAOM = mf.calcgmaxmod(CN_bact, CN_MAOM, pCN, recMAOM, mRecBact, pH, 1)*GMAX #gmax for bact on MAOM
-        gmaxfMAOM = mf.calcgmaxmod(CN_fungi, CN_MAOM, pCN, recMAOM, mRecFungi, pH, 2)*GMAXfungi #gmax for fungi on MAOM
-        #calculate substrate derived C in bact and fungi
-        bact_sub_abs = bact * bact_sub  #absolute substrate derived C in bacteria [gC/m3]
-        fungi_sub_abs = fungi * fungi_sub  #absolute substrate derived C in fungi [gC/m3]
-        
-        #growth equations (dB/dt) for each functional group and for variations in C and N pools
-        #only feed on secondary MAOM
-        bactPOMgrowth = mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact*bact)
-        bactMAOMgrowth = mf.calcgrowth(bact, MAOMs, availability[0], gmaxbMAOM, KSbact*bact)
-        dbact = bactPOMgrowth + bactMAOMgrowth - DEATH*bact - rRESP*bact
-        bact_sub_abs += bactMAOMgrowth*MAOM_sub - DEATH*bact*bact_sub - rRESP*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
-        
-        fungiPOMgrowth = mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi*fungi)
-        fungiMAOMgrowth = mf.calcgrowth(fungi,MAOMs, availability[1], gmaxfMAOM, KSfungi*fungi)
-        dfungi =  fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi*fungi - rRESPfungi*fungi 
-        fungi_sub_abs+=fungiMAOMgrowth*MAOM_sub - DEATHfungi*fungi*fungi_sub - rRESPfungi*fungi*fungi_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
-        
-           
-        POM+=-mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)-mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi)  
-        DOM+=DEATH*bact+DEATHfungi*fungi #add dead bacteria and fungi to DOM
-        DOM_sub_abs+=DEATH*bact*bact_sub+DEATHfungi*fungi*fungi_sub #add corresponding part of substrate derived C to DOM 
-        DOM_sub= DOM_sub_abs/DOM #relative substrate derived C in DOM
-        #print(DOM, bact)
-        DOM_N+=DEATH*bact/CN_bact+DEATHfungi*fungi/CN_fungi
-        MAOM+=-mf.calcgrowth(bact, MAOM-MAOMunavail, availability[0], gmaxbMAOM, KSbact)-   \
-            mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi)
-        baselineRespBact=rRESP*bact
-        bact+=dbact
-        bact_sub= bact_sub_abs/bact #update relative substrate derived C in bacteria
-        baselineRespFungi=rRESPfungi*fungi
-        fungi+=dfungi
-        fungi_sub= fungi_sub_abs/fungi #update relative substrate derived C in fungi       
-    
-        #add up substrate derived respiration
-        respSubstrate = respDOM*respDOM_sub
-        #add up soil-derived respiration
-        baselineResp = baselineRespBact + baselineRespFungi
-        respSoil = baselineResp + respPriming
-        outDOMadded.append(DOM_added)
-        outMAOM.append(MAOM)
-        outMAOMp.append(MAOMp)
-        outMAOMs.append(MAOMs)
-        outPOM.append(POM)
-        outDOM.append(DOM)
-        outbact_DOM.append(bact_DOM)
-        outBact.append(bact)
-        outFungi.append(fungi)
-        outRespSubstrate.append(respSubstrate)
-        outRespSoilBaseline.append(baselineResp)
-        outRespSoil.append(respSoil)
-        if(sensitivity):
-# column_names=['Parameter','Parameter_change_relative', 	'value', 'treatment',	'day'	, 'DOMaddition','DOM',
-              # 'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMMp','MAOMs']
-# paramsToTestDict[param]
-            results_df.loc[len(results_df)] = [param, paramChange, value, treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOM,MAOMs
-                                               ]
+            # function coreMAOM
 
-#            results_df.to_csv(os.path.join(path, 'Sensitivity_df.csv'), mode='a', index=False,
-#                              header=False)
-#            results_df.drop(results_df.index,inplace=True)
-      
-# plt.plot(outMAOM)      
-# plt.plot(outDOM)
-# plt.plot(outPOM)
-# plt.plot(outbact_DOM)   
-# plt.plot(outResp)
-# plt.plot(outRespPriming)   
-# plt.plot(outBact_Baseline) 
-# plt.plot(outbact_DOM) 
-# plt.plot(outFungi_Baseline) 
+            for d in range(numDays):
+                outtreatment.append(treatment)
+                time_d.append(d)  #store days in an array for plotting
+                DOM_added = 0
+                #on day 0 and then every 14 days, add DOM
+                if d==0 or (d%14)==0: #where does this if end?
+                    DOM_added=DOMinput #to keep track of the additions
+                    DOM_sub_abs= DOM*DOM_sub #absolute substrate derived C in DOM [gC/m3]
+                    DOM+=DOMinput #add input to the DOM carbon pool
+                    DOM_sub_abs+=DOMinput #add all input as substrate derived C
+                    if DOM>0:
+                        DOM_sub= DOM_sub_abs/DOM #update relative substrate derived C in DOM
+                    else:
+                        DOM_sub=0
+                    DOM_N+=DOMinput/CN_DOMinput #add equivalent amount of N to DON pool
+                    if DOM_N>0:
+                        CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
+                    else:
+                        CN_DOM=0
+                # saturation of MAOMs depends on amount of MAOMp so recalculated every day
+                maxMAOMs = MAOMp*MAOMratioSP  # maximum primary MAOM
+                # microbial growth on DOM and priming
+                
+                if CN_DOM>0: DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOM, respDOM, respDOM_sub, respPriming = mf.calcRhizosphere(Priming, POM, CN_POM, MAOM, CN_MAOM, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM)
+                #MAOM formation
+                if CN_DOM>0: DOM, DOM_N, CN_DOM, MAOMp, MAOMs =mf.calcMAOM(bact_DOM, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM)
+                
+                # baseline microbial growth on SOM (without substrate DOM additions)
+                availability=mf.calcAvailPot(PV, PW) #calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
+                #calculate maximal growth (gmax) for bacteria/fungi on POM/MAOM separately
+                gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
+                gmaxfPOM = mf.calcgmaxmod(CN_fungi, CN_POM, pCN, 0.0, 0, pH, 2)*GMAXfungi #gmax for fungi on POM
+                gmaxbMAOM = mf.calcgmaxmod(CN_bact, CN_MAOM, pCN, recMAOM, mRecBact, pH, 1)*GMAX #gmax for bact on MAOM
+                gmaxfMAOM = mf.calcgmaxmod(CN_fungi, CN_MAOM, pCN, recMAOM, mRecFungi, pH, 2)*GMAXfungi #gmax for fungi on MAOM
+                #calculate substrate derived C in bact and fungi
+                bact_sub_abs = bact * bact_sub  #absolute substrate derived C in bacteria [gC/m3]
+                fungi_sub_abs = fungi * fungi_sub  #absolute substrate derived C in fungi [gC/m3]
+                
+                #growth equations (dB/dt) for each functional group and for variations in C and N pools
+                #only feed on secondary MAOM
+                bactPOMgrowth = mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact*bact)
+                bactMAOMgrowth = mf.calcgrowth(bact, MAOMs, availability[0], gmaxbMAOM, KSbact*bact)
+                dbact = bactPOMgrowth + bactMAOMgrowth - DEATH*bact - rRESP*bact
+                bact_sub_abs += bactMAOMgrowth*MAOM_sub - DEATH*bact*bact_sub - rRESP*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
+                
+                fungiPOMgrowth = mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi*fungi)
+                fungiMAOMgrowth = mf.calcgrowth(fungi,MAOMs, availability[1], gmaxfMAOM, KSfungi*fungi)
+                dfungi =  fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi*fungi - rRESPfungi*fungi 
+                fungi_sub_abs+=fungiMAOMgrowth*MAOM_sub - DEATHfungi*fungi*fungi_sub - rRESPfungi*fungi*fungi_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
+                
+                   
+                POM+=-mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)-mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi)  
+                DOM+=DEATH*bact+DEATHfungi*fungi #add dead bacteria and fungi to DOM
+                DOM_sub_abs+=DEATH*bact*bact_sub+DEATHfungi*fungi*fungi_sub #add corresponding part of substrate derived C to DOM 
+                DOM_sub= DOM_sub_abs/DOM #relative substrate derived C in DOM
+                #print(DOM, bact)
+                DOM_N+=DEATH*bact/CN_bact+DEATHfungi*fungi/CN_fungi
+                MAOM+=-mf.calcgrowth(bact, MAOM-MAOMunavail, availability[0], gmaxbMAOM, KSbact)-   \
+                    mf.calcgrowth(fungi,MAOM-MAOMunavail, availability[1], gmaxfMAOM, KSfungi)
+                baselineRespBact=rRESP*bact
+                bact+=dbact
+                bact_sub= bact_sub_abs/bact #update relative substrate derived C in bacteria
+                baselineRespFungi=rRESPfungi*fungi
+                fungi+=dfungi
+                fungi_sub= fungi_sub_abs/fungi #update relative substrate derived C in fungi       
+            
+                #add up substrate derived respiration
+                respSubstrate = respDOM*respDOM_sub
+                #add up soil-derived respiration
+                baselineResp = baselineRespBact + baselineRespFungi
+                respSoil = baselineResp + respPriming
+                outDOMadded.append(DOM_added)
+                outMAOM.append(MAOM)
+                outMAOMp.append(MAOMp)
+                outMAOMs.append(MAOMs)
+                outPOM.append(POM)
+                outDOM.append(DOM)
+                outbact_DOM.append(bact_DOM)
+                outBact.append(bact)
+                outFungi.append(fungi)
+                outRespSubstrate.append(respSubstrate)
+                outRespSoilBaseline.append(baselineResp)
+                outRespSoil.append(respSoil)
+                if(sensitivity):
+                    results_df.loc[len(results_df)] = [param, paramChange, value, treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOM,MAOMs]
+                # end of daily run of coreMAOM                               
+     
 
-    #change units to easily understandable for the plot
-    outDOMadded2 = np.divide(outDOMadded,0.8) #change units from gC/m3 µgC/g soil
-    outbact_DOM2=np.divide(outbact_DOM,0.8) #change units from gC/m3 µgC/g soil
-    outBact2=np.divide(outBact,0.8)
-    outFungi2=np.divide(outFungi,0.8)
-    outRespSubstrate2 =np.divide(outRespSubstrate, 0.8*24) #change units from gC/m3/day to µg CO2-C/g soil/h
-    outRespSoilBaseline2=np.divide(outRespSoilBaseline, 0.8*24)
-    outRespSoil2=np.divide(outRespSoil,0.8*24)
-    outDOM2 = np.divide(outDOM,0.8) #change units from gC/m3 µgC/g soil
-    outPOM2 = np.divide(outPOM,0.8*1000) #change units from gC/m3 mgC/g soil
-    outMAOM2 = np.divide(outMAOM,0.8*1000) #change units from gC/m3 mgC/g soil
-    outMAOMp2 = np.divide(outMAOMp,0.8*1000) #change units from gC/m3 mgC/g soil
-    outMAOMs2 = np.divide(outMAOMs,0.8*1000) #change units from gC/m3 mgC/g soil
+            #after each run
+            #change units to easily understandable for the plot
+            outDOMadded2 = np.divide(outDOMadded,0.8) #change units from gC/m3 µgC/g soil
+            outbact_DOM2=np.divide(outbact_DOM,0.8) #change units from gC/m3 µgC/g soil
+            outBact2=np.divide(outBact,0.8)
+            outFungi2=np.divide(outFungi,0.8)
+            outRespSubstrate2 =np.divide(outRespSubstrate, 0.8*24) #change units from gC/m3/day to µg CO2-C/g soil/h
+            outRespSoilBaseline2=np.divide(outRespSoilBaseline, 0.8*24)
+            outRespSoil2=np.divide(outRespSoil,0.8*24)
+            outDOM2 = np.divide(outDOM,0.8) #change units from gC/m3 µgC/g soil
+            outPOM2 = np.divide(outPOM,0.8*1000) #change units from gC/m3 mgC/g soil
+            outMAOM2 = np.divide(outMAOM,0.8*1000) #change units from gC/m3 mgC/g soil
+            outMAOMp2 = np.divide(outMAOMp,0.8*1000) #change units from gC/m3 mgC/g soil
+            outMAOMs2 = np.divide(outMAOMs,0.8*1000) #change units from gC/m3 mgC/g soil
     
-    #combine output arrays into a dataframe and save it to csv
-    df = pd.DataFrame({"treatment" : outtreatment,
-                       "DOMaddition" : outDOMadded2,
-                       "DOM" : outDOM2,
-                       "bact_DOM" : outbact_DOM2,
-                       "bact" : outBact2,
-                       "fungi" : outFungi2,
-                       "resp_substrate" : outRespSubstrate2,
-                       "resp_soil_baseline" : outRespSoilBaseline2,
-                       "resp_soil" : outRespSoil2,
-                       "POM" : outPOM2,
-                       "MAOM" : outMAOM2,
-                       "MAOMp" : outMAOMp2,
-                       "MAOMs" : outMAOMs2
-                       })
-    outDataframes.append(df)
-    if(sensitivity):
-       paramsToTestDict =copy.deepcopy(origValues)   # reset to original if we were doing sensitivity
-       results_df.to_csv(".\output\data\Sensitivity.csv", index=False)
-        
-    # def Dailyplot(outDOMadded, outDOM, outbact_DOM, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM): #plot in original KEYLINK units
-    #     # df2 = pd.DataFrame(df)
-    #     # x = []
-    #     # y = []
-    #     fig, ((p1, p2), (p3,p4),(p5,p6)) = plt.subplots(nrows=3,
-    #                                                                                       ncols=2,
-    #                                                                                       figsize=(10, 12))
-    #     fig.tight_layout(pad=2.0)
-    #     ps = (p1, p2, p3, p4, p5, p6)
-    #     # counter = count(0, 1)
-    #     # columns = list(df)
-    #     ps[0].set_title("DOM additions, gC m-3 day -1")
-    #     ps[1].set_title("DOM, gC m-3") 
-    #     ps[2].set_title("Microbial biomass, gC m-3")
-    #     ps[3].set_title("Respiration, gC m-3 day-1")
-    #     ps[4].set_title("POM, gC m-3")
-    #     ps[5].set_title("MAOM, gC m-3")
+            # #combine output arrays into a dataframe and save it to csv
+            # df = pd.DataFrame({"treatment" : outtreatment,
+            #                     "DOMaddition" : outDOMadded2,
+            #                     "DOM" : outDOM2,
+            #                     "bact_DOM" : outbact_DOM2,
+            #                     "bact" : outBact2,
+            #                     "fungi" : outFungi2,
+            #                     "resp_substrate" : outRespSubstrate2,
+            #                     "resp_soil_baseline" : outRespSoilBaseline2,
+            #                     "resp_soil" : outRespSoil2,
+            #                     "POM" : outPOM2,
+            #                     "MAOM" : outMAOM2,
+            #                     "MAOMp" : outMAOMp2,
+            #                     "MAOMs" : outMAOMs2
+            #                     })
+            # outDataframes.append(df)
     
-        
-    #plot in adjusted units matching the data
-    def Dailyplot2(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs): #plot in original KEYLINK units
-        # df2 = pd.DataFrame(df)
-        # x = []
-        # y = []
-        # fig, ((p1, p2), (p3,p4),(p5,p6)) = plt.subplots(nrows=3,
-        #                                                                                   ncols=2,
-        #    figsize=(5, 6))
-        fig, ((p1, p2, p3), (p4, p5, p6)) = plt.subplots(nrows=2, ncols=3,figsize=(12, 7))#was 10,12
-        fig.suptitle(treatments[i], size=16)
-        fig.tight_layout(pad=2.0)
-        ps = (p1, p2, p3, p4, p5, p6)
-        # counter = count(0, 1)
-        # columns = list(df)
-        ps[0].set_title("DOM additions, µgC g-1 soil")
-        ps[1].set_title("DOM, µgC g-1 soil") 
-        ps[2].set_title("Microbial biomass, µgC g-1 soil")
-        ps[3].set_title("Respiration, µg C-CO2 g-1 soil h-1")
-        ps[4].set_title("POM, mgC g-1 soil")
-        # ps[4].set_title("SOM, mgC g-1 soil")
-        ps[5].set_title("MAOM, mgC g-1 soil")
-        
-        p1.plot(time_d, outDOMadded2)
-        p2.plot(time_d, outDOM2)
-        p3.plot(time_d, outbact_DOM2, label="bacteria DOM feeding")
-        p3.plot(time_d, outBact2, label="bacteria")
-        p3.plot(time_d, outFungi2, label="fungi")
-        ps[2].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
-        p4.plot(time_d, outRespSubstrate2, label="substrate-derived")
-        p4.plot(time_d, outRespSoil2, label="soil-derived incl. priming")
-        p4.plot(time_d, outRespSoilBaseline2, label="soil-derived baseline")
-        ps[3].legend(loc=(0.25, 0.03), shadow=True) #loc='bottom right',
-        p5.plot(time_d, outPOM2, label="POM")
-        ps[4].legend(loc=(0.03, 0.03), shadow=True) #loc='upper left',
-        p6.plot(time_d, outMAOMp2, label="primary MAOM")
-        p6.plot(time_d, outMAOMs2, label="secondary MAOM")    
-        ps[5].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
-    
-    # Dailyplot(outDOMadded, outDOM, outbact_DOM, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
-    if Plotting == 0: #if you want plotting to be active
-        Dailyplot2(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
-        plt.savefig("output/figures/Dailyplot_" + treatments[i] +".png")
+            #plot in adjusted units matching the data
+            def Dailyplot2(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs): #plot in original KEYLINK units
+                fig, ((p1, p2, p3), (p4, p5, p6)) = plt.subplots(nrows=2, ncols=3,figsize=(12, 7))#was 10,12
+                fig.suptitle(treatments[i], size=16)
+                fig.tight_layout(pad=2.0)
+                ps = (p1, p2, p3, p4, p5, p6)
+                # counter = count(0, 1)
+                # columns = list(df)
+                ps[0].set_title("DOM additions, µgC g-1 soil")
+                ps[1].set_title("DOM, µgC g-1 soil") 
+                ps[2].set_title("Microbial biomass, µgC g-1 soil")
+                ps[3].set_title("Respiration, µg C-CO2 g-1 soil h-1")
+                ps[4].set_title("POM, mgC g-1 soil")
+                # ps[4].set_title("SOM, mgC g-1 soil")
+                ps[5].set_title("MAOM, mgC g-1 soil")
+                
+                p1.plot(time_d, outDOMadded2)
+                p2.plot(time_d, outDOM2)
+                p3.plot(time_d, outbact_DOM2, label="bacteria DOM feeding")
+                p3.plot(time_d, outBact2, label="bacteria")
+                p3.plot(time_d, outFungi2, label="fungi")
+                ps[2].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
+                p4.plot(time_d, outRespSubstrate2, label="substrate-derived")
+                p4.plot(time_d, outRespSoil2, label="soil-derived incl. priming")
+                p4.plot(time_d, outRespSoilBaseline2, label="soil-derived baseline")
+                ps[3].legend(loc=(0.25, 0.03), shadow=True) #loc='bottom right',
+                p5.plot(time_d, outPOM2, label="POM")
+                ps[4].legend(loc=(0.03, 0.03), shadow=True) #loc='upper left',
+                p6.plot(time_d, outMAOMp2, label="primary MAOM")
+                p6.plot(time_d, outMAOMs2, label="secondary MAOM")    
+                ps[5].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
 
-#after running the outermost loop (for three different treatments)
-#merge the three dataframes to create a data output containing all three treatments
-dfAll=pd.concat(outDataframes)
-dfAll.to_csv(".\output\data\Output.csv", index=False)
+            # Dailyplot(outDOMadded, outDOM, outbact_DOM, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
+            #after each run, make a plot
+            if Plotting == 0: #if you want plotting to be active
+                Dailyplot2(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
+                plt.savefig("output/figures/Dailyplot_" + treatments[i] +".png")
+   
+    
+        #after each three runs (for each of the three treatments), reset parameters to original, before next parameter value change
+        if(sensitivity): 
+            paramsToTestDict = copy.deepcopy(origValues)   # reset to original if we were doing sensitivity
+       
+#in the end, save sensitivity data output        
+if(sensitivity):
+    results_df.to_csv(".\output\data\Sensitivity.csv", index=False)
+        
+
+        
+
+
+# #after running the outermost loop (for three different treatments)
+# #merge the three dataframes to create a data output containing all three treatments
+# dfAll=pd.concat(outDataframes)
+# dfAll.to_csv(".\output\data\Output.csv", index=False)
 
