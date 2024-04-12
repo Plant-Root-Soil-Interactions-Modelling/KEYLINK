@@ -115,8 +115,9 @@ if sensitivity:
   numParams = len(paramsToTestValues)
   numValues = len(paramChanges)
   # numRuns_total= len(paramChanges) * len(paramsToTestValues)  # number of sensitivity runs
+  #todo, check how MAOM, MAOMs and MAOMp are calculate throughout the run
   column_names=['Parameter','Parameter_change', 	'value', 'treatment',	'day'	, 'DOMaddition','DOM',
-                'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMp','MAOMs']
+                'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOM','MAOMs']
 
   results_df = pd.DataFrame(columns=column_names)
   origValues=copy.deepcopy(paramsToTestDict)   # need deepcopy to not have a pointer but really full copy of values
@@ -232,6 +233,9 @@ for param in (paramsToTestNames):
                 # microbial growth on DOM and priming
                 
                 if CN_DOM>0: DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOM, respDOM, respDOM_sub, respPriming = mf.calcRhizosphere(Priming, POM, CN_POM, MAOM, CN_MAOM, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM)
+                else: 
+                    respDOM = 0
+                    respDOM_sub = 0
                 #MAOM formation
                 if CN_DOM>0: DOM, DOM_N, CN_DOM, MAOMp, MAOMs =mf.calcMAOM(bact_DOM, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM)
                 
@@ -294,7 +298,8 @@ for param in (paramsToTestNames):
                 if(sensitivity):
                     results_df.loc[len(results_df)] = [param, paramChange, value, treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOM,MAOMs]
                 # end of daily run of coreMAOM                               
-     
+       # column_names=['Parameter','Parameter_change', 	'value', 'treatment',	'day'	, 'DOMaddition','DOM',
+       #               'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMp','MAOMs']
 
             #after each run
             #change units to easily understandable for the plot
