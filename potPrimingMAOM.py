@@ -287,17 +287,17 @@ for param in (paramsToTestNames):
      # growth equations (dB/dt) for each functional group and for variations in C and N pools
                 #only feed on secondary MAOM
                 bactPOMgrowth = modtBact*mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact*bact)
-                bactMAOMgrowth = modtFungi*mf.calcgrowth(bact, MAOMs, availability[0], gmaxbMAOM, KSbact*bact)
+                bactMAOMgrowth = modtBact*mf.calcgrowth(bact, MAOMs, availability[0], gmaxbMAOM, KSbact*bact)
                 dbact = bactPOMgrowth + bactMAOMgrowth - DEATH*bact - rRESPbact*bact
                 bact_sub_abs += bactMAOMgrowth*MAOM_sub - DEATH*bact*bact_sub - rRESPbact*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
                 
-                fungiPOMgrowth = mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi*fungi)
-                fungiMAOMgrowth = mf.calcgrowth(fungi,MAOMs, availability[1], gmaxfMAOM, KSfungi*fungi)
+                fungiPOMgrowth = modtFungi*mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi*fungi)
+                fungiMAOMgrowth = modtFungi*mf.calcgrowth(fungi,MAOMs, availability[1], gmaxfMAOM, KSfungi*fungi)
                 dfungi =  fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi*fungi - rRESPfungi*fungi 
                 fungi_sub_abs+=fungiMAOMgrowth*MAOM_sub - DEATHfungi*fungi*fungi_sub - rRESPfungi*fungi*fungi_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
                 
                    
-                POM+=-mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact)-mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi)  
+                POM+=-bactPOMgrowth-fungiPOMgrowth  
                 DOM+=DEATH*bact+DEATHfungi*fungi #add dead bacteria and fungi to DOM
                 DOM_sub_abs+=DEATH*bact*bact_sub+DEATHfungi*fungi*fungi_sub #add corresponding part of substrate derived C to DOM 
                 DOM_sub= DOM_sub_abs/DOM #relative substrate derived C in DOM

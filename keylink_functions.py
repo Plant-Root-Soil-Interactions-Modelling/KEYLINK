@@ -492,14 +492,14 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact
     DOM_Nini=DOM/CN_DOM
     # calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id)
     #gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
-    gmaxmod= modtBact*calcgmaxmod(CN_bact, CN_DOM, pCN, 0, 0, pH, 1)*GMAX  #maximum growth for bacteria growing on DOM g/(g day)
+    gmaxmod= calcgmaxmod(CN_bact, CN_DOM, pCN, 0, 0, pH, 1)*GMAX  #maximum growth for bacteria growing on DOM g/(g day)
     
     #calculate substrate derived C in bact and DOM
     bact_DOM_sub_abs = bact_DOM * bact_DOM_sub  #absolute substrate derived C in bacteria [gC/m3]
     DOM_sub_abs = DOM * DOM_sub #absolute substrate derived C in DOM [gC/m3]
     #calculate growth
     # def calcgrowth(biomass, source, avail, gmaxmod, Ks):
-    growth= calcgrowth(bact_DOM, DOM, 1, gmaxmod, KS*bact_DOM) #Monod kinetic equation of growth  # g day net
+    growth= modtBact*calcgrowth(bact_DOM, DOM, 1, gmaxmod, KS*bact_DOM) #Monod kinetic equation of growth  # g day net
     BactTurnover=DEATH*bact_DOM
     respDOM=rRESP*bact_DOM #respiration of DOM-feeding bacteria without priming effect yet
     respDOM_sub_abs = respDOM*bact_DOM_sub #what part of this respiration is substrate derived
