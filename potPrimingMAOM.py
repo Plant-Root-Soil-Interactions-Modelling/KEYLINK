@@ -266,6 +266,8 @@ for param in (paramsToTestNames):
    # microbial growth on DOM and priming, only susing MAOMs
                 
                 if CN_DOM>0: DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming = mf.calcRhizosphere(Priming, POM, CN_POM, MAOMs, MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESPbact, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact)
+                if (MAOMs<0):
+                    print('mainLine270 DOM, bact, fungi, MAOMs', DOM,bact, fungi, MAOMs)
                 else: 
                     respDOM = 0
                     respDOM_sub = 0
@@ -283,12 +285,14 @@ for param in (paramsToTestNames):
                 #calculate substrate derived C in bact and fungi
                 bact_sub_abs = bact * bact_sub  #absolute substrate derived C in bacteria [gC/m3]
                 fungi_sub_abs = fungi * fungi_sub  #absolute substrate derived C in fungi [gC/m3]
-     
+                # if (bact<0):
+                #     print('mainLine290 DOM, bact, fungi', DOM,bact, fungi)
      # growth equations (dB/dt) for each functional group and for variations in C and N pools
                 #only feed on secondary MAOM
                 bactPOMgrowth = modtBact*mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact*bact)
                 bactMAOMgrowth = modtBact*mf.calcgrowth(bact, MAOMs, availability[0], gmaxbMAOM, KSbact*bact)
                 dbact = bactPOMgrowth + bactMAOMgrowth - DEATH*bact - rRESPbact*bact
+               
                 bact_sub_abs += bactMAOMgrowth*MAOM_sub - DEATH*bact*bact_sub - rRESPbact*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
                 
                 fungiPOMgrowth = modtFungi*mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi*fungi)
@@ -299,6 +303,8 @@ for param in (paramsToTestNames):
                    
                 POM+=-bactPOMgrowth-fungiPOMgrowth  
                 DOM+=DEATH*bact+DEATHfungi*fungi #add dead bacteria and fungi to DOM
+  #             if (DOM<0):
+  #                  print('mainLine303 DOM, bact, fungi', DOM,bact, fungi)
                 DOM_sub_abs+=DEATH*bact*bact_sub+DEATHfungi*fungi*fungi_sub #add corresponding part of substrate derived C to DOM 
                 DOM_sub= DOM_sub_abs/DOM #relative substrate derived C in DOM
                 #print(DOM, bact)

@@ -460,6 +460,7 @@ def calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, CN_bact,
     MAOMprimed=SOMprimed-POMprimed
     # split this between MAOMp and MAOMs
     MAOMsprimed=MAOMprimed*(kMAOMs_MAOMp/(kMAOMs_MAOMp+1))*(MAOMs/(MAOMp+MAOMs))
+    
     MAOMpprimed=MAOMprimed-MAOMsprimed
     #how much will this SOM decay provide N
     NavailPOM=POMprimed/CN_POM
@@ -477,19 +478,22 @@ def calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, CN_bact,
         #??at which point should we let the new RS bacteria biomass respire?
         DOM-=ExtraGrowth  # quick fix not to divide by zero I burnt off all C in DOM to get N?? is that okay?? this respiration unaccounted for yet
         POM-=POMprimed 
-        MAOMs-=MAOMprimed
+        MAOMs-=MAOMsprimed
+        MAOMp-=MAOMpprimed
         # print("how much was priming growth compared to priming potential growth and ExtraGrowth", PrimingGrowth, PotentialPrimingGrowth, ExtraGrowth) #let's see if we always realize all 
     # else:
 
         # print("priming should be active but is not", PrimingGrowth, ExtraGrowth)
                       
 
-    return DOM, POM, MAOMs, bact_DOM, respPrim
+    return DOM, POM, MAOMs, MAOMp,bact_DOM, respPrim
 
 def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact):  
 
     # rhizosphere bacterial gorwth on DOM
     DOM_Nini=DOM/CN_DOM
+    if(MAOMs<0):
+        print ('line 494 calcRhizosphere MAOMs=', MAOMs, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
     # calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id)
     #gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
     gmaxmod= calcgmaxmod(CN_bact, CN_DOM, pCN, 0, 0, pH, 1)*GMAX  #maximum growth for bacteria growing on DOM g/(g day)
@@ -514,14 +518,18 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact
     DOM_sub= DOM_sub_abs/DOM #recalculate relative substrate derived C in DOM
     bact_DOM_sub= bact_DOM_sub_abs/bact_DOM #recalculate relative substrate derived C in bacteria
     DOM_N=DOM_Nini-growth/CN_DOM+BactTurnover/CN_bact
+    if(DOM<0):
+        print ('line 520 calcRhizophere DOM=', DOM, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
     
     CN_DOM=DOM/DOM_N
     mCN = min(1, (CN_bact/CN_DOM)**pCN) #effect of CN
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
     if Priming==1 and mCN<1:  # if Priming is allowed and there was a shortage
         # print ('priming active')
-        DOM, POM, MAOMs, bact_DOM, respPriming = calcPriming(POM, CN_POM, MAOMs, MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
+        DOM, POM, MAOMs,MAOMp, bact_DOM, respPriming = calcPriming(POM, CN_POM, MAOMs, MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
     #calcPriming(MAOM,CNbact,fCN, DOM,CN_DOM, SOM, CN_SOM, gmaxmodCN, Nmin, Cbact_DOM, resp, primingIntensity)
+    if(MAOMs<0):
+        print ('line 530 calcRhizosphere MAOMs=', MAOMs, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
     else:
        respPriming=0 
     return  DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming
@@ -560,6 +568,8 @@ def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs
     if dMAOMs >0:
         
         DOM = DOM-dMAOMs
+        if(DOM<0):
+            print ('line 568 calcMaom DOM=', DOM)
         DOM_N-=dMAOMs/CN_DOM
         #CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
         CN_MAOMs=(MAOMs + dMAOMs)/(MAOMs/CN_MAOMs+dMAOMs/CN_DOM)
@@ -570,5 +580,6 @@ def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs
         DOM = DOM - dMAOMp
         DOM_N-=dMAOMp/CN_MAOMp
         CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
-        
+        if(DOM<0):
+            print ('line 579 calcMaom DOM=', DOM)
     return DOM, DOM_N, CN_DOM, MAOMp, MAOMs, CN_MAOMs   
