@@ -46,15 +46,27 @@ GMAXfungi=0.6  #maximal growth rate for fungi [gC/(gC day)], KEYLINK
 mRecBact=0.5  # how sensitive bact are to recalcitrance
 mRecFungi=0.5 #
 # resp=0.01 #respiration rate for bacteria growing on DOM / ??do we really need a different one? it was set to 0 decided to ditch it and just the next one
-rRESP=0.05  #respiration rate resp, [gC/(gC day)], KEYLINK
-rRESPfungi=0.03 #respiration rate resp, [gC/(gC day)], KEYLINK
+#=0.05  #respiration rate resp, [gC/(gC day)], KEYLINK
+#rRESPfungi=0.03 #respiration rate resp, [gC/(gC day)], KEYLINK
 DEATH=0.05 #death rate for bacteria [gC/(gC day)], KEYLINK
 DEATHfungi=0.02 #death rate for fungi [gC/(gC day)], KEYLINK
 pCN=0.8 #sensitivity to CN ratio of consumed substrate, values 0-1, taken from KEYLINK (value for bacteria)
 recMAOM= 0.9 #recalcitrance of MAOM, (recalcitrance of POM assumed 0)
-
+T_OPTbact= 25
+T_MINbact= 0
+T_MAXbact= 40
+T_OPTfungi= 25
+T_MINfungi= 0
+T_MAXfungi= 40
+RESPfungi=0.03
+Q10fungi=2.5
+RESPbact=0.05
+Q10bact=2.5
 # input parameters that do not change but vary for different treatments of experiment (and runs)
 CN_DOMinput=6  #CN of the daily input [unitless], Jílková2022: leachates 80, exudates 6
+temp = 21
+
+
 
 # input parameters that do not change (=measurable) and are not calibrated, just 'start situation"
 #Nmin=0.00000001 # was 0.0005 [gN/m3] was 0.00000001 not used in the model currently
@@ -246,10 +258,14 @@ for param in (paramsToTestNames):
                         CN_DOM=0
                 # saturation of MAOMs depends on amount of MAOMp so recalculated every day
                 maxMAOMs = MAOMp*MAOMratioSP  # maximum primary MAOM
-                
+   # find t modifier
+                modtBact = mf.calcmodt(temp, T_OPTbact, T_MINbact, T_MAXbact)
+                modtFungi = mf.calcmodt(temp, T_OPTfungi, T_MINfungi, T_MAXfungi)
+                rRESPbact=mf.calcresp(temp, T_OPTbact, RESPbact, Q10bact)
+                rRESPfungi=mf.calcresp(temp, T_OPTfungi, RESPfungi, Q10fungi)
    # microbial growth on DOM and priming, only susing MAOMs
                 
-                if CN_DOM>0: DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming = mf.calcRhizosphere(Priming, POM, CN_POM, MAOMs, MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
+                if CN_DOM>0: DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming = mf.calcRhizosphere(Priming, POM, CN_POM, MAOMs, MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESPbact, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact)
                 else: 
                     respDOM = 0
                     respDOM_sub = 0
@@ -267,13 +283,13 @@ for param in (paramsToTestNames):
                 #calculate substrate derived C in bact and fungi
                 bact_sub_abs = bact * bact_sub  #absolute substrate derived C in bacteria [gC/m3]
                 fungi_sub_abs = fungi * fungi_sub  #absolute substrate derived C in fungi [gC/m3]
-                
+     
      # growth equations (dB/dt) for each functional group and for variations in C and N pools
                 #only feed on secondary MAOM
-                bactPOMgrowth = mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact*bact)
-                bactMAOMgrowth = mf.calcgrowth(bact, MAOMs, availability[0], gmaxbMAOM, KSbact*bact)
-                dbact = bactPOMgrowth + bactMAOMgrowth - DEATH*bact - rRESP*bact
-                bact_sub_abs += bactMAOMgrowth*MAOM_sub - DEATH*bact*bact_sub - rRESP*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
+                bactPOMgrowth = modtBact*mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact*bact)
+                bactMAOMgrowth = modtFungi*mf.calcgrowth(bact, MAOMs, availability[0], gmaxbMAOM, KSbact*bact)
+                dbact = bactPOMgrowth + bactMAOMgrowth - DEATH*bact - rRESPbact*bact
+                bact_sub_abs += bactMAOMgrowth*MAOM_sub - DEATH*bact*bact_sub - rRESPbact*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
                 
                 fungiPOMgrowth = mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi*fungi)
                 fungiMAOMgrowth = mf.calcgrowth(fungi,MAOMs, availability[1], gmaxfMAOM, KSfungi*fungi)
@@ -288,7 +304,8 @@ for param in (paramsToTestNames):
                 #print(DOM, bact)
                 DOM_N+=DEATH*bact/CN_bact+DEATHfungi*fungi/CN_fungi
                 MAOMs+=-bactMAOMgrowth-fungiMAOMgrowth
-                baselineRespBact=rRESP*bact
+                
+                baselineRespBact=rRESPbact*bact
                 bact+=dbact
                 bact_sub= bact_sub_abs/bact #update relative substrate derived C in bacteria
                 baselineRespFungi=rRESPfungi*fungi
