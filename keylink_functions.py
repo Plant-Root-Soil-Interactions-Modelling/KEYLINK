@@ -443,7 +443,7 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
             eng, hvores, pred, litter, som, roots, co2,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
 
-def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_DOM, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM):
+def calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp):
      #how much nitrogen can be released from SOM with the energy in remaining DOM:
          
     DOM_E = ExtraGrowth/DOM_EC # total energy stored in the remaining DOM pool [J]
@@ -451,16 +451,19 @@ def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_DOM, CN_bact, DOM,CN_DOM, Extr
     #DecayCost = how much energy will be spent on SOM decay, definite integral of a decay price function [J]
           
     #how much of SOMdecayed will be from POM and how much from MAOM
-    SOMprimable=POM+MAOMs  # to be decided is MAOMp is primed or not
+    SOMprimable=POM+MAOMs+MAOMp  # MAOM p is primed, decision 13/8/2024
     SOMprimed=Priming_max*SOMprimable*(1-math.exp(-kpriming*DOM_E)) 
     #print('SOMprimed',SOMprimed, 'primable SOM',SOMprimable)
     
     #how much of SOMdecayed will be from POM and how much from MAOM? Assume according to difficulty = k and relative pool size            
     POMprimed=SOMprimed*(kPOM_MAOM/(kPOM_MAOM+1))*(POM/(SOMprimable))
     MAOMprimed=SOMprimed-POMprimed
+    # split this between MAOMp and MAOMs
+    MAOMsprimed=MAOMprimed*(kMAOMs_MAOMp/(kMAOMs_MAOMp+1))*(MAOMs/(MAOMp+MAOMs))
+    MAOMpprimed=MAOMprimed-MAOMsprimed
     #how much will this SOM decay provide N
     NavailPOM=POMprimed/CN_POM
-    NavailMAOM=MAOMprimed/CN_MAOM
+    NavailMAOM=MAOMpprimed/CN_MAOMp + MAOMsprimed/CN_MAOMs
     Navail=NavailPOM+NavailMAOM
     #how much bacterial biomass can be grown from this N
     PotentialPrimingGrowth = Navail*CN_bact
@@ -483,7 +486,7 @@ def calcPriming(POM, CN_POM, MAOMs, CN_MAOM, bact_DOM, CN_bact, DOM,CN_DOM, Extr
 
     return DOM, POM, MAOMs, bact_DOM, respPrim
 
-def calcRhizosphere (Priming, POM, CN_POM, MAOM, CN_MAOM, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM):  
+def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp):  
 
     # rhizosphere bacterial gorwth on DOM
     DOM_Nini=DOM/CN_DOM
@@ -517,14 +520,14 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOM, CN_MAOM, bact_DOM, bact_DOM_sub
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
     if Priming==1 and mCN<1:  # if Priming is allowed and there was a shortage
         # print ('priming active')
-        DOM, POM, MAOM, bact_DOM, respPriming = calcPriming(POM, CN_POM, MAOM, CN_MAOM, bact_DOM, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM)
+        DOM, POM, MAOMs, bact_DOM, respPriming = calcPriming(POM, CN_POM, MAOMs, MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
     #calcPriming(MAOM,CNbact,fCN, DOM,CN_DOM, SOM, CN_SOM, gmaxmodCN, Nmin, Cbact_DOM, resp, primingIntensity)
     else:
        respPriming=0 
-    return  DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOM, respDOM, respDOM_sub, respPriming
+    return  DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming
     
 
-def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM):
+def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM, CN_MAOMp, CN_MAOMs):
     # MAOM formation towards saturation
     # Flow from disolved (DOM) to MAOM (mineral associated) organic matter
     # depends on available DOM, bacteria, N availability (N in DOM) and the size of the rhizosphere/surface area
@@ -553,15 +556,19 @@ def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs
              
                  
     # if not yet saturated so there is still some potential rate of MAOM formation
+        #MAOMs takes over CN of DOM, so CN of MAOMs changes but that of DOM does not
     if dMAOMs >0:
-        MAOMs = MAOMs + dMAOMs
+        
         DOM = DOM-dMAOMs
         DOM_N-=dMAOMs/CN_DOM
-        CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
+        #CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
+        CN_MAOMs=(MAOMs + dMAOMs)/(MAOMs/CN_MAOMs+dMAOMs/CN_DOM)
+        MAOMs = MAOMs + dMAOMs
     if dMAOMp >0:
+        # MAOMp is--has high N, with constant CN ratio so changes the CN ration of the DOM
         MAOMp = MAOMp + dMAOMp
         DOM = DOM - dMAOMp
-        DOM_N-=dMAOMp/CN_DOM
+        DOM_N-=dMAOMp/CN_MAOMp
         CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
         
-    return DOM, DOM_N, CN_DOM, MAOMp, MAOMs   
+    return DOM, DOM_N, CN_DOM, MAOMp, MAOMs, CN_MAOMs   
