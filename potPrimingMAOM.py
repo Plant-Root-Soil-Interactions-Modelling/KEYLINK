@@ -212,6 +212,13 @@ for param in (paramsToTestNames):
             outRespSubstrate=[]
             outRespSoil=[]
             outRespSoilBaseline=[]
+            outBact_DOM_sub=[]
+            outBact_sub=[]
+            outFungi_sub=[]
+            outDOM_sub=[]
+            outPOM_sub=[]
+            outMAOMs_sub=[]
+            outMAOM_p_sub=[]
 
 #*************************************************************************
 # variables (what changes during run)
@@ -226,15 +233,18 @@ for param in (paramsToTestNames):
             DOM=0  # DOM [gC/m3]
             DOM_sub = 0 # relative substrate derived C in DOM /values 0 to 1/, portion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
             DOM_N=0 #set DOM N to zero
-            if DOM>0: DOM_N=DOM/CN_DOM #but if there is some initial DOM, calcula
+            if DOM>0: DOM_N=DOM/CN_DOM #but if there is some initial DOM, calculate it from CN_DOM
             fungi=1 #biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
             fungi_sub = 0 # proportion of fungal carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
             MAOM=25368 #C in MAOM [gC/m3] average noAdd Jílková2022 
-            MAOM_sub = 0 # proportion of MAOM that is substrate derived in contrast to soil-derived / values 0 to 1/
+            
             MAOMunavail = (PSA[0]/sum(PSA))*MAOM #the portion of MAOM stored in the smallest pores is really unavailable
             MAOMp = MAOM/(MAOMratioSP+1) #primary MAOM [gC/m3] initialised at the ratio of saturation
+            MAOMp_sub = 0 # proportion of MAOMp that is substrate derived in contrast to soil-derived / values 0 to 1/
             MAOMs = MAOM-MAOMp #secondary MAOM[gC/m3]
+            MAOMs_sub = 0 # proportion of MAOMs that is substrate derived in contrast to soil-derived / values 0 to 1/
             POM=13032  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
+            POM_sub = 0 # proportion of POM that is substrate derived in contrast to soil-derived / values 0 to 1/
 
    # function coreMAOM
 
@@ -242,8 +252,8 @@ for param in (paramsToTestNames):
                 outtreatment.append(treatment)
                 time_d.append(d)  #store days in an array for plotting
                 DOM_added = 0
-                if treatment == 'control':
-                    print('line 244 treatment',treatment,'day=', d, 'CN_DOM', CN_DOM, 'DOM', DOM, 'DOM_N', DOM_N)
+                # if treatment == 'control':
+                #     print('line 244 treatment',treatment,'day=', d, 'CN_DOM', CN_DOM, 'DOM', DOM, 'DOM_N', DOM_N)
    # on day 0 and then every 14 days, add DOM
                 if d==0 or (d%14)==0: #where does this if end?
                     DOM_added=DOMinput #to keep track of the additions
@@ -296,12 +306,12 @@ for param in (paramsToTestNames):
                 bactMAOMgrowth = modtBact*mf.calcgrowth(bact, MAOMs, availability[0], gmaxbMAOM, KSbact*bact)
                 dbact = bactPOMgrowth + bactMAOMgrowth - DEATH*bact - rRESPbact*bact
                
-                bact_sub_abs += bactMAOMgrowth*MAOM_sub - DEATH*bact*bact_sub - rRESPbact*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
+                bact_sub_abs += bactMAOMgrowth*MAOMs_sub - DEATH*bact*bact_sub - rRESPbact*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
                 
                 fungiPOMgrowth = modtFungi*mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi*fungi)
                 fungiMAOMgrowth = modtFungi*mf.calcgrowth(fungi,MAOMs, availability[1], gmaxfMAOM, KSfungi*fungi)
                 dfungi =  fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi*fungi - rRESPfungi*fungi 
-                fungi_sub_abs+=fungiMAOMgrowth*MAOM_sub - DEATHfungi*fungi*fungi_sub - rRESPfungi*fungi*fungi_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
+                fungi_sub_abs+=fungiMAOMgrowth*MAOMs_sub - DEATHfungi*fungi*fungi_sub - rRESPfungi*fungi*fungi_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
                 
                    
                 POM+=-bactPOMgrowth-fungiPOMgrowth  
@@ -343,10 +353,19 @@ for param in (paramsToTestNames):
                 outRespSubstrate.append(respSubstrate)
                 outRespSoilBaseline.append(baselineResp)
                 outRespSoil.append(respSoil)
+                #substrate-derived %
+                outBact_DOM_sub.append(bact_DOM_sub)
+                outBact_sub.append(bact_sub)
+                outFungi_sub.append(fungi_sub)
+                outDOM_sub.append(DOM_sub)
+                outPOM_sub.append(POM_sub)
+                outMAOMs_sub.append(MAOMs_sub)
+                outMAOM_p_sub.append(MAOMp_sub)
+                
                 if(sensitivity):
                     results_df.loc[len(results_df)] = [param, paramChange, value, treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOMs, MAOMp, MAOM]
                 if(sensitivity is False):
-                    results_df.loc[len(results_df)] = [treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOMs, MAOMp, MAOM]
+                    results_df.loc[len(results_df)] = [treatment, d, DOM_added,DOM, bact_DOM, bact, fungi, respSubstrate, baselineResp, respSoil, POM, MAOMs, MAOMp, MAOM]
        # end of daily run of coreMAOM                               
        # column_names=['Parameter','Parameter_change', 	'value', 'treatment',	'day'	, 'DOMaddition','DOM',
        #               'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMp','MAOMs']
@@ -383,9 +402,9 @@ for param in (paramsToTestNames):
             #                         "MAOMs" : outMAOMs2
             #                         })
             #     outDataframes.append(df)
-    
-            #plot in adjusted units matching the data
-            def Dailyplot2(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs): #plot in original KEYLINK units
+                
+                #plot in adjusted units matching the data
+            def Dailyplot1(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs): #plot in original KEYLINK units
                 fig, ((p1, p2, p3), (p4, p5, p6)) = plt.subplots(nrows=2, ncols=3,figsize=(12, 7))#was 10,12
                 fig.suptitle(treatments[i], size=16)
                 fig.tight_layout(pad=2.0)
@@ -415,12 +434,37 @@ for param in (paramsToTestNames):
                 p6.plot(time_d, outMAOMp2, label="primary MAOM")
                 p6.plot(time_d, outMAOMs2, label="secondary MAOM")    
                 ps[5].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
+            
+                #plot substrate-derived proportions
+            def Dailyplot2(outBact_DOM_sub, outBact_sub, outFungi_sub, outDOM_sub,outPOM_sub, outMAOMs_sub,  outMAOM_p_sub):
+                fig, (p1, p2) = plt.subplots(nrows=2, ncols=1,figsize=(4, 7))#was 10,12
+                fig.suptitle(treatments[i], size=16)
+                fig.tight_layout(pad=2.0)
+                ps = (p1, p2)
+                # counter = count(0, 1)
+                # columns = list(df)
+                ps[0].set_title("substrate derived % of microbial pools")
+                ps[1].set_title("substrate derived % of SOM pools") 
+                          
+                p1.plot(time_d, outBact_DOM_sub, label="bacteria DOM feeding")
+                p1.plot(time_d, outBact_sub, label="bacteria")
+                p1.plot(time_d, outFungi_sub, label="fungi")
+                ps[0].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
+                p2.plot(time_d, outPOM2, label="POM")
+                p2.plot(time_d, outMAOMp2, label="primary MAOM")
+                p2.plot(time_d, outMAOMs2, label="secondary MAOM")    
+                ps[1].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
+                
+
+ 
 
             # Dailyplot(outDOMadded, outDOM, outbact_DOM, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
             #after each run, make a plot
             if Plotting == 1: #if you want plotting to be active
-                Dailyplot2(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
-                plt.savefig("output/figures/Dailyplot_" + treatments[i] +".png")
+                Dailyplot1(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
+                plt.savefig("output/figures/Dailyplot1_" + treatments[i] +".png")
+                Dailyplot2(outBact_DOM_sub, outBact_sub, outFungi_sub, outDOM_sub,outPOM_sub, outMAOMs_sub,  outMAOM_p_sub)
+                plt.savefig("output/figures/Dailyplot2_" + treatments[i] +".png")
    
     
         #after each three runs (for each of the three treatments), reset parameters to original, before next parameter value change
