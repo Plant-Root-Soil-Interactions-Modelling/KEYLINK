@@ -18,7 +18,7 @@ outDataframes=[]
 
 # the ones we want to calibrate
 bact_DOM_rel = 0.2 #proportion of bacteria that have access to feeding on DOM (e.g. that are present in rhizophere)
-DOM_EC = 5 # DOM energetic quality = energy stored per one gram of DOM [J/g]
+DOM_EC = 2 # DOM energetic quality = energy stored per one gram of DOM [J/g] was 5
 kpriming=0.3 #decay rate of negative exponential decay curve of decay price
 KS=5  # C content required to get half the maximal growth of bacteria when decaying DOM [gC/m3]
 KSfungi=20000  # C content required to get half the maximal growth of fungi when decaying SOM [gC/m3]
@@ -131,7 +131,7 @@ if sensitivity:
   # numRuns_total= len(paramChanges) * len(paramsToTestValues)  # number of sensitivity runs
   #todo, check how MAOM, MAOMs and MAOMp are calculate throughout the run
   column_names=['Parameter','Parameter_change', 	'value', 'treatment',	'day'	, 'DOMaddition','DOM',
-                'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOM','MAOMs']
+                'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMs', 'MAOMp', 'MAOM']
 
   results_df = pd.DataFrame(columns=column_names)
   origValues=copy.deepcopy(paramsToTestDict)   # need deepcopy to not have a pointer but really full copy of values
@@ -148,7 +148,7 @@ else:
   # numRuns_total= len(paramChanges) * len(paramsToTestValues)  # number of sensitivity runs
   #todo, check how MAOM, MAOMs and MAOMp are calculate throughout the run
   column_names=['treatment',	'day', 'DOMaddition','DOM',
-                'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOM','MAOMs']
+                'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMs', 'MAOMp', 'MAOM']
 
   results_df = pd.DataFrame(columns=column_names)
   #origValues=copy.deepcopy(paramsToTestDict)   # need deepcopy to not have a pointer but really full copy of values
@@ -222,10 +222,11 @@ for param in (paramsToTestNames):
             bact_sub = 0 # proportion of this bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
             bact_DOM = bact_total*bact_DOM_rel #biomass of bacteria growing on DOM [gC/m3]
             bact_DOM_sub = 0 # proportion of bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
-            CN_DOM=CN_DOMinput # set inital DOM CN equal to input
+            CN_DOM=0 # set inital DOM CN equal to input was CN_DOM=CN_DOMinput 
             DOM=0  # DOM [gC/m3]
             DOM_sub = 0 # relative substrate derived C in DOM /values 0 to 1/, portion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
-            DOM_N=DOM/CN_DOM
+            DOM_N=0 #set DOM N to zero
+            if DOM>0: DOM_N=DOM/CN_DOM #but if there is some initial DOM, calcula
             fungi=1 #biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
             fungi_sub = 0 # proportion of fungal carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
             MAOM=25368 #C in MAOM [gC/m3] average noAdd Jílková2022 
@@ -241,6 +242,8 @@ for param in (paramsToTestNames):
                 outtreatment.append(treatment)
                 time_d.append(d)  #store days in an array for plotting
                 DOM_added = 0
+                if treatment == 'control':
+                    print('line 244 treatment',treatment,'day=', d, 'CN_DOM', CN_DOM, 'DOM', DOM, 'DOM_N', DOM_N)
    # on day 0 and then every 14 days, add DOM
                 if d==0 or (d%14)==0: #where does this if end?
                     DOM_added=DOMinput #to keep track of the additions
@@ -254,8 +257,8 @@ for param in (paramsToTestNames):
                     DOM_N+=DOMinput/CN_DOMinput #add equivalent amount of N to DON pool
                     if DOM_N>0:
                         CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
-                    else:
-                        CN_DOM=0
+                    # else:
+                    #     CN_DOM=0
                 # saturation of MAOMs depends on amount of MAOMp so recalculated every day
                 maxMAOMs = MAOMp*MAOMratioSP  # maximum primary MAOM
    # find t modifier
@@ -309,6 +312,7 @@ for param in (paramsToTestNames):
                 DOM_sub= DOM_sub_abs/DOM #relative substrate derived C in DOM
                 #print(DOM, bact)
                 DOM_N+=DEATH*bact/CN_bact+DEATHfungi*fungi/CN_fungi
+                CN_DOM=DOM/DOM_N #recalculate CN DOM
                 MAOMs+=-bactMAOMgrowth-fungiMAOMgrowth
                 
                 baselineRespBact=rRESPbact*bact
@@ -317,12 +321,16 @@ for param in (paramsToTestNames):
                 baselineRespFungi=rRESPfungi*fungi
                 fungi+=dfungi
                 fungi_sub= fungi_sub_abs/fungi #update relative substrate derived C in fungi       
-            
+    
+       # add up MAOM
+                MAOM = MAOMp + MAOMs
        # add up substrate derived respiration
                 respSubstrate = respDOM*respDOM_sub
        # add up soil-derived respiration
                 baselineResp = baselineRespBact + baselineRespFungi
                 respSoil = baselineResp + respPriming
+                
+                
                 outDOMadded.append(DOM_added)
                 outMAOM.append(MAOM)
                 outMAOMp.append(MAOMp)
@@ -336,9 +344,9 @@ for param in (paramsToTestNames):
                 outRespSoilBaseline.append(baselineResp)
                 outRespSoil.append(respSoil)
                 if(sensitivity):
-                    results_df.loc[len(results_df)] = [param, paramChange, value, treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOM,MAOMs]
+                    results_df.loc[len(results_df)] = [param, paramChange, value, treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOMs, MAOMp, MAOM]
                 if(sensitivity is False):
-                    results_df.loc[len(results_df)] = [treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOM,MAOMs]
+                    results_df.loc[len(results_df)] = [treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOMs, MAOMp, MAOM]
        # end of daily run of coreMAOM                               
        # column_names=['Parameter','Parameter_change', 	'value', 'treatment',	'day'	, 'DOMaddition','DOM',
        #               'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMp','MAOMs']

@@ -477,7 +477,7 @@ def calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, CN_bact,
     #how much will this SOM decay provide N
     if (SOMprimable<SOMprimed):
         print('SOMprimed, SOMprimable',SOMprimed, SOMprimable)
-    print('priming467 SOMprimed, POMprimed, POM, MAOMprimed, MAMp+MAOMs',  SOMprimed,POMprimed,POM, MAOMprimed, MAOMp+MAOMs) 
+    print('priming467 SOMprimed',  SOMprimed) 
     NavailPOM=POMprimed/CN_POM
     NavailMAOM=MAOMpprimed/CN_MAOMp + MAOMsprimed/CN_MAOMs
     Navail=NavailPOM+NavailMAOM
@@ -507,8 +507,8 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact
 
     # rhizosphere bacterial gorwth on DOM
     DOM_Nini=DOM/CN_DOM
-    if(MAOMs<0):
-        print ('line 494 calcRhizosphere MAOMs=', MAOMs, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
+    
+    print ('line 511 calcRhizosphere', 'bact_DOM=', bact_DOM, 'CN_DOM', CN_DOM)
     # calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id)
     #gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
     gmaxmod= calcgmaxmod(CN_bact, CN_DOM, pCN, 0, 0, pH, 1)*GMAX  #maximum growth for bacteria growing on DOM g/(g day)
@@ -533,8 +533,8 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact
     DOM_sub= DOM_sub_abs/DOM #recalculate relative substrate derived C in DOM
     bact_DOM_sub= bact_DOM_sub_abs/bact_DOM #recalculate relative substrate derived C in bacteria
     DOM_N=DOM_Nini-growth/CN_DOM+BactTurnover/CN_bact
-    if(DOM<0):
-        print ('line 520 calcRhizophere DOM=', DOM, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
+    # if(DOM<0):
+    #     print ('line 520 calcRhizophere DOM=', DOM, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
     
     CN_DOM=DOM/DOM_N
     mCN = min(1, (CN_bact/CN_DOM)**pCN) #effect of CN
@@ -543,8 +543,8 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact
         # print ('priming active')
         DOM, POM, MAOMs,MAOMp, bact_DOM, respPriming = calcPriming(POM, CN_POM, MAOMs, MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
     #calcPriming(MAOM,CNbact,fCN, DOM,CN_DOM, SOM, CN_SOM, gmaxmodCN, Nmin, Cbact_DOM, resp, primingIntensity)
-    if(MAOMs<0):
-        print ('line 530 calcRhizosphere MAOMs=', MAOMs, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
+    # if(MAOMs<0):
+    #     print ('line 530 calcRhizosphere MAOMs=', MAOMs, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
     else:
        respPriming=0 
     return  DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming
@@ -581,9 +581,8 @@ def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs
     # if not yet saturated so there is still some potential rate of MAOM formation
         #MAOMs takes over CN of DOM, so CN of MAOMs changes but that of DOM does not
     if dMAOMs >0:
-        if(DOM<dMAOMs):
-            print ('line 572 calcMaom DOM,MAOMs, dMAOMs, fSatMAOMs, maxMAOMs, MAOMp =', DOM,MAOMs, dMAOMs, fSatMAOMs, maxMAOMs,MAOMp)
-        
+    #     if(DOM<dMAOMs):
+    #         print ('line 572 calcMaom DOM,MAOMs, dMAOMs, fSatMAOMs, maxMAOMs, MAOMp =', DOM,MAOMs, dMAOMs, fSatMAOMs, maxMAOMs,MAOMp)
         DOM = DOM-dMAOMs
         DOM_N-=dMAOMs/CN_DOM
         #CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
