@@ -147,7 +147,7 @@ else:
 
   # numRuns_total= len(paramChanges) * len(paramsToTestValues)  # number of sensitivity runs
   #todo, check how MAOM, MAOMs and MAOMp are calculate throughout the run
-  column_names=['Parameter','Parameter_change', 	'value', 'treatment',	'day'	, 'DOMaddition','DOM',
+  column_names=['treatment',	'day', 'DOMaddition','DOM',
                 'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOM','MAOMs']
 
   results_df = pd.DataFrame(columns=column_names)
@@ -337,6 +337,8 @@ for param in (paramsToTestNames):
                 outRespSoil.append(respSoil)
                 if(sensitivity):
                     results_df.loc[len(results_df)] = [param, paramChange, value, treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOM,MAOMs]
+                if(sensitivity is False):
+                    results_df.loc[len(results_df)] = [treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOM,MAOMs]
        # end of daily run of coreMAOM                               
        # column_names=['Parameter','Parameter_change', 	'value', 'treatment',	'day'	, 'DOMaddition','DOM',
        #               'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMp','MAOMs']
@@ -356,22 +358,23 @@ for param in (paramsToTestNames):
             outMAOMp2 = np.divide(outMAOMp,0.8*1000) #change units from gC/m3 mgC/g soil
             outMAOMs2 = np.divide(outMAOMs,0.8*1000) #change units from gC/m3 mgC/g soil
     
-            # #combine output arrays into a dataframe and save it to csv
-            # df = pd.DataFrame({"treatment" : outtreatment,
-            #                     "DOMaddition" : outDOMadded2,
-            #                     "DOM" : outDOM2,
-            #                     "bact_DOM" : outbact_DOM2,
-            #                     "bact" : outBact2,
-            #                     "fungi" : outFungi2,
-            #                     "resp_substrate" : outRespSubstrate2,
-            #                     "resp_soil_baseline" : outRespSoilBaseline2,
-            #                     "resp_soil" : outRespSoil2,
-            #                     "POM" : outPOM2,
-            #                     "MAOM" : outMAOM2,
-            #                     "MAOMp" : outMAOMp2,
-            #                     "MAOMs" : outMAOMs2
-            #                     })
-            # outDataframes.append(df)
+            # if sensitivity is False :
+            #     #combine output arrays into a dataframe and save it to csv
+            #     df = pd.DataFrame({"treatment" : outtreatment,
+            #                         "DOMaddition" : outDOMadded2,
+            #                         "DOM" : outDOM2,
+            #                         "bact_DOM" : outbact_DOM2,
+            #                         "bact" : outBact2,
+            #                         "fungi" : outFungi2,
+            #                         "resp_substrate" : outRespSubstrate2,
+            #                         "resp_soil_baseline" : outRespSoilBaseline2,
+            #                         "resp_soil" : outRespSoil2,
+            #                         "POM" : outPOM2,
+            #                         "MAOM" : outMAOM2,
+            #                         "MAOMp" : outMAOMp2,
+            #                         "MAOMs" : outMAOMs2
+            #                         })
+            #     outDataframes.append(df)
     
             #plot in adjusted units matching the data
             def Dailyplot2(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs): #plot in original KEYLINK units
@@ -419,13 +422,12 @@ for param in (paramsToTestNames):
 #in the end, save sensitivity data output        
 if(sensitivity):
     results_df.to_csv(".\output\data\Sensitivity.csv", index=False)
-        
+            
 
-        
-
-
-# #after running the outermost loop (for three different treatments)
-# #merge the three dataframes to create a data output containing all three treatments
-# dfAll=pd.concat(outDataframes)
-# dfAll.to_csv(".\output\data\Output.csv", index=False)
+if sensitivity is False :
+    #after running the outermost loop (for three different treatments)
+    #merge the three dataframes to create a data output containing all three treatments
+    # dfAll=pd.concat(outDataframes)
+    # dfAll.to_csv(".\output\data\Output.csv", index=False)
+    results_df.to_csv(".\output\data\Output.csv", index=False)
 
