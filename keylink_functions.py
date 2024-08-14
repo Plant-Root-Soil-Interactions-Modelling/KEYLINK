@@ -456,13 +456,28 @@ def calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, CN_bact,
     #print('SOMprimed',SOMprimed, 'primable SOM',SOMprimable)
     
     #how much of SOMdecayed will be from POM and how much from MAOM? Assume according to difficulty = k and relative pool size            
-    POMprimed=SOMprimed*(kPOM_MAOM/(kPOM_MAOM+1))*(POM/(SOMprimable))
-    MAOMprimed=SOMprimed-POMprimed
-    # split this between MAOMp and MAOMs
-    MAOMsprimed=MAOMprimed*(kMAOMs_MAOMp/(kMAOMs_MAOMp+1))*(MAOMs/(MAOMp+MAOMs))
+    factor=1/(1+(kPOM_MAOM*POM/(MAOMs+MAOMp)))
     
-    MAOMpprimed=MAOMprimed-MAOMsprimed
+    # can go below 0 by ecaying too much of the favourite
+    if((1-factor)*SOMprimed<POM):
+        POMprimed=(1-factor)*SOMprimed
+        MAOMprimed=factor*SOMprimed
+    else:
+        POMprimed=(POM/SOMprimable)*SOMprimed
+        MAOMprimed=((MAOMp+MAOMs)/SOMprimable)*SOMprimed
+    # split the primed MAOM between MAOMp and MAOMs
+    MAOMfactor=1/(1+(kMAOMs_MAOMp*MAOMs/MAOMp))
+    
+    if (1-MAOMfactor)*MAOMprimed<MAOMs:
+        MAOMsprimed=(1-MAOMfactor)*MAOMprimed
+        MAOMpprimed=MAOMfactor*MAOMprimed
+    else:
+        MAOMsprimed=MAOMprimed*(MAOMs/(MAOMp+MAOMs))
+        MAOMpprimed=MAOMprimed*(MAOMp/(MAOMp+MAOMs))
     #how much will this SOM decay provide N
+    if (SOMprimable<SOMprimed):
+        print('SOMprimed, SOMprimable',SOMprimed, SOMprimable)
+    print('priming467 SOMprimed, POMprimed, POM, MAOMprimed, MAMp+MAOMs',  SOMprimed,POMprimed,POM, MAOMprimed, MAOMp+MAOMs) 
     NavailPOM=POMprimed/CN_POM
     NavailMAOM=MAOMpprimed/CN_MAOMp + MAOMsprimed/CN_MAOMs
     Navail=NavailPOM+NavailMAOM
@@ -566,10 +581,10 @@ def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs
     # if not yet saturated so there is still some potential rate of MAOM formation
         #MAOMs takes over CN of DOM, so CN of MAOMs changes but that of DOM does not
     if dMAOMs >0:
+        if(DOM<dMAOMs):
+            print ('line 572 calcMaom DOM,MAOMs, dMAOMs, fSatMAOMs, maxMAOMs, MAOMp =', DOM,MAOMs, dMAOMs, fSatMAOMs, maxMAOMs,MAOMp)
         
         DOM = DOM-dMAOMs
-        if(DOM<0):
-            print ('line 568 calcMaom DOM=', DOM)
         DOM_N-=dMAOMs/CN_DOM
         #CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
         CN_MAOMs=(MAOMs + dMAOMs)/(MAOMs/CN_MAOMs+dMAOMs/CN_DOM)
