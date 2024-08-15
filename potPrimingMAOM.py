@@ -40,7 +40,6 @@ Priming_max=10 #maximum decay price [J/gC]
 
 
 # the ones we use from other calibration
-
 GMAX=1.24 #maximal growth rate for bacteria [gC/(gC day)], KEYLINK
 GMAXfungi=0.6  #maximal growth rate for fungi [gC/(gC day)], KEYLINK
 mRecBact=0.5  # how sensitive bact are to recalcitrance
@@ -63,7 +62,9 @@ Q10fungi=2.5
 RESPbact=0.05
 Q10bact=2.5
 
-# input parameters that do not change but vary for different treatments of experiment (and runs)
+# input parameters that do not change (=measurable) and are not calibrated, just 'start situation"
+
+#those which will change for different runs
 DOMinput=10 #DOM added in each addition [gC/m3], Jílková2022
 CN_DOMinput=6  #CN of the daily input [unitless], Jílková2022: leachates 80, exudates 6
 CN_MAOMp=15 #☼ assumed constant
@@ -71,12 +72,15 @@ CN_POM=24 #CN of SOM, Jílková2022
 pH=4.1 #Jílková2022
 temp = 21
 
-# input parameters that do not change (=measurable) and are not calibrated, just 'start situation"
-#first those that will be the same for all 16 runs
+#those different for Jílková 2022 and experiment 2024
+numDays=150 #number of days of incubation experiment/how long to run the model, 150 in Jílková2022
+
+#those that will be the same for all 16 runs
 BD=800   # bulk density [kg/m³]
 claySA=800000 # surface area of clay [m²/kg] was 8000000 cm²/g
 CN_bact=4 #CN of bacteria, from KEYLINK, in Jílková2022 initial CN of microbial biomass is 10
 CN_fungi=8 #KEYLINK
+d_freq = 21 #how often is substrate added, every x days, is 14 for Jílková2022, but 21 for experiment 2024
 fClay=0.17 #weight fraction [g/g], Jílková2022
 fSilt=0.24 #weight fraction [g/g], Jílková2022
 maxMAOM = 0.86 * (fClay + fSilt)*100 * BD #[gC/m3] maximum MAOM, 28208 for Jílková et al. 2022 Georgiou et al. 2022: 86 ± 9 and 48 ± 6 mg C/g silt+clay mineral for HM and LM,
@@ -91,15 +95,13 @@ PSA=mf.calcPoreSurfaceArea(PV, PRadius, PSA) #pore surface area for each pore si
 PW=np.array([45/2,37/2,37/2,200/2,6/2]) #pore water volume, assume all pores half filled , but water is in m³ while volume was in l
 RootHyphaeSurface= 10000   # surface area of all roots/hyphae [m2/m3] ??unit correct / look up roots surface area equivalent to that amount of DOM input
 fractionSA = RootHyphaeSurface/maxSurfaceArea #used in calcMAOM/ fraction of mineral surface area occupied by roots/hyphae
-numDays=150 #number of days of incubation experiment/how long to run the model, Jílková2022
+
 
 Priming=1 #flag to enable Priming effect
 Plotting=1 # flag 1 to enable making of plots, so that this can be turned off during sensitivity analysis etc.
 
 numruns=0
-# sensitivityAnalyses==False
-# if sensitivityAnalyses==False
-# else # sensitivity Analysis
+
 # #run the daily calculations
 
 #perform three experimental runs, one for each of the three treatments
@@ -218,7 +220,7 @@ for param in (paramsToTestNames):
             outResp_sub=[]
 
 #*************************************************************************
-# variables (what changes during run)
+# initializing variables (what changes during run)
 
    #variables that will be initialized differently for different runs
             bact_total = 5 #total biomass of bacteria [gC/m3], final noadd average from Jílková2022
@@ -261,7 +263,7 @@ for param in (paramsToTestNames):
                 # if treatment == 'control':
                 #     print('line 244 treatment',treatment,'day=', d, 'CN_DOM', CN_DOM, 'DOM', DOM, 'DOM_N', DOM_N)
    # on day 0 and then every 14 days, add DOM
-                if d==0 or (d%14)==0: #where does this if end?
+                if d==0 or (d%d_freq)==0: #where does this if end?
                     DOM_added=DOMinput #to keep track of the additions
                     DOM_sub_abs= DOM*DOM_sub #absolute substrate derived C in DOM [gC/m3]
                     DOM+=DOMinput #add input to the DOM carbon pool
@@ -376,9 +378,7 @@ for param in (paramsToTestNames):
        # add up soil-derived respiration
                 respSoil = resp - respSubstrate
                 
-                print(treatment, d, 'baselineRespBact', baselineRespBact, 'baseFungi', baselineRespFungi, 'respDOM', respDOM, 'respPriming', respPriming)
-                
-                
+                #save data for Plotting               
                 outDOMadded.append(DOM_added)
                 outMAOM.append(MAOM)
                 outMAOMp.append(MAOMp)
@@ -406,9 +406,7 @@ for param in (paramsToTestNames):
                 if(sensitivity is False):
                     results_df.loc[len(results_df)] = [treatment, d, DOM_added,DOM, bact_DOM, bact, fungi, respSubstrate, baselineResp, respSoil, POM, MAOMs, MAOMp, MAOM]
        # end of daily run of coreMAOM                               
-       # column_names=['Parameter','Parameter_change', 	'value', 'treatment',	'day'	, 'DOMaddition','DOM',
-       #               'bact_DOM','bact', 'fungi','resp_substrate', 'resp_soil_baseline', 'resp_soil','POM', 'MAOMp','MAOMs']
-
+     
             #after each run
             #change units to easily understandable for the plot
             outDOMadded2 = np.divide(outDOMadded,0.8) #change units from gC/m3 µgC/g soil
@@ -423,26 +421,8 @@ for param in (paramsToTestNames):
             outMAOM2 = np.divide(outMAOM,0.8*1000) #change units from gC/m3 mgC/g soil
             outMAOMp2 = np.divide(outMAOMp,0.8*1000) #change units from gC/m3 mgC/g soil
             outMAOMs2 = np.divide(outMAOMs,0.8*1000) #change units from gC/m3 mgC/g soil
-    
-            # if sensitivity is False :
-            #     #combine output arrays into a dataframe and save it to csv
-            #     df = pd.DataFrame({"treatment" : outtreatment,
-            #                         "DOMaddition" : outDOMadded2,
-            #                         "DOM" : outDOM2,
-            #                         "bact_DOM" : outbact_DOM2,
-            #                         "bact" : outBact2,
-            #                         "fungi" : outFungi2,
-            #                         "resp_substrate" : outRespSubstrate2,
-            #                         "resp_soil_baseline" : outRespSoilBaseline2,
-            #                         "resp_soil" : outRespSoil2,
-            #                         "POM" : outPOM2,
-            #                         "MAOM" : outMAOM2,
-            #                         "MAOMp" : outMAOMp2,
-            #                         "MAOMs" : outMAOMs2
-            #                         })
-            #     outDataframes.append(df)
                 
-                #plot in adjusted units matching the data
+    #plot in adjusted units matching the data
             def Dailyplot1(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs): #plot in original KEYLINK units
                 fig, ((p1, p2, p3), (p4, p5, p6)) = plt.subplots(nrows=2, ncols=3,figsize=(12, 7))#was 10,12
                 fig.suptitle(treatments[i], size=16)
@@ -498,10 +478,7 @@ for param in (paramsToTestNames):
                 ps[1].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
                 
                 p3.plot(time_d, outResp_sub, label="total respiration")
-  
-
-
- 
+   
 
             # Dailyplot(outDOMadded, outDOM, outbact_DOM, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOM)
             #after each run, make a plot
