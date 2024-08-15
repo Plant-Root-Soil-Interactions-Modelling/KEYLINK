@@ -262,8 +262,10 @@ for param in (paramsToTestNames):
                     DOM_sub_abs+=DOMinput #add all input as substrate derived C
                     if DOM>0:
                         DOM_sub= DOM_sub_abs/DOM #update relative substrate derived C in DOM
-                    else:
-                        DOM_sub=0
+                        # if DOM_sub > 1:
+                        print('line265 treatment=', treatment, 'd=', d, 'DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM)
+                    # else: probably not needed
+                    #     DOM_sub=0
                     DOM_N+=DOMinput/CN_DOMinput #add equivalent amount of N to DON pool
                     if DOM_N>0:
                         CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
@@ -296,6 +298,7 @@ for param in (paramsToTestNames):
                 gmaxbMAOM = mf.calcgmaxmod(CN_bact, CN_MAOMs, pCN, recMAOM, mRecBact, pH, 1)*GMAX #gmax for bact on MAOM
                 gmaxfMAOM = mf.calcgmaxmod(CN_fungi, CN_MAOMs, pCN, recMAOM, mRecFungi, pH, 2)*GMAXfungi #gmax for fungi on MAOM
                 #calculate substrate derived C in bact and fungi
+                DOM_sub_abs = DOM * DOM_sub #recalculate because DOM and DOM_sub changed in calc.Rhizosphere
                 bact_sub_abs = bact * bact_sub  #absolute substrate derived C in bacteria [gC/m3]
                 fungi_sub_abs = fungi * fungi_sub  #absolute substrate derived C in fungi [gC/m3]
  #               if (bact<0):
@@ -318,8 +321,10 @@ for param in (paramsToTestNames):
                 DOM+=DEATH*bact+DEATHfungi*fungi #add dead bacteria and fungi to DOM
             #    if (-dbact>bact):
             #        print('mainLine307  bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact', bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact)
-                DOM_sub_abs+=DEATH*bact*bact_sub+DEATHfungi*fungi*fungi_sub #add corresponding part of substrate derived C to DOM 
-                DOM_sub= DOM_sub_abs/DOM #relative substrate derived C in DOM
+                DOM_sub_abs += DEATH*bact*bact_sub+DEATHfungi*fungi*fungi_sub #add corresponding part of substrate derived C to DOM 
+                DOM_sub = DOM_sub_abs/DOM #relative substrate derived C in DOM
+                if DOM_sub > 1 and d < 29:
+                    print('line326 day=', d, 'DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM, bact_sub, fungi_sub)
                 #print(DOM, bact)
                 DOM_N+=DEATH*bact/CN_bact+DEATHfungi*fungi/CN_fungi
                 CN_DOM=DOM/DOM_N #recalculate CN DOM
@@ -436,7 +441,7 @@ for param in (paramsToTestNames):
                 ps[5].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
             
                 #plot substrate-derived proportions
-            def Dailyplot2(outBact_DOM_sub, outBact_sub, outFungi_sub, outDOM_sub,outPOM_sub, outMAOMs_sub,  outMAOM_p_sub):
+            def Dailyplot2(outBact_DOM_sub, outBact_sub, outFungi_sub, outDOM_sub,outPOM_sub, outMAOMs_sub,  outMAOMp_sub):
                 fig, (p1, p2) = plt.subplots(nrows=2, ncols=1,figsize=(4, 7))#was 10,12
                 fig.suptitle(treatments[i], size=16)
                 fig.tight_layout(pad=2.0)
@@ -450,9 +455,11 @@ for param in (paramsToTestNames):
                 p1.plot(time_d, outBact_sub, label="bacteria")
                 p1.plot(time_d, outFungi_sub, label="fungi")
                 ps[0].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
-                p2.plot(time_d, outPOM2, label="POM")
-                p2.plot(time_d, outMAOMp2, label="primary MAOM")
-                p2.plot(time_d, outMAOMs2, label="secondary MAOM")    
+                
+                p2.plot(time_d, outDOM_sub, label="DOM")
+                p2.plot(time_d, outPOM_sub, label="POM")
+                p2.plot(time_d, outMAOMp_sub, label="primary MAOM")
+                p2.plot(time_d, outMAOMs_sub, label="secondary MAOM")    
                 ps[1].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
                 
 

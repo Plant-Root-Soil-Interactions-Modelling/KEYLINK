@@ -520,7 +520,7 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact
    
     #calculate growth
     # def calcgrowth(biomass, source, avail, gmaxmod, Ks):
-    growth= modtBact*calcgrowth(bact_DOM, DOM, 1, gmaxmod, KS*bact_DOM) #Monod kinetic equation of growth  # g day net
+    growth = modtBact*calcgrowth(bact_DOM, DOM, 1, gmaxmod, KS*bact_DOM) #Monod kinetic equation of growth  # g day net
         
     mCN = min(1, (CN_bact/CN_DOM)**pCN) #effect of CN
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
@@ -538,16 +538,18 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact
     respDOM=rRESP*bact_DOM #respiration of DOM-feeding bacteria before adding today's growth without priming effect yet
     respDOM_sub_abs = respDOM*bact_DOM_sub #what part of this respiration is substrate derived
     respDOM_sub = respDOM_sub_abs/respDOM
-    bact_DOM+=growth + PrimingGrowth - BactTurnover - respDOM
+    bact_DOM += growth + PrimingGrowth - BactTurnover - respDOM
     bact_DOM_sub_abs += (growth + PrimingGrowth)*DOM_sub - BactTurnover*bact_DOM_sub - respDOM*bact_DOM_sub #add the corresponding part of growth on DOM as substrate derived C, subtract correspodning part of death and respiration
        
     #change DOM / what was eaten and what was added from dying bacteria
     DOM+= -growth - ExtraGrowth + BactTurnover 
     #substrate-derived amounts
-    DOM_sub_abs+=-(growth + ExtraGrowth)*DOM_sub + BactTurnover*bact_DOM_sub #subtract what has been eaten and add corresponding part of substrate derived C from dead bacteria to DOM 
-    DOM_sub= DOM_sub_abs/DOM #recalculate relative substrate derived C in DOM
-    bact_DOM_sub= bact_DOM_sub_abs/bact_DOM #recalculate relative substrate derived C in bacteria
-    DOM_N=DOM_Nini-(growth + ExtraGrowth)/CN_DOM + BactTurnover/CN_bact #hopefully it's correct that when burning ExtraGrowth C, some N was lost as well
+    DOM_sub_abs += -growth*DOM_sub - ExtraGrowth*DOM_sub + BactTurnover*bact_DOM_sub #subtract what has been eaten and add corresponding part of substrate derived C from dead bacteria to DOM 
+    DOM_sub = DOM_sub_abs/DOM #recalculate relative substrate derived C in DOM
+    if DOM_sub > 1 :
+        print('line550 calcgrowth DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM, 'growth', growth, 'ExtraG', ExtraGrowth, 'BactTurnover', BactTurnover)
+    bact_DOM_sub = bact_DOM_sub_abs/bact_DOM #recalculate relative substrate derived C in bacteria
+    DOM_N = DOM_Nini-(growth + ExtraGrowth)/CN_DOM + BactTurnover/CN_bact #hopefully it's correct that when burning ExtraGrowth C, some N was lost as well
     # if(DOM<0):
     #     print ('line 520 calcRhizophere DOM=', DOM, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
     CN_DOM=DOM/DOM_N
