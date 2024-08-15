@@ -263,7 +263,7 @@ for param in (paramsToTestNames):
                     if DOM>0:
                         DOM_sub= DOM_sub_abs/DOM #update relative substrate derived C in DOM
                         # if DOM_sub > 1:
-                        print('line265 treatment=', treatment, 'd=', d, 'DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM)
+                        # print('line265 treatment=', treatment, 'd=', d, 'DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM)
                     # else: probably not needed
                     #     DOM_sub=0
                     DOM_N+=DOMinput/CN_DOMinput #add equivalent amount of N to DON pool
@@ -287,7 +287,7 @@ for param in (paramsToTestNames):
                     respDOM = 0
                     respDOM_sub = 0
    # MAOM formation
-                if CN_DOM>0: DOM, DOM_N, CN_DOM, MAOMp, MAOMs,CN_MAOMs =mf.calcMAOM(bact_DOM, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM, CN_MAOMp, CN_MAOMs)
+                if CN_DOM>0: DOM, DOM_N, CN_DOM, DOM_sub, MAOMp, MAOMp_sub, MAOMs, MAOMs_sub, CN_MAOMs =mf.calcMAOM(bact_DOM, DOM_N, CN_DOM, fractionSA, MAOMp, MAOMp_sub, maxMAOMp, DOM, DOM_sub, MAOMs, MAOMs_sub, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM, CN_MAOMp, CN_MAOMs)
                 
                 # baseline microbial growth on SOM (without substrate DOM additions)
                 availability=mf.calcAvailPot(PV, PW) #calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
@@ -323,9 +323,6 @@ for param in (paramsToTestNames):
             #        print('mainLine307  bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact', bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact)
                 DOM_sub_abs += DEATH*bact*bact_sub+DEATHfungi*fungi*fungi_sub #add corresponding part of substrate derived C to DOM 
                 DOM_sub = DOM_sub_abs/DOM #relative substrate derived C in DOM
-                if DOM_sub > 1 and d < 29:
-                    print('line326 day=', d, 'DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM, bact_sub, fungi_sub)
-                #print(DOM, bact)
                 DOM_N+=DEATH*bact/CN_bact+DEATHfungi*fungi/CN_fungi
                 CN_DOM=DOM/DOM_N #recalculate CN DOM
                 MAOMs+=-bactMAOMgrowth-fungiMAOMgrowth

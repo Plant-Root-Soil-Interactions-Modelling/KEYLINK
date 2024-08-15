@@ -546,8 +546,8 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact
     #substrate-derived amounts
     DOM_sub_abs += -growth*DOM_sub - ExtraGrowth*DOM_sub + BactTurnover*bact_DOM_sub #subtract what has been eaten and add corresponding part of substrate derived C from dead bacteria to DOM 
     DOM_sub = DOM_sub_abs/DOM #recalculate relative substrate derived C in DOM
-    if DOM_sub > 1 :
-        print('line550 calcgrowth DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM, 'growth', growth, 'ExtraG', ExtraGrowth, 'BactTurnover', BactTurnover)
+    # if DOM_sub > 1 :
+    #     print('line550 calcgrowth DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM, 'growth', growth, 'ExtraG', ExtraGrowth, 'BactTurnover', BactTurnover)
     bact_DOM_sub = bact_DOM_sub_abs/bact_DOM #recalculate relative substrate derived C in bacteria
     DOM_N = DOM_Nini-(growth + ExtraGrowth)/CN_DOM + BactTurnover/CN_bact #hopefully it's correct that when burning ExtraGrowth C, some N was lost as well
     # if(DOM<0):
@@ -558,7 +558,7 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact
     return  DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming
     
 
-def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM, CN_MAOMp, CN_MAOMs):
+def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, MAOMp_sub, maxMAOMp, DOM, DOM_sub, MAOMs, MAOMs_sub, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM, CN_MAOMp, CN_MAOMs):
     # MAOM formation towards saturation
     # Flow from disolved (DOM) to MAOM (mineral associated) organic matter
     # depends on available DOM, bacteria, N availability (N in DOM) and the size of the rhizosphere/surface area
@@ -588,20 +588,37 @@ def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, maxMAOMp, DOM, MAOMs
                  
     # if not yet saturated so there is still some potential rate of MAOM formation
         #MAOMs takes over CN of DOM, so CN of MAOMs changes but that of DOM does not
-    if dMAOMs >0:
-    #     if(DOM<dMAOMs):
-    #         print ('line 572 calcMaom DOM,MAOMs, dMAOMs, fSatMAOMs, maxMAOMs, MAOMp =', DOM,MAOMs, dMAOMs, fSatMAOMs, maxMAOMs,MAOMp)
-        DOM = DOM-dMAOMs
-        DOM_N-=dMAOMs/CN_DOM
-        #CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
-        CN_MAOMs=(MAOMs + dMAOMs)/(MAOMs/CN_MAOMs+dMAOMs/CN_DOM)
-        MAOMs = MAOMs + dMAOMs
-    if dMAOMp >0:
-        # MAOMp is--has high N, with constant CN ratio so changes the CN ration of the DOM
-        MAOMp = MAOMp + dMAOMp
-        DOM = DOM - dMAOMp
-        DOM_N-=dMAOMp/CN_MAOMp
-        CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
-        if(DOM<0):
-            print ('line 579 calcMaom DOM=', DOM)
-    return DOM, DOM_N, CN_DOM, MAOMp, MAOMs, CN_MAOMs   
+    if dMAOMs <= 0 or dMAOMp <= 0: print("calcMAOM line 591", dMAOMs, dMAOMp)
+    #preparation for proportions calculations
+    DOM_sub_abs = DOM * DOM_sub 
+    MAOMs_sub_abs = MAOMs * MAOMs_sub 
+    MAOMp_sub_abs = MAOMp * MAOMp_sub 
+#secondary MAOM formation
+    # if dMAOMs >0: safety that is not needed anymore
+    # print ('line 572 calcMaom DOM,MAOMs, dMAOMs, fSatMAOMs, maxMAOMs, MAOMp =', DOM,MAOMs, dMAOMs, fSatMAOMs, maxMAOMs,MAOMp)
+    DOM = DOM-dMAOMs
+    DOM_N-=dMAOMs/CN_DOM
+    #CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
+    CN_MAOMs=(MAOMs + dMAOMs)/(MAOMs/CN_MAOMs+dMAOMs/CN_DOM)
+    MAOMs = MAOMs + dMAOMs
+       
+#secondary MAOM formation
+    # if dMAOMp >0: not needed
+    # MAOMp is--has high N, with constant CN ratio so changes the CN ration of the DOM
+    MAOMp = MAOMp + dMAOMp
+    DOM = DOM - dMAOMp
+    DOM_N-=dMAOMp/CN_MAOMp
+    CN_DOM=DOM/DOM_N #calculate new CN of DOM pool
+ 
+ # substrate-derived proportion changes calculations
+     #changes in absolute pools
+    DOM_sub_abs -= (dMAOMs + dMAOMp) * DOM_sub #subtract was was taken away from DOM
+    MAOMs_sub_abs += dMAOMs * DOM_sub # and what was added to MAOMs
+    MAOMp_sub_abs += dMAOMp * DOM_sub # and what was added to MAOMp
+    # recalculate proportions
+    DOM_sub = DOM_sub_abs/DOM
+    MAOMs_sub = MAOMs_sub_abs/MAOMs
+    MAOMp_sub = MAOMp_sub_abs/MAOMp
+    # if(DOM<0):
+    #     print ('line 579 calcMaom DOM=', DOM)
+    return DOM, DOM_N, CN_DOM, DOM_sub, MAOMp, MAOMp_sub, MAOMs, MAOMs_sub, CN_MAOMs   
