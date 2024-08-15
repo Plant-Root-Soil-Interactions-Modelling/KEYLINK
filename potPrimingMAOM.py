@@ -19,7 +19,7 @@ outDataframes=[]
 # the ones we want to calibrate
 bact_DOM_rel = 0.2 #proportion of bacteria that have access to feeding on DOM (e.g. that are present in rhizophere)
 DOM_EC = 2 # DOM energetic quality = energy stored per one gram of DOM [J/g] was 5
-kpriming=0.3 #decay rate of negative exponential decay curve of decay price
+kpriming=0.001 #decay rate of negative exponential decay curve of decay price, was 0.3
 KS=5  # C content required to get half the maximal growth of bacteria when decaying DOM [gC/m3]
 KSfungi=20000  # C content required to get half the maximal growth of fungi when decaying SOM [gC/m3]
 KSbact=38000 # C content required to get half the maximal growth of bacteria when decaying SOM [gC/m3]
@@ -218,7 +218,8 @@ for param in (paramsToTestNames):
             outDOM_sub=[]
             outPOM_sub=[]
             outMAOMs_sub=[]
-            outMAOM_p_sub=[]
+            outMAOMp_sub=[]
+            outResp_sub=[]
 
 #*************************************************************************
 # variables (what changes during run)
@@ -280,16 +281,18 @@ for param in (paramsToTestNames):
                 rRESPfungi=mf.calcresp(temp, T_OPTfungi, RESPfungi, Q10fungi)
    # microbial growth on DOM and priming, only susing MAOMs
                 
-                if CN_DOM>0: DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming = mf.calcRhizosphere(Priming, POM, CN_POM, MAOMs, MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESPbact, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact)
+                if CN_DOM>0: DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming, respPriming_sub = mf.calcRhizosphere(Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESPbact, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact)
  #               if (MAOMs<0):
  #                   print('mainLine270 DOM, bact, fungi, MAOMs, MAOMp', DOM,bact, fungi, MAOMs, MAOMp)
                 else: 
                     respDOM = 0
                     respDOM_sub = 0
+                    respPriming = 0
+                    respPriming_sub = 0
    # MAOM formation
                 if CN_DOM>0: DOM, DOM_N, CN_DOM, DOM_sub, MAOMp, MAOMp_sub, MAOMs, MAOMs_sub, CN_MAOMs =mf.calcMAOM(bact_DOM, DOM_N, CN_DOM, fractionSA, MAOMp, MAOMp_sub, maxMAOMp, DOM, DOM_sub, MAOMs, MAOMs_sub, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM, CN_MAOMp, CN_MAOMs)
                 
-                # baseline microbial growth on SOM (without substrate DOM additions)
+   # baseline microbial growth on SOM (without substrate DOM additions)
                 availability=mf.calcAvailPot(PV, PW) #calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
                 #calculate maximal growth (gmax) for bacteria/fungi on POM/MAOM separately
                 gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
@@ -305,7 +308,7 @@ for param in (paramsToTestNames):
                 fungi_sub_abs = fungi * fungi_sub  #absolute substrate derived C in fungi [gC/m3]
  #               if (bact<0):
   #                  print('mainLine290 DOM, bact, fungi', DOM,bact, fungi)
-     # growth equations (dB/dt) for each functional group and for variations in C and N pools
+         # growth equations (dB/dt) for each functional group and for variations in C and N pools
                 #only feed on secondary MAOM
                 bactPOMgrowth = modtBact*mf.calcgrowth(bact, POM, availability[0], gmaxbPOM, KSbact*bact)
                 bactMAOMgrowth = modtBact*mf.calcgrowth(bact, MAOMs, availability[0], gmaxbMAOM, KSbact*bact)
@@ -318,8 +321,8 @@ for param in (paramsToTestNames):
                 
                 
                 DOM+=DEATH*bact+DEATHfungi*fungi #add dead bacteria and fungi to DOM
-                POM+=-bactPOMgrowth-fungiPOMgrowth  
-                MAOMs+=-bactMAOMgrowth-fungiMAOMgrowth
+                POM+=-bactPOMgrowth-fungiPOMgrowth  # subtract what has been eaten from POM
+                MAOMs+=-bactMAOMgrowth-fungiMAOMgrowth #and MAOMs
                 
                 #update CN DOM
                 DOM_N+=DEATH*bact/CN_bact+DEATHfungi*fungi/CN_fungi
@@ -327,20 +330,22 @@ for param in (paramsToTestNames):
                 
             #    if (-dbact>bact):
             #        print('mainLine307  bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact', bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact)
+                
                 DOM_sub_abs += DEATH*bact*bact_sub+DEATHfungi*fungi*fungi_sub #add corresponding part of substrate derived C to DOM 
                 POM_sub_abs -= (bactPOMgrowth + fungiPOMgrowth)*POM_sub 
                 MAOMs_sub_abs -= (bactMAOMgrowth + fungiMAOMgrowth)*MAOMs_sub 
                 fungi_sub_abs += fungiMAOMgrowth*MAOMs_sub + fungiPOMgrowth*POM_sub - DEATHfungi*fungi*fungi_sub - rRESPfungi*fungi*fungi_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
                 bact_sub_abs += bactMAOMgrowth*MAOMs_sub + bactPOMgrowth*POM_sub - DEATH*bact*bact_sub - rRESPbact*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
-
-                
-                
-
-                                               
+                     
+                                             
                 baselineRespBact=rRESPbact*bact
+                baselineRespBact_sub_abs = baselineRespBact*bact_sub #what part of this respiration is substrate derived
+                baselineRespBact_sub = baselineRespBact_sub_abs/baselineRespBact
                 bact+=dbact
                 
                 baselineRespFungi=rRESPfungi*fungi
+                baselineRespFungi_sub_abs = baselineRespFungi*fungi_sub #what part of this respiration is substrate derived
+                baselineRespFungi_sub = baselineRespFungi_sub_abs/baselineRespFungi
                 fungi+=dfungi
                
                 #update relative substrate derived C proportions 
@@ -348,15 +353,25 @@ for param in (paramsToTestNames):
                 POM_sub = POM_sub_abs/POM #relative substrate derived C in DOM
                 MAOMs_sub = MAOMs_sub_abs/MAOMs #relative substrate derived C in DOM
                 fungi_sub= fungi_sub_abs/fungi #update relative substrate derived C in fungi 
-                print(' treatment, day, fungi_sub', treatment, d, fungi_sub)
+                # print(' treatment, day, fungi_sub', treatment, d, fungi_sub)
                 bact_sub= bact_sub_abs/bact #update relative substrate derived C in bacteria
        # add up MAOM
                 MAOM = MAOMp + MAOMs
-       # add up substrate derived respiration
-                respSubstrate = respDOM*respDOM_sub
+                
+        #add up baseline respiration without priming
+                baselineResp = baselineRespBact + baselineRespFungi + respDOM #of course this respDOM is higher if previous day DOM-feeding bacteria grew more because of priming
+        # add up all respiration
+                resp = baselineResp + respPriming
+       # add up substrate derived respiration from all sources
+                respSubstrate = baselineRespBact*baselineRespBact_sub + baselineRespFungi*baselineRespFungi_sub + respDOM*respDOM_sub + respPriming*respPriming_sub
+                
+    #calculate proportion for total respiration
+                resp_sub =   respSubstrate/resp 
+                
        # add up soil-derived respiration
-                baselineResp = baselineRespBact + baselineRespFungi
-                respSoil = baselineResp + respPriming
+                respSoil = resp - respSubstrate
+                
+                print(treatment, d, 'baselineRespBact', baselineRespBact, 'baseFungi', baselineRespFungi, 'respDOM', respDOM, 'respPriming', respPriming)
                 
                 
                 outDOMadded.append(DOM_added)
@@ -378,7 +393,8 @@ for param in (paramsToTestNames):
                 outDOM_sub.append(DOM_sub)
                 outPOM_sub.append(POM_sub)
                 outMAOMs_sub.append(MAOMs_sub)
-                outMAOM_p_sub.append(MAOMp_sub)
+                outMAOMp_sub.append(MAOMp_sub)
+                outResp_sub.append(resp_sub)
                 
                 if(sensitivity):
                     results_df.loc[len(results_df)] = [param, paramChange, value, treatment, d, DOM_added,DOM, bact_DOM, bact,fungi,respSubstrate, baselineResp, respSoil, POM, MAOMs, MAOMp, MAOM]
@@ -455,14 +471,15 @@ for param in (paramsToTestNames):
             
                 #plot substrate-derived proportions
             def Dailyplot2(outBact_DOM_sub, outBact_sub, outFungi_sub, outDOM_sub,outPOM_sub, outMAOMs_sub,  outMAOMp_sub):
-                fig, (p1, p2) = plt.subplots(nrows=2, ncols=1,figsize=(4, 7))#was 10,12
+                fig, (p1, p2, p3) = plt.subplots(nrows=3, ncols=1,figsize=(4, 10.5))#was 10,12
                 fig.suptitle(treatments[i], size=16)
                 fig.tight_layout(pad=2.0)
-                ps = (p1, p2)
+                ps = (p1, p2, p3)
                 # counter = count(0, 1)
                 # columns = list(df)
                 ps[0].set_title("substrate derived % of microbial pools")
                 ps[1].set_title("substrate derived % of SOM pools") 
+                ps[2].set_title("substrate derived % of respiration") 
                           
                 p1.plot(time_d, outBact_DOM_sub, label="bacteria DOM feeding")
                 p1.plot(time_d, outBact_sub, label="bacteria")
@@ -475,6 +492,9 @@ for param in (paramsToTestNames):
                 p2.plot(time_d, outMAOMs_sub, label="secondary MAOM")    
                 ps[1].legend(loc=(0.4, 0.03), shadow=True) #loc='bottom right',
                 
+                p3.plot(time_d, outResp_sub, label="total respiration")
+  
+
 
  
 
@@ -483,7 +503,7 @@ for param in (paramsToTestNames):
             if Plotting == 1: #if you want plotting to be active
                 Dailyplot1(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
                 plt.savefig("output/figures/Dailyplot1_" + treatments[i] +".png")
-                Dailyplot2(outBact_DOM_sub, outBact_sub, outFungi_sub, outDOM_sub,outPOM_sub, outMAOMs_sub,  outMAOM_p_sub)
+                Dailyplot2(outBact_DOM_sub, outBact_sub, outFungi_sub, outDOM_sub,outPOM_sub, outMAOMs_sub,  outMAOMp_sub)
                 plt.savefig("output/figures/Dailyplot2_" + treatments[i] +".png")
    
     

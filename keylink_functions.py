@@ -443,7 +443,7 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
             eng, hvores, pred, litter, som, roots, co2,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
 
-def calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp):
+def calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp):
      #how much nitrogen can be released from SOM with the energy in remaining DOM:
          
     DOM_E = ExtraGrowth/DOM_EC # total energy stored in the DOM that bacteria can still assimilate [J]
@@ -492,7 +492,9 @@ def calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrow
     
     #     # bact_DOM += PrimingGrowth #grow new microbes thanks to priming, assuming this C comes from DOM
     respPrim=SOMprimed + ExtraGrowth - PrimingGrowth #carbon from primed SOM is respired, the C used for biomass of PrimingGrowth is taken from ExtraGrowth and then the rest was burnt off for mining for nitrogen
-    #     DOM-= ExtraGrowth  #, quick fix not to divide by zero I burnt off all C in DOM to get N?? is that okay?? this respiration unaccounted for yet
+    respPrim_SOMprimed_sub_abs = POMprimed*POM_sub + MAOMsprimed*MAOMs_sub + MAOMpprimed*MAOMp_sub #substrate derived C respired from SOM pools
+    respPrim_sub_abs = respPrim_SOMprimed_sub_abs + (ExtraGrowth-PrimingGrowth)*DOM_sub   #total substrate derived C respired during priming (including C from burning off DOM)
+    respPrim_sub = respPrim_sub_abs/respPrim
     POM-=POMprimed 
     MAOMs-=MAOMsprimed
     MAOMp-=MAOMpprimed
@@ -502,9 +504,9 @@ def calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrow
     #     # print("priming should be active but is not", PrimingGrowth, ExtraGrowth)
                       
 
-    return POM, MAOMs, MAOMp, respPrim, PrimingGrowth
+    return POM, MAOMs, MAOMp, respPrim, respPrim_sub, PrimingGrowth
 
-def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact):  
+def calcRhizosphere (Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESPbact, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact):  
    # describes rhizosphere bacterial growth on DOM
  
     DOM_Nini=DOM/CN_DOM
@@ -526,13 +528,14 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
     if Priming==1 and mCN<1:  # if Priming is allowed and there was a shortage
         # print ('priming active')
-        POM, MAOMs, MAOMp, respPrim, PrimingGrowth = calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
+        POM, MAOMs, MAOMp, respPriming, respPriming_sub, PrimingGrowth = calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
     else:
-        respPriming=0   
+        respPriming=0
+        respPriming_sub=0
         PrimingGrowth = 0
     
     BactTurnover=DEATH*bact_DOM #death of bacteria before adding today's growth
-    respDOM=rRESP*bact_DOM #respiration of DOM-feeding bacteria before adding today's growth without priming effect yet
+    respDOM=rRESPbact*bact_DOM #respiration of DOM-feeding bacteria before adding today's growth without priming effect yet
     respDOM_sub_abs = respDOM*bact_DOM_sub #what part of this respiration is substrate derived
     respDOM_sub = respDOM_sub_abs/respDOM
     bact_DOM += growth + PrimingGrowth - BactTurnover - respDOM
@@ -552,7 +555,7 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact
     CN_DOM=DOM/DOM_N
            
            
-    return  DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming
+    return  DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming, respPriming_sub
     
 
 def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, MAOMp_sub, maxMAOMp, DOM, DOM_sub, MAOMs, MAOMs_sub, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM, CN_MAOMp, CN_MAOMs):
@@ -609,7 +612,7 @@ def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, MAOMp_sub, maxMAOMp,
  
  # substrate-derived proportion changes calculations
      #changes in absolute pools
-    DOM_sub_abs -= (dMAOMs + dMAOMp) * DOM_sub #subtract was was taken away from DOM
+    DOM_sub_abs -= (dMAOMs + dMAOMp) * DOM_sub #subtract was was taken away from DOM, maybe not needed?
     MAOMs_sub_abs += dMAOMs * DOM_sub # and what was added to MAOMs
     MAOMp_sub_abs += dMAOMp * DOM_sub # and what was added to MAOMp
     # recalculate proportions
