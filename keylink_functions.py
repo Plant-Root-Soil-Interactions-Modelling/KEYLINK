@@ -443,7 +443,7 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
             eng, hvores, pred, litter, som, roots, co2,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
 
-def calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, CN_bact, DOM,CN_DOM, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp):
+def calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp):
      #how much nitrogen can be released from SOM with the energy in remaining DOM:
          
     DOM_E = ExtraGrowth/DOM_EC # total energy stored in the DOM that bacteria can still assimilate [J]
@@ -502,7 +502,7 @@ def calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, CN_bact,
     #     # print("priming should be active but is not", PrimingGrowth, ExtraGrowth)
                       
 
-    return DOM, POM, MAOMs, MAOMp,bact_DOM, respPrim, PrimingGrowth
+    return POM, MAOMs, MAOMp, respPrim, PrimingGrowth
 
 def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESP, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact):  
    # describes rhizosphere bacterial growth on DOM
@@ -526,10 +526,7 @@ def calcRhizosphere (Priming, POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, bact
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
     if Priming==1 and mCN<1:  # if Priming is allowed and there was a shortage
         # print ('priming active')
-        DOM, POM, MAOMs,MAOMp, bact_DOM, respPriming, PrimingGrowth = calcPriming(POM, CN_POM, MAOMs, MAOMp, CN_MAOMp, CN_MAOMs, bact_DOM, CN_bact, DOM, CN_DOM, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
-    #calcPriming(MAOM,CNbact,fCN, DOM,CN_DOM, SOM, CN_SOM, gmaxmodCN, Nmin, Cbact_DOM, resp, primingIntensity)
-    # if(MAOMs<0):
-    #     print ('line 530 calcRhizosphere MAOMs=', MAOMs, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
+        POM, MAOMs, MAOMp, respPrim, PrimingGrowth = calcPriming(POM, CN_POM, MAOMs,MAOMp, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
     else:
         respPriming=0   
         PrimingGrowth = 0

@@ -315,7 +315,7 @@ for param in (paramsToTestNames):
                 fungiPOMgrowth = modtFungi*mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi*fungi)
                 fungiMAOMgrowth = modtFungi*mf.calcgrowth(fungi,MAOMs, availability[1], gmaxfMAOM, KSfungi*fungi)
                 dfungi =  fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi*fungi - rRESPfungi*fungi 
-                                            
+                
                 
                 DOM+=DEATH*bact+DEATHfungi*fungi #add dead bacteria and fungi to DOM
                 POM+=-bactPOMgrowth-fungiPOMgrowth  
@@ -347,7 +347,8 @@ for param in (paramsToTestNames):
                 DOM_sub = DOM_sub_abs/DOM #relative substrate derived C in DOM
                 POM_sub = POM_sub_abs/POM #relative substrate derived C in DOM
                 MAOMs_sub = MAOMs_sub_abs/MAOMs #relative substrate derived C in DOM
-                fungi_sub= fungi_sub_abs/fungi #update relative substrate derived C in fungi       
+                fungi_sub= fungi_sub_abs/fungi #update relative substrate derived C in fungi 
+                print(' treatment, day, fungi_sub', treatment, d, fungi_sub)
                 bact_sub= bact_sub_abs/bact #update relative substrate derived C in bacteria
        # add up MAOM
                 MAOM = MAOMp + MAOMs
