@@ -12,7 +12,7 @@ import copy
 
 #output dataframe list
 outDataframes=[]
-
+# devide 'input' into: parametersToCalibrate, ParametersCalibrated, Inputvariables (run-specific)
 #********************************************************************************
 #calibrated parameters (= that do NOT change during run but need calibration)
 
@@ -63,8 +63,6 @@ Q10fungi=2.5
 RESPbact=0.05
 Q10bact=2.5
 # input parameters that do not change but vary for different treatments of experiment (and runs)
-CN_DOMinput=6  #CN of the daily input [unitless], Jílková2022: leachates 80, exudates 6
-temp = 21
 
 
 
@@ -74,10 +72,8 @@ BD=800   # bulk density [kg/m³]
 claySA=800000 # surface area of clay [m²/kg] was 8000000 cm²/g
 CN_bact=4 #CN of bacteria, from KEYLINK, in Jílková2022 initial CN of microbial biomass is 10
 CN_fungi=8 #KEYLINK
-CN_POM=24 #CN of SOM, Jílková2022
-CN_MAOMs=15 #estimated but we don't know the true value, assumed to vary with CN_DOM
-CN_MAOMp=15 #☼ assumed constant
-DOMinput=10 #DOM added in each addition [gC/m3], Jílková2022
+
+
 fClay=0.17 #weight fraction [g/g], Jílková2022
 fSilt=0.24 #weight fraction [g/g], Jílková2022
 maxMAOM = 0.86 * (fClay + fSilt)*100 * BD #[gC/m3] maximum MAOM, 28208 for Jílková et al. 2022 Georgiou et al. 2022: 86 ± 9 and 48 ± 6 mg C/g silt+clay mineral for HM and LM,
@@ -94,8 +90,15 @@ PW=np.array([45/2,37/2,37/2,200/2,6/2]) #pore water volume, assume all pores hal
 RootHyphaeSurface= 10000   # surface area of all roots/hyphae [m2/m3] ??unit correct / look up roots surface area equivalent to that amount of DOM input
 fractionSA = RootHyphaeSurface/maxSurfaceArea #used in calcMAOM/ fraction of mineral surface area occupied by roots/hyphae
 numDays=150 #number of days of incubation experiment/how long to run the model, Jílková2022
-pH=4.1 #Jílková2022
 
+
+DOMinput=10 #DOM added in each addition [gC/m3], Jílková2022
+CN_DOMinput=6  #CN of the daily input [unitless], Jílková2022: leachates 80, exudates 6
+temp = 21
+pH=4.1 #Jílková2022
+CN_POM=24 #CN of SOM, Jílková2022
+CN_MAOMs=15 #estimated but we don't know the true value, assumed to vary with CN_DOM
+CN_MAOMp=15 #☼ assumed constant
 
 Priming=1 #flag to enable Priming effect
 Plotting=1 # flag 1 to enable making of plots, so that this can be turned off during sensitivity analysis etc.
