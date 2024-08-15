@@ -62,23 +62,26 @@ RESPfungi=0.03
 Q10fungi=2.5
 RESPbact=0.05
 Q10bact=2.5
-# input parameters that do not change but vary for different treatments of experiment (and runs)
 
+# input parameters that do not change but vary for different treatments of experiment (and runs)
+DOMinput=10 #DOM added in each addition [gC/m3], Jílková2022
+CN_DOMinput=6  #CN of the daily input [unitless], Jílková2022: leachates 80, exudates 6
+CN_MAOMp=15 #☼ assumed constant
+CN_POM=24 #CN of SOM, Jílková2022
+pH=4.1 #Jílková2022
+temp = 21
 
 
 # input parameters that do not change (=measurable) and are not calibrated, just 'start situation"
-#Nmin=0.00000001 # was 0.0005 [gN/m3] was 0.00000001 not used in the model currently
+#first those that will be the same for all 16 runs
 BD=800   # bulk density [kg/m³]
 claySA=800000 # surface area of clay [m²/kg] was 8000000 cm²/g
 CN_bact=4 #CN of bacteria, from KEYLINK, in Jílková2022 initial CN of microbial biomass is 10
 CN_fungi=8 #KEYLINK
-
-
 fClay=0.17 #weight fraction [g/g], Jílková2022
 fSilt=0.24 #weight fraction [g/g], Jílková2022
 maxMAOM = 0.86 * (fClay + fSilt)*100 * BD #[gC/m3] maximum MAOM, 28208 for Jílková et al. 2022 Georgiou et al. 2022: 86 ± 9 and 48 ± 6 mg C/g silt+clay mineral for HM and LM,
 maxMAOMp = maxMAOM/(MAOMratioSP+1)  # maximum primary MAOM
-
 siltSA=45.4 #m²/kg
 maxSurfaceArea=claySA*BD*fClay+siltSA*BD*fSilt #total surface area of clay and silt in m²/m³
 PV=15 #!TODO volume of micropores [l/m3] but overwritten by next line
@@ -90,15 +93,6 @@ PW=np.array([45/2,37/2,37/2,200/2,6/2]) #pore water volume, assume all pores hal
 RootHyphaeSurface= 10000   # surface area of all roots/hyphae [m2/m3] ??unit correct / look up roots surface area equivalent to that amount of DOM input
 fractionSA = RootHyphaeSurface/maxSurfaceArea #used in calcMAOM/ fraction of mineral surface area occupied by roots/hyphae
 numDays=150 #number of days of incubation experiment/how long to run the model, Jílková2022
-
-
-DOMinput=10 #DOM added in each addition [gC/m3], Jílková2022
-CN_DOMinput=6  #CN of the daily input [unitless], Jílková2022: leachates 80, exudates 6
-temp = 21
-pH=4.1 #Jílková2022
-CN_POM=24 #CN of SOM, Jílková2022
-CN_MAOMs=15 #estimated but we don't know the true value, assumed to vary with CN_DOM
-CN_MAOMp=15 #☼ assumed constant
 
 Priming=1 #flag to enable Priming effect
 Plotting=1 # flag 1 to enable making of plots, so that this can be turned off during sensitivity analysis etc.
@@ -227,29 +221,38 @@ for param in (paramsToTestNames):
 #*************************************************************************
 # variables (what changes during run)
 
-            availability=np.zeros(3)
+   #variables that will be initialized differently for different runs
             bact_total = 5 #total biomass of bacteria [gC/m3], final noadd average from Jílková2022
+            CN_MAOMs=15 #estimated but we don't know the true value, assumed to vary with CN_DOM
+            fungi=1 #biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
+            MAOM=25368 #C in MAOM [gC/m3] average noAdd Jílková2022 
+            POM=13032  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
+         
+   #same for all runs      
+            availability=np.zeros(3)
             bact = bact_total * (1-bact_DOM_rel) #biomass of bacteria growing on POM and MAOM but not on DOM [gC/m3]
             bact_sub = 0 # proportion of this bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
             bact_DOM = bact_total*bact_DOM_rel #biomass of bacteria growing on DOM [gC/m3]
             bact_DOM_sub = 0 # proportion of bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
-            CN_DOM=0 # set inital DOM CN equal to input was CN_DOM=CN_DOMinput 
+            CN_DOM=0 # 
             DOM=0  # DOM [gC/m3]
             DOM_sub = 0 # relative substrate derived C in DOM /values 0 to 1/, portion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
             DOM_N=0 #set DOM N to zero
             if DOM>0: DOM_N=DOM/CN_DOM #but if there is some initial DOM, calculate it from CN_DOM
-            fungi=1 #biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
+            
             fungi_sub = 0 # proportion of fungal carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
-            MAOM=25368 #C in MAOM [gC/m3] average noAdd Jílková2022 
+            
             
             MAOMunavail = (PSA[0]/sum(PSA))*MAOM #the portion of MAOM stored in the smallest pores is really unavailable
             MAOMp = MAOM/(MAOMratioSP+1) #primary MAOM [gC/m3] initialised at the ratio of saturation
             MAOMp_sub = 0 # proportion of MAOMp that is substrate derived in contrast to soil-derived / values 0 to 1/
             MAOMs = MAOM-MAOMp #secondary MAOM[gC/m3]
-            MAOMs_sub = 0 # proportion of MAOMs that is substrate derived in contrast to soil-derived / values 0 to 1/
-            POM=13032  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
+            MAOMs_sub = 0 # proportion of MAOMs that is substrate derived in contrast to soil-derived / values 0 to 1/       
             POM_sub = 0 # proportion of POM that is substrate derived in contrast to soil-derived / values 0 to 1/
+            
+            
 
+            
    # function coreMAOM
 
             for d in range(numDays):
