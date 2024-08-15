@@ -298,7 +298,9 @@ for param in (paramsToTestNames):
                 gmaxbMAOM = mf.calcgmaxmod(CN_bact, CN_MAOMs, pCN, recMAOM, mRecBact, pH, 1)*GMAX #gmax for bact on MAOM
                 gmaxfMAOM = mf.calcgmaxmod(CN_fungi, CN_MAOMs, pCN, recMAOM, mRecFungi, pH, 2)*GMAXfungi #gmax for fungi on MAOM
                 #calculate substrate derived C in bact and fungi
-                DOM_sub_abs = DOM * DOM_sub #recalculate because DOM and DOM_sub changed in calc.Rhizosphere
+                DOM_sub_abs = DOM * DOM_sub #recalculate because changesin calc.Rhizosphere
+                POM_sub_abs = POM * POM_sub #recalculate because changes in calc.Rhizosphere
+                MAOMs_sub_abs = MAOMs * MAOMs_sub  #recalculate because changes in calc.Rhizosphere and calc.MAOM          
                 bact_sub_abs = bact * bact_sub  #absolute substrate derived C in bacteria [gC/m3]
                 fungi_sub_abs = fungi * fungi_sub  #absolute substrate derived C in fungi [gC/m3]
  #               if (bact<0):
@@ -309,31 +311,44 @@ for param in (paramsToTestNames):
                 bactMAOMgrowth = modtBact*mf.calcgrowth(bact, MAOMs, availability[0], gmaxbMAOM, KSbact*bact)
                 dbact = bactPOMgrowth + bactMAOMgrowth - DEATH*bact - rRESPbact*bact
                
-                bact_sub_abs += bactMAOMgrowth*MAOMs_sub - DEATH*bact*bact_sub - rRESPbact*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
-                
+                                
                 fungiPOMgrowth = modtFungi*mf.calcgrowth(fungi, POM, availability[1], gmaxfPOM, KSfungi*fungi)
                 fungiMAOMgrowth = modtFungi*mf.calcgrowth(fungi,MAOMs, availability[1], gmaxfMAOM, KSfungi*fungi)
                 dfungi =  fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi*fungi - rRESPfungi*fungi 
-                fungi_sub_abs+=fungiMAOMgrowth*MAOMs_sub - DEATHfungi*fungi*fungi_sub - rRESPfungi*fungi*fungi_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
+                                            
                 
-                   
-                POM+=-bactPOMgrowth-fungiPOMgrowth  
                 DOM+=DEATH*bact+DEATHfungi*fungi #add dead bacteria and fungi to DOM
+                POM+=-bactPOMgrowth-fungiPOMgrowth  
+                MAOMs+=-bactMAOMgrowth-fungiMAOMgrowth
+                
+                #update CN DOM
+                DOM_N+=DEATH*bact/CN_bact+DEATHfungi*fungi/CN_fungi
+                CN_DOM=DOM/DOM_N #recalculate CN DOM
+                
             #    if (-dbact>bact):
             #        print('mainLine307  bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact', bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact)
                 DOM_sub_abs += DEATH*bact*bact_sub+DEATHfungi*fungi*fungi_sub #add corresponding part of substrate derived C to DOM 
-                DOM_sub = DOM_sub_abs/DOM #relative substrate derived C in DOM
-                DOM_N+=DEATH*bact/CN_bact+DEATHfungi*fungi/CN_fungi
-                CN_DOM=DOM/DOM_N #recalculate CN DOM
-                MAOMs+=-bactMAOMgrowth-fungiMAOMgrowth
+                POM_sub_abs -= (bactPOMgrowth + fungiPOMgrowth)*POM_sub 
+                MAOMs_sub_abs -= (bactMAOMgrowth + fungiMAOMgrowth)*MAOMs_sub 
+                fungi_sub_abs += fungiMAOMgrowth*MAOMs_sub + fungiPOMgrowth*POM_sub - DEATHfungi*fungi*fungi_sub - rRESPfungi*fungi*fungi_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
+                bact_sub_abs += bactMAOMgrowth*MAOMs_sub + bactPOMgrowth*POM_sub - DEATH*bact*bact_sub - rRESPbact*bact*bact_sub #add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
+
                 
+                
+
+                                               
                 baselineRespBact=rRESPbact*bact
                 bact+=dbact
-                bact_sub= bact_sub_abs/bact #update relative substrate derived C in bacteria
+                
                 baselineRespFungi=rRESPfungi*fungi
                 fungi+=dfungi
+               
+                #update relative substrate derived C proportions 
+                DOM_sub = DOM_sub_abs/DOM #relative substrate derived C in DOM
+                POM_sub = POM_sub_abs/POM #relative substrate derived C in DOM
+                MAOMs_sub = MAOMs_sub_abs/MAOMs #relative substrate derived C in DOM
                 fungi_sub= fungi_sub_abs/fungi #update relative substrate derived C in fungi       
-    
+                bact_sub= bact_sub_abs/bact #update relative substrate derived C in bacteria
        # add up MAOM
                 MAOM = MAOMp + MAOMs
        # add up substrate derived respiration
