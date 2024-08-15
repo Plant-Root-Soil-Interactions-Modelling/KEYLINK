@@ -71,7 +71,6 @@ CN_POM=24 #CN of SOM, Jílková2022
 pH=4.1 #Jílková2022
 temp = 21
 
-
 # input parameters that do not change (=measurable) and are not calibrated, just 'start situation"
 #first those that will be the same for all 16 runs
 BD=800   # bulk density [kg/m³]
