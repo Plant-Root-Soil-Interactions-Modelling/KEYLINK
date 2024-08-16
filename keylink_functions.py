@@ -443,16 +443,68 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
             eng, hvores, pred, litter, som, roots, co2,
             bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
 
+def calcRhizosphere (Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESPbact, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact):  
+   # describes rhizosphere bacterial growth on DOM
+ 
+    DOM_Nini=DOM/CN_DOM
+    
+    # print ('line 511 calcRhizosphere', 'bact_DOM=', bact_DOM, 'CN_DOM', CN_DOM)
+    # calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id)
+    #gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
+    gmaxmod= calcgmaxmod(CN_bact, CN_DOM, pCN, 0, 0, pH, 1)*GMAX  #maximum growth for bacteria growing on DOM g/(g day)
+    
+    #calculate substrate derived C in bact and DOM
+    bact_DOM_sub_abs = bact_DOM * bact_DOM_sub  #absolute substrate derived C in bacteria [gC/m3]
+    DOM_sub_abs = DOM * DOM_sub #absolute substrate derived C in DOM [gC/m3]
+   
+    #calculate growth
+    # def calcgrowth(biomass, source, avail, gmaxmod, Ks):
+    growth = modtBact*calcgrowth(bact_DOM, DOM, 1, gmaxmod, KS*bact_DOM) #Monod kinetic equation of growth  # g day net
+        
+    mCN = min(1, (CN_bact/CN_DOM)**pCN) #effect of CN
+    ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
+    if Priming is True and mCN<1:  # if Priming is allowed and there was a shortage
+        # print ('priming active')
+        POM, MAOMs, MAOMp, respPriming, respPriming_sub, PrimingGrowth = calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
+    else:
+        respPriming=0
+        respPriming_sub=0
+        PrimingGrowth = 0
+    
+    BactTurnover=DEATH*bact_DOM #death of bacteria before adding today's growth
+    respDOM=rRESPbact*bact_DOM #respiration of DOM-feeding bacteria before adding today's growth without priming effect yet
+    respDOM_sub_abs = respDOM*bact_DOM_sub #what part of this respiration is substrate derived
+    respDOM_sub = respDOM_sub_abs/respDOM
+    bact_DOM += growth + PrimingGrowth - BactTurnover - respDOM
+    bact_DOM_sub_abs += (growth + PrimingGrowth)*DOM_sub - BactTurnover*bact_DOM_sub - respDOM*bact_DOM_sub #add the corresponding part of growth on DOM as substrate derived C, subtract correspodning part of death and respiration
+       
+    #change DOM / what was eaten and what was added from dying bacteria
+    DOM+= -growth - ExtraGrowth + BactTurnover 
+    #substrate-derived amounts
+    DOM_sub_abs += -growth*DOM_sub - ExtraGrowth*DOM_sub + BactTurnover*bact_DOM_sub #subtract what has been eaten and add corresponding part of substrate derived C from dead bacteria to DOM 
+    DOM_sub = DOM_sub_abs/DOM #recalculate relative substrate derived C in DOM
+    # if DOM_sub > 1 :
+    #     print('line550 calcgrowth DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM, 'growth', growth, 'ExtraG', ExtraGrowth, 'BactTurnover', BactTurnover)
+    bact_DOM_sub = bact_DOM_sub_abs/bact_DOM #recalculate relative substrate derived C in bacteria
+    DOM_N = DOM_Nini-(growth + ExtraGrowth)/CN_DOM + BactTurnover/CN_bact #hopefully it's correct that when burning ExtraGrowth C, some N was lost as well
+    # if(DOM<0):
+    #     print ('line 520 calcRhizophere DOM=', DOM, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
+    CN_DOM=DOM/DOM_N
+           
+           
+    return  DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming, respPriming_sub
+    
 def calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp):
-     #how much nitrogen can be released from SOM with the energy in remaining DOM:
-         
-    DOM_E = ExtraGrowth/DOM_EC # total energy stored in the DOM that bacteria can still assimilate [J]
-    #SOMprimable = [gC] how much gC in POM or MAOM can be decayed with energy in DOM (DOM_E)
+  #how much nitrogen can be released from SOM with the energy in remaining DOM:
     #DecayCost = how much energy will be spent on SOM decay, definite integral of a decay price function [J]
-          
-    #how much of SOMdecayed will be from POM and how much from MAOM
+    DOM_E = ExtraGrowth/DOM_EC # total energy stored in the DOM that bacteria can still assimilate [J]
+       
+    #what can be primed
     SOMprimable=POM+MAOMs+MAOMp  # MAOMp is primed, decision 13/8/2024
+    
+    #SOMprimed = [gC] how much gC in POM or MAOM can be decayed with energy in DOM (DOM_E)
     SOMprimed=Priming_max*SOMprimable*(1-math.exp(-kpriming*DOM_E)) 
+    
     #print('SOMprimed',SOMprimed, 'primable SOM',SOMprimable)
     
     #how much of SOMdecayed will be from POM and how much from MAOM? Assume according to difficulty = k and relative pool size            
@@ -506,58 +558,6 @@ def calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAO
 
     return POM, MAOMs, MAOMp, respPrim, respPrim_sub, PrimingGrowth
 
-def calcRhizosphere (Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESPbact, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact):  
-   # describes rhizosphere bacterial growth on DOM
- 
-    DOM_Nini=DOM/CN_DOM
-    
-    # print ('line 511 calcRhizosphere', 'bact_DOM=', bact_DOM, 'CN_DOM', CN_DOM)
-    # calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id)
-    #gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1)*GMAX #gmax for bact on POM
-    gmaxmod= calcgmaxmod(CN_bact, CN_DOM, pCN, 0, 0, pH, 1)*GMAX  #maximum growth for bacteria growing on DOM g/(g day)
-    
-    #calculate substrate derived C in bact and DOM
-    bact_DOM_sub_abs = bact_DOM * bact_DOM_sub  #absolute substrate derived C in bacteria [gC/m3]
-    DOM_sub_abs = DOM * DOM_sub #absolute substrate derived C in DOM [gC/m3]
-   
-    #calculate growth
-    # def calcgrowth(biomass, source, avail, gmaxmod, Ks):
-    growth = modtBact*calcgrowth(bact_DOM, DOM, 1, gmaxmod, KS*bact_DOM) #Monod kinetic equation of growth  # g day net
-        
-    mCN = min(1, (CN_bact/CN_DOM)**pCN) #effect of CN
-    ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
-    if Priming==1 and mCN<1:  # if Priming is allowed and there was a shortage
-        # print ('priming active')
-        POM, MAOMs, MAOMp, respPriming, respPriming_sub, PrimingGrowth = calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
-    else:
-        respPriming=0
-        respPriming_sub=0
-        PrimingGrowth = 0
-    
-    BactTurnover=DEATH*bact_DOM #death of bacteria before adding today's growth
-    respDOM=rRESPbact*bact_DOM #respiration of DOM-feeding bacteria before adding today's growth without priming effect yet
-    respDOM_sub_abs = respDOM*bact_DOM_sub #what part of this respiration is substrate derived
-    respDOM_sub = respDOM_sub_abs/respDOM
-    bact_DOM += growth + PrimingGrowth - BactTurnover - respDOM
-    bact_DOM_sub_abs += (growth + PrimingGrowth)*DOM_sub - BactTurnover*bact_DOM_sub - respDOM*bact_DOM_sub #add the corresponding part of growth on DOM as substrate derived C, subtract correspodning part of death and respiration
-       
-    #change DOM / what was eaten and what was added from dying bacteria
-    DOM+= -growth - ExtraGrowth + BactTurnover 
-    #substrate-derived amounts
-    DOM_sub_abs += -growth*DOM_sub - ExtraGrowth*DOM_sub + BactTurnover*bact_DOM_sub #subtract what has been eaten and add corresponding part of substrate derived C from dead bacteria to DOM 
-    DOM_sub = DOM_sub_abs/DOM #recalculate relative substrate derived C in DOM
-    # if DOM_sub > 1 :
-    #     print('line550 calcgrowth DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM, 'growth', growth, 'ExtraG', ExtraGrowth, 'BactTurnover', BactTurnover)
-    bact_DOM_sub = bact_DOM_sub_abs/bact_DOM #recalculate relative substrate derived C in bacteria
-    DOM_N = DOM_Nini-(growth + ExtraGrowth)/CN_DOM + BactTurnover/CN_bact #hopefully it's correct that when burning ExtraGrowth C, some N was lost as well
-    # if(DOM<0):
-    #     print ('line 520 calcRhizophere DOM=', DOM, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
-    CN_DOM=DOM/DOM_N
-           
-           
-    return  DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming, respPriming_sub
-    
-
 def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, MAOMp_sub, maxMAOMp, DOM, DOM_sub, MAOMs, MAOMs_sub, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM, CN_MAOMp, CN_MAOMs):
     # MAOM formation towards saturation
     # Flow from disolved (DOM) to MAOM (mineral associated) organic matter
@@ -588,7 +588,7 @@ def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, MAOMp_sub, maxMAOMp,
                  
     # if not yet saturated so there is still some potential rate of MAOM formation
         #MAOMs takes over CN of DOM, so CN of MAOMs changes but that of DOM does not
-    if dMAOMs <= 0 or dMAOMp <= 0: print("calcMAOM line 591", dMAOMs, dMAOMp)
+    # if dMAOMs <= 0 or dMAOMp <= 0: print("calcMAOM line 591", dMAOMs, dMAOMp)
     #preparation for proportions calculations
     DOM_sub_abs = DOM * DOM_sub 
     MAOMs_sub_abs = MAOMs * MAOMs_sub 
