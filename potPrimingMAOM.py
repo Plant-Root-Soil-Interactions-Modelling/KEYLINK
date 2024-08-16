@@ -19,10 +19,10 @@ outDataframes=[]
 # the ones we want to calibrate
 bact_DOM_rel = 0.2 #proportion of bacteria that have access to feeding on DOM (e.g. that are present in rhizophere)
 DOM_EC = 2 # DOM energetic quality = energy stored per one gram of DOM [J/g] was 5
-kpriming=0.001 #decay rate of negative exponential decay curve of decay price, was 0.3
+kpriming=0.001 #decay rate of negative exponential decay curve of decay price, was 0., was 0.001
 KS=5  # C content required to get half the maximal growth of bacteria when decaying DOM [gC/m3]
-KSfungi=20000  # C content required to get half the maximal growth of fungi when decaying SOM [gC/m3]
-KSbact=38000 # C content required to get half the maximal growth of bacteria when decaying SOM [gC/m3]
+KSfungi= 200 # C content required to get half the maximal growth of fungi when decaying SOM [gC/m3] was 20000
+KSbact=380 # C content required to get half the maximal growth of bacteria when decaying SOM [gC/m3]
 kPOM_MAOM = 8 #ratio of POM to MAOM decayed / overall SOM decay is partitioned using this fixed ratios really unavailable, is k-POM/k_MAOM in israel code 
 kMAOMs_MAOMp = 8 #ratio of MAOMs to MAOMp decayed / overall MAOM decay is partitioned using this fixed ratios really unavailable,
 MAOMpmaxrate = 0.1 #maximum rate of primary MAOM formation
@@ -36,23 +36,22 @@ MM_N_MAOM =  1
 MM_Bact_MAOM = 1.10  #bact amount for half speed
 MM_SA_MAOM = 0.001  # ratio of SA of hyphae/roots to claysiltSA where half max speed of MAOM formation is reached
 MM_DOM_MAOM=0.025  # DOM concentration for speed being half max speed (Michaelis Menten) [gC/m3]
-Priming_max=10 #maximum decay price [J/gC]
+Priming_max=10 #maximum decay price [J/gC] was 10
 
 
 # the ones we use from other calibration
-GMAX=1.24 #maximal growth rate for bacteria [gC/(gC day)], KEYLINK
+GMAX=1.24 #maximal growth rate for bacteria [gC/(gC day)], KEYLINK was 1.24
 GMAXfungi=0.6  #maximal growth rate for fungi [gC/(gC day)], KEYLINK
 mRecBact=0.5  # how sensitive bact are to recalcitrance
 mRecFungi=0.5 #
 # resp=0.01 #respiration rate for bacteria growing on DOM / ??do we really need a different one? it was set to 0 decided to ditch it and just the next one
 #=0.05  #respiration rate resp, [gC/(gC day)], KEYLINK
-#rRESPfungi=0.03 #respiration rate resp, [gC/(gC day)], KEYLINK
 DEATH=0.05 #death rate for bacteria [gC/(gC day)], KEYLINK
 DEATHfungi=0.02 #death rate for fungi [gC/(gC day)], KEYLINK
 pCN=0.8 #sensitivity to CN ratio of consumed substrate, values 0-1, taken from KEYLINK (value for bacteria)
 recMAOM= 0.9 #recalcitrance of MAOM, (recalcitrance of POM assumed 0)
-RESPbact=0.05 #respiration rate of bacteria, [gC/(gC day)], KEYLINK
-RESPfungi=0.03 #respiration rate of fungi, [gC/(gC day)], KEYLINK
+RESPbact=0.2 #respiration rate of bacteria, [gC/(gC day)], was 0.05 KEYLINK 
+RESPfungi=0.2 #respiration rate of fungi, [gC/(gC day)], was 0.03 KEYLINK 
 T_MAXbact= 40
 T_MINbact= 0
 T_OPTbact= 25
@@ -245,9 +244,9 @@ for param in (paramsToTestNames):
 # initializing variables (what changes during run)
 
    #variables that will be initialized differently for different runs
-            bact_total = 5 #total biomass of bacteria [gC/m3], final noadd average from Jílková2022
+            bact_total = 50 #total biomass of bacteria [gC/m3], was 6 final noadd average from PLFA from Jílková2022
             CN_MAOMs=15 #estimated but we don't know the true value, assumed to vary with CN_DOM
-            fungi=1 #biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
+            fungi=10 #biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
             MAOM=25368 #C in MAOM [gC/m3] average noAdd Jílková2022 
             POM=13032  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
          
@@ -272,8 +271,11 @@ for param in (paramsToTestNames):
             MAOMs = MAOM-MAOMp #secondary MAOM[gC/m3]
             MAOMs_sub = 0 # proportion of MAOMs that is substrate derived in contrast to soil-derived / values 0 to 1/       
             POM_sub = 0 # proportion of POM that is substrate derived in contrast to soil-derived / values 0 to 1/
-            
-            
+            #check all C
+            resp = 0
+            DOMadded=0           
+            AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
+            print(AllC)
 
             
    # function coreMAOM
@@ -304,9 +306,12 @@ for param in (paramsToTestNames):
                 modtFungi = mf.calcmodt(temp, T_OPTfungi, T_MINfungi, T_MAXfungi)
                 rRESPbact=mf.calcresp(temp, T_OPTbact, RESPbact, Q10bact)
                 rRESPfungi=mf.calcresp(temp, T_OPTfungi, RESPfungi, Q10fungi)
+                # print(rRESPbact, rRESPfungi)
    # microbial growth on DOM and priming, only susing MAOMs
                 
-                if CN_DOM>0: DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming, respPriming_sub = mf.calcRhizosphere(Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESPbact, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact)
+                if CN_DOM>0: 
+                    DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming, respPriming_sub = mf.calcRhizosphere(Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESPbact, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact)
+                    print('calc.Rhizo')
  #               if (MAOMs<0):
  #                   print('mainLine270 DOM, bact, fungi, MAOMs, MAOMp', DOM,bact, fungi, MAOMs, MAOMp)
                 else: 
@@ -314,9 +319,18 @@ for param in (paramsToTestNames):
                     respDOM_sub = 0
                     respPriming = 0
                     respPriming_sub = 0
-   # MAOM formation
+                resp = respDOM + respPriming
+                bact_total = bact_DOM + bact
+                MAOM = MAOMs + MAOMp
+                AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
+                print('line322', treatment, d, AllC)
+    # MAOM formation
                 MicrobialC = bact + bact_DOM + fungi #all microbes contribute to MAOM formation
                 if CN_DOM>0: DOM, DOM_N, CN_DOM, DOM_sub, MAOMp, MAOMp_sub, MAOMs, MAOMs_sub, CN_MAOMs =mf.calcMAOM(MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, MAOMp_sub, maxMAOMp, DOM, DOM_sub, MAOMs, MAOMs_sub, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM, CN_MAOMp, CN_MAOMs)
+                
+                MAOM = MAOMs + MAOMp
+                # AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
+                # print('line329', treatment, d, AllC)
                 
    # baseline microbial growth on SOM (without substrate DOM additions)
                 availability=mf.calcAvailPot(PV, PW) #calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
@@ -396,6 +410,9 @@ for param in (paramsToTestNames):
                 
                 respSubstrate = resp_sub * resp #substrate derived respiration (absolute)
                 respSoil = resp - respSubstrate   #soil-derived respiration (absolute)
+                AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
+                print('line412', treatment, d, AllC)
+
                 
                 if(Plotting): #save data for Plotting   
                     outtreatment.append(treatment)

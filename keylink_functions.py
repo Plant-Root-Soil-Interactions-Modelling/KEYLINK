@@ -465,6 +465,7 @@ def calcRhizosphere (Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAO
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
     if Priming is True and mCN<1:  # if Priming is allowed and there was a shortage
         # print ('priming active')
+                                                                                    # POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp
         POM, MAOMs, MAOMp, respPriming, respPriming_sub, PrimingGrowth = calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
     else:
         respPriming=0
@@ -479,7 +480,7 @@ def calcRhizosphere (Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAO
     bact_DOM_sub_abs += (growth + PrimingGrowth)*DOM_sub - BactTurnover*bact_DOM_sub - respDOM*bact_DOM_sub #add the corresponding part of growth on DOM as substrate derived C, subtract correspodning part of death and respiration
        
     #change DOM / what was eaten and what was added from dying bacteria
-    DOM+= -growth - ExtraGrowth + BactTurnover 
+    DOM += -growth - ExtraGrowth + BactTurnover 
     #substrate-derived amounts
     DOM_sub_abs += -growth*DOM_sub - ExtraGrowth*DOM_sub + BactTurnover*bact_DOM_sub #subtract what has been eaten and add corresponding part of substrate derived C from dead bacteria to DOM 
     DOM_sub = DOM_sub_abs/DOM #recalculate relative substrate derived C in DOM
@@ -497,8 +498,8 @@ def calcRhizosphere (Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAO
 def calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp):
   #how much nitrogen can be released from SOM with the energy in remaining DOM:
     #DecayCost = how much energy will be spent on SOM decay, definite integral of a decay price function [J]
-    DOM_E = ExtraGrowth/DOM_EC # total energy stored in the DOM that bacteria can still assimilate [J]
-       
+    # DOM_E = ExtraGrowth / DOM_EC # total energy stored in the DOM that bacteria can still assimilate [J]
+    DOM_E = ExtraGrowth*DOM_EC # total energy stored in the DOM that bacteria can still assimilate [J]
     #what can be primed
     SOMprimable=POM+MAOMs+MAOMp  # MAOMp is primed, decision 13/8/2024
     
@@ -526,6 +527,11 @@ def calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAO
     else:
         MAOMsprimed=MAOMprimed*(MAOMs/(MAOMp+MAOMs))
         MAOMpprimed=MAOMprimed*(MAOMp/(MAOMp+MAOMs))
+        
+        
+    # check
+    # if SOMprimed != MAOMsprimed + MAOMpprimed + POMprimed:
+    #     print('priming ', SOMprimed - (MAOMsprimed + MAOMpprimed + POMprimed))
     #how much will this SOM decay provide N
     # if (SOMprimable<SOMprimed):
     #     print('SOMprimed, SOMprimable',SOMprimed, SOMprimable)
@@ -554,9 +560,10 @@ def calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAO
     # # else:
 
     #     # print("priming should be active but is not", PrimingGrowth, ExtraGrowth)
-                      
+                   
 
     return POM, MAOMs, MAOMp, respPrim, respPrim_sub, PrimingGrowth
+# POM, MAOMs, MAOMp, respPriming, respPriming_sub, PrimingGrowth
 
 def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, MAOMp_sub, maxMAOMp, DOM, DOM_sub, MAOMs, MAOMs_sub, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM, CN_MAOMp, CN_MAOMs):
     # MAOM formation towards saturation
