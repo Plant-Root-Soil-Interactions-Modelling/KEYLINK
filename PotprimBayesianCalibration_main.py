@@ -10,9 +10,11 @@ import pandas as pd
 from numpy import random as ra
 from scipy import stats
 
-from macsime import BayesianFunctions
-from macsime.plots import bayesian_plots
-from macsime.utilities import get_results_path, save_result
+import BayesianFunctionsPotprim
+
+#from macsime import BayesianFunctions
+#from macsime.plots import bayesian_plots
+#from macsime.utilities import get_results_path, save_result
 
 the_current_path = os.path.abspath(os.getcwd())
 
@@ -58,8 +60,8 @@ def run_model(inputData, results_path, num_treatments, data=None, parallel=False
     
     for treatment in range(num_treatments):
         print('treatment =', treatment)
-           treatment, result = potPrimingMAOM.run_model_bayesian(inputData, results_path, treatment, data)
-            data_Simulated[treatment] = result
+        treatment, result = run_model_bayesian(inputData, results_path, treatment, data)
+        data_Simulated[treatment] = result
 
     end = time.perf_counter()
     print(f'model ran for {time.strftime("%H:%M:%S", time.gmtime(end - start))}')
@@ -87,40 +89,50 @@ NumberOfTries = args.tries
 
 t1 = time.perf_counter()
 
-results_path = get_results_path()
+#results_path = get_results_path()
 # print("Directory ", results_path, " created")
 
-# file_name = 'aa'  # ? who wrote this?
-# management_df=CornManagement_df
-# plant_input_df=corn_input_df
 
 # input should be in filename below
 
-    # input is always in same filename, contains all field data from database
-inputfile = open(os.path.join('', 'BayesianPotprim.json'))
-    #   inputfile = open('corn_datalistBayesian_2fields_1double.json')
-    #   inputfile = open('corn_datalistBayesianDebug1field1year.json')
-    #   inputfile = open('corn_datalistBayesianDebug1field1day.json')
-    #   inputfile = open('corn_datalistBayesian_noNan1field.json')
-inputData = json.load(inputfile)
-    
+#    # input is always in same filename, contains all field data from database
+
+
+#calibrationData_path = os.path.join('', Bayesian_run_input.csv)  # '2018-01-01-2024-01-01-43.2001_-93.7481.csv')
+#calibrationData_df = pd.read_csv('Bayesian_run_input.csv', header=0, skiprows=0)
+                                                 
 # the number of fields equals the number of different management files.
 # Assume each management always has its own soil input
+#numTreatments = len(calibrationData_df['Treatments'])
 
-numFields = len(totallist_df['Fields'])
-if args.fields > 0:
-    numFields = min(args.fields, numFields)
+# read the fixed parameter list
+inputfileParam = open('datalistInput.json')  # input parameters (all) is always in same filenam
+#CalibratedParameters = json.load(inputfileParam)
 
-# read the Parameter data to calibrate
-numParams, treatments, Parameters, ParameterValues, MaximumOption, MinimalOption, keys = (
-    BayesianFunctions.read_parameter_data(inputData))
+#read the Parameter data to  and the fixed parameter values and put them together
+inputCalibrationParamfile = open('datalistCalibrationParam.json')
+numParams, treatments,Allparam,  CalParameters, CalParameterValues, MaximumOption, MinimalOption, keys = (
+      BayesianFunctionsPotprim.read_parameter_data(inputCalibrationParamfile))
 
-# read the measured data (towards which to calibrate)
-data_measured = BayesianFunctions.read_measured_data(numTreatments, inputData)
+# # read the measured data (towards which to calibrate)
+inputBayesianRun = pd.read_csv('Bayesian_run_input.csv', header=0, skiprows=0)
+numTreatments = len(inputBayesianRun)
+# put the variables defining the treatments into 1 list
+treatmentVar=inputBayesianRun   
+                    
+if args.treatments > 0:
+    numTreatments = min(args.treatments, numTreatments)
+data_measured = inputBayesianRun(numTreatments, inputBayesianRun)
 
+# create list of calibrated parameters + only values starting with original
+CalibratedParametersValues=CalParameterValues
+CalibratedParameters=CalParameters
+
+
+    
 # create list of all parameter sets tried out
 priorChain = np.zeros([NumberOfTries, numParams])  # list of tries per parameter
-priorChain[0, :] = list(CalibratedParameters.values())  # prior is every parameter set you try out, put in first row
+priorChain[0, :] = list(CalParameters.values())  # prior is every parameter set you try out, put in first row
 logLseries = []  # create empty list
 
 # create list of all parameter sets accepted, and 0 when not accepted so linnenrs are equal to priorChain
@@ -131,6 +143,8 @@ posteriorChain[0, :] = list(CalibratedParameters.values())
 
 # create list for simulations
 data_Simulated = [{'Yield': 0, 'SOC-PostHarvest': 0, 'SOC-Spring': 0} for treatment in range(numTreatments)]
+
+
 
 '''
  actual start of calibration
@@ -145,17 +159,15 @@ VarianceParameterSpace = np.diag(((0.005 * (MaximumOption - MinimalOption)) ** 2
 loglikelihood_param = np.sum(np.log(stats.uniform.pdf(CalibratedParametersValues, MinimalOption,
                                                       MaximumOption)))
 # 3) Simulated Data in a similar frame as the measured values,
-run_model(totallist_df, results_path, numFields, data_measured, parallel)
+run_model(Allparam, treatmentVar, results_path, numTreatments, parallel)
 print(data_Simulated)
 
-Csequestered = BayesianFunctions.calc_sequestration(totallist_df, numFields, data_Simulated)
-print('C seq=', Csequestered)
 
 # 4) calculate the likelihood of each run for each field from the differences between measured and simulated and error
 # create empty list(logLi) and store all the differences between measured and simulated per day
 likelihood_simulated = 0
-for Fieldnr in range(numFields):  # For each datapoint (should be the same for both datas) calculate the differance
-    likelihood_simulated += data_Simulated[Fieldnr]['sim likelihood']
+for treatment in range(numTreatments):  # For each datapoint (should be the same for both datas) calculate the differance
+    likelihood_simulated += data_Simulated[treatment]['sim likelihood']
 
 # 5) calculate total likelihood of this parameter set over all fields (Log0)
 log_likelihood_sim0 = likelihood_simulated / len(data_measured)
@@ -168,7 +180,6 @@ log_likelihood_best_fit_param = loglikelihood_param + log_likelihood_sim0
 
 print("start saving results")
 save_result([[data_Simulated]], results_path, "SimdataAll")
-save_result([[Csequestered]], results_path, "Csequestered")
 save_result([[data_Simulated]], results_path, "SimdataBestFit")
 save_result([[CalibratedParametersValues]], results_path, "calibratedParameters")
 save_result([[[log_likelihood_sim0]]], results_path, "logLikelyhood")
@@ -182,8 +193,8 @@ for c in range(1, NumberOfTries):  # For each trial Run
 
     # 7) find new parameter values to try
    
-    candidateparameters, candidateValue, crops, soilbiota = BayesianFunctions.find_new_parameters(
-        CalibratedParametersValues, VarianceParameterSpace, MinimalOption, MaximumOption, keys, soilbiota, crops)
+    candidateparameters, candidateValue, Allparam= BayesianFunctions.find_new_parameters(
+        CalibratedParametersValues, VarianceParameterSpace, MinimalOption, MaximumOption, keys)
     
     # 8) calculate the likelihood of these new parameters, assuming a uniform distribution
     # pdf=probability density function, the likelihood of the parameter set
@@ -194,13 +205,13 @@ for c in range(1, NumberOfTries):  # For each trial Run
         # for Fieldnr in range(numFields):  # so we run for each datapoint measured (=field)
 
         # 9) run the model for each field with the new parameters
-        run_model(totallist_df, results_path, numFields, data_measured, parallel)
+        run_model(Allparam, treatmentVar, results_path, numTreatments, parallel)
 
         # 10) calculate the likelihood of each run for each field and store in
 
         DiffMeasureSimulated = []  # new empty for every try
-        for Fieldnr in range(numFields):
-            DiffMeasureSimulated.append(data_Simulated[Fieldnr]['sim likelihood'])
+        for treatment in range(numTreatments):
+            DiffMeasureSimulated.append(data_Simulated[treatment]['sim likelihood'])
 
         """
         11) calculate the likelihood of the entire run over all fields in LogLikelihoodSim1
@@ -239,9 +250,7 @@ for c in range(1, NumberOfTries):  # For each trial Run
                 log_likelihood_best_fit_param = (loglikelihood_param + log_likelihood_sim0)
                 BestFitParam = CalibratedParametersValues  # update most likely parameter set
 
-            Csequestered = BayesianFunctions.calc_sequestration(totallist_df, numFields, data_Simulated)
-            
-            save_result([[Csequestered]], results_path, "Csequestered")
+           
             save_result([[data_Simulated]], results_path, "SimdataBestFit")
             save_result([[CalibratedParametersValues]], results_path, "calibratedParameters")
             save_result([[[log_likelihood_sim0]]], results_path, "logLikelihood   ")
@@ -272,4 +281,49 @@ print(f'Calibration ran for {time.strftime("%H:%M:%S", time.gmtime(t2 - t1))}\n'
 #                                        'HyphaeTurnoverrate', 'Hyphae_fGRSP', 'SoilHyphaeCond'])
 df = pd.DataFrame(priorChain, columns=list(CalibratedParameters.keys()))
 
-bayesian_plots(df=df, path=file_name, columns=5, save_to_file=True)
+#bayesian_plots(df=df, path=file_name, columns=5, save_to_file=True)
+
+def calc_sim_likelyhood(measurement, simulation, error):
+    if measurement == 0:
+        sim_likelihood = 0
+
+    else:
+        if error == 0:  # assumption for missing error values
+            error = measurement / 5
+        sim_likelihood = -0.5 * ((measurement - simulation) / error) ** 2 - np.log(error)
+
+    return sim_likelihood
+
+
+def run_model_bayesian(totallist_df, results_path, num_field, data_measured=None):
+    
+    model_result = run_model( run_input,
+                             results_path, bayesian=True)
+    # TODO would be nice if we automatically use the names in the measured data but not important
+
+    # Export Data created by the model, for Yield the yield of the first season (=summer)
+    # Add dSOC to initial SOC of first season, is in kg/m² (as in input) or ppm of top 30 cm
+    data_sim = {
+        'Yield': model_result[0][32][2],
+        'SOC-PostHarvest': model_result[0][34][2] + model_result[0][40][2],
+        'SOC-Spring': model_result[1][34][2] + model_result[1][40][2]
+    }
+
+    sim_yield = model_result[0][32][2]
+    sim_SOC_PostHarvest = (model_result[0][34][2] + model_result[0][40][2])
+    sim_SOC_Spring = (model_result[1][34][2] + model_result[1][40][2])
+    # data_sim["SOC-Spring"] = (model_result[1][9][2] + model_result[1][24][2])
+    # Add dSOC to initial SOC of 2nd season, is in kg/m²  (as in input) of top 30 cm
+
+    if data_measured is not None:
+        measured_yield = data_measured[num_field]['Yield']
+        measured_yield_error = data_measured[num_field]['Yield-error']
+        measured_SOC_PostHarvest = data_measured[num_field]['SOC-PostHarvest']
+        
+        calculation = (calc_sim_likelyhood(measured_yield, sim_yield, measured_yield_error)
+                       + calc_sim_likelyhood(measured_SOC_PostHarvest, sim_SOC_PostHarvest, measured_SOC_errorPH)
+                       + calc_sim_likelyhood(measured_SOC_Spring, sim_SOC_Spring, measured_SOC_errorSpring))
+        data_sim["sim likelihood"] = calculation
+    if data_measured[num_field]['SOC-PostHarvest'] is None:
+        measured_SOC_PostHarvest=0
+    return num_field, data_sim
