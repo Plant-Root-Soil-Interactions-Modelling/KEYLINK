@@ -273,9 +273,11 @@ for param in (paramsToTestNames):
             POM_sub = 0 # proportion of POM that is substrate derived in contrast to soil-derived / values 0 to 1/
             #check all C
             resp = 0
-            DOMadded=0           
-            AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
-            print(AllC)
+            resp_all=0 #add up resp cumulatively to be able to check the whole C balance
+            DOM_added=0           
+            DOM_added_all=0 #add up added DOM cumulatively to be able to check the whole C balance
+            AllC = DOM + POM + MAOM + bact_total + fungi + resp_all - DOM_added_all
+            # print(AllC)
 
             
    # function coreMAOM
@@ -285,6 +287,7 @@ for param in (paramsToTestNames):
    # on day 0 and then every 14 days, add DOM
                 if d==0 or (d%d_freq)==0: # on first day and then every d_freq days
                     DOM_added=DOMinput #to keep track of the additions
+                    DOM_added_all += DOM_added #keep track of sum of additions
                     DOM_sub_abs= DOM*DOM_sub #absolute substrate derived C in DOM [gC/m3]
                     DOM+=DOMinput #add input to the DOM carbon pool
                     DOM_sub_abs+=DOMinput #add all input as substrate derived C
@@ -311,7 +314,7 @@ for param in (paramsToTestNames):
                 
                 if CN_DOM>0: 
                     DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming, respPriming_sub = mf.calcRhizosphere(Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESPbact, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact)
-                    print('calc.Rhizo')
+                    # print('calc.Rhizo')
  #               if (MAOMs<0):
  #                   print('mainLine270 DOM, bact, fungi, MAOMs, MAOMp', DOM,bact, fungi, MAOMs, MAOMp)
                 else: 
@@ -320,17 +323,16 @@ for param in (paramsToTestNames):
                     respPriming = 0
                     respPriming_sub = 0
                 resp = respDOM + respPriming
+                resp_all += resp
                 bact_total = bact_DOM + bact
                 MAOM = MAOMs + MAOMp
-                AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
-                print('line322', treatment, d, AllC)
+                AllC = DOM + POM + MAOM + bact_total + fungi + resp_all - DOM_added
+
     # MAOM formation
                 MicrobialC = bact + bact_DOM + fungi #all microbes contribute to MAOM formation
                 if CN_DOM>0: DOM, DOM_N, CN_DOM, DOM_sub, MAOMp, MAOMp_sub, MAOMs, MAOMs_sub, CN_MAOMs =mf.calcMAOM(MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, MAOMp_sub, maxMAOMp, DOM, DOM_sub, MAOMs, MAOMs_sub, maxMAOMs, MAOMsmaxrate, MAOMpmaxrate, MM_DOM_MAOM,maxEffectBactMAOM,MM_Bact_MAOM, maxEffectN_MAOM,MM_N_MAOM, maxEffectSA_MAOM,MM_SA_MAOM, CN_MAOMp, CN_MAOMs)
                 
                 MAOM = MAOMs + MAOMp
-                # AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
-                # print('line329', treatment, d, AllC)
                 
    # baseline microbial growth on SOM (without substrate DOM additions)
                 availability=mf.calcAvailPot(PV, PW) #calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
@@ -402,7 +404,8 @@ for param in (paramsToTestNames):
                 baselineResp = baselineRespBact + baselineRespFungi + respDOM #of course this respDOM is higher if previous day DOM-feeding bacteria grew more because of priming
                 #all respiration
                 resp = baselineResp + respPriming
-                
+                resp_all += baselineRespBact + baselineRespFungi + respPriming # here add up only these which have not been accounted for yet  respDOM and respPriming have been already added up
+
                 #calculate average substrate proportions
                 MAOM_sub = MAOMp_sub*(MAOMp/MAOM) + MAOMs_sub*(MAOMs/MAOM) #average substrate proportion in MAOM
                 bact_total_sub = bact_DOM_sub*(bact_DOM/bact_total) + bact_sub*(bact/bact_total)# average substrate proportion in bacteria
@@ -410,9 +413,8 @@ for param in (paramsToTestNames):
                 
                 respSubstrate = resp_sub * resp #substrate derived respiration (absolute)
                 respSoil = resp - respSubstrate   #soil-derived respiration (absolute)
-                AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
-                print('line412', treatment, d, AllC)
-
+                AllC = DOM + POM + MAOM + bact_total + fungi + resp_all - DOM_added_all
+                # print('line420', treatment, d, AllC)
                 
                 if(Plotting): #save data for Plotting   
                     outtreatment.append(treatment)
@@ -509,7 +511,7 @@ for param in (paramsToTestNames):
                 
                 #plot substrate-derived proportions
                 def Dailyplot2(outBact_DOM_sub, outBact_sub, outFungi_sub, outDOM_sub,outPOM_sub, outMAOMs_sub,  outMAOMp_sub):
-                    fig, (p1, p2, p3) = plt.subplots(nrows=3, ncols=1,figsize=(4, 10.5))#was 10,12
+                    fig, (p1, p2, p3) = plt.subplots(nrows=3, ncols=1,figsize=(4, 10.5)) #was 10,12
                     fig.suptitle(treatments[i], size=16)
                     fig.tight_layout(pad=2.0)
                     ps = (p1, p2, p3)
