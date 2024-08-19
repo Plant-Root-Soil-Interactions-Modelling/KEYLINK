@@ -17,10 +17,10 @@ outDataframes=[]
 #calibrated parameters (= that do NOT change during run but need calibration)
 
 # the ones we want to calibrate
-bact_DOM_rel = 0.2 #proportion of bacteria that have access to feeding on DOM (e.g. that are present in rhizophere)
+bact_DOM_rel = 0.5 #proportion of bacteria that have access to feeding on DOM (e.g. that are present in rhizophere) was 0.2
 DOM_EC = 2 # DOM energetic quality = energy stored per one gram of DOM [J/g] was 5
 kpriming=0.001 #decay rate of negative exponential decay curve of decay price, was 0., was 0.001
-KS=5  # C content required to get half the maximal growth of bacteria when decaying DOM [gC/m3]
+KS=2  # C content required to get half the maximal growth of bacteria when decaying DOM [gC/m3] was 5
 KSfungi= 200 # C content required to get half the maximal growth of fungi when decaying SOM [gC/m3] was 20000
 KSbact=380 # C content required to get half the maximal growth of bacteria when decaying SOM [gC/m3]
 kPOM_MAOM = 8 #ratio of POM to MAOM decayed / overall SOM decay is partitioned using this fixed ratios really unavailable, is k-POM/k_MAOM in israel code 
@@ -44,14 +44,12 @@ GMAX=1.24 #maximal growth rate for bacteria [gC/(gC day)], KEYLINK was 1.24
 GMAXfungi=0.6  #maximal growth rate for fungi [gC/(gC day)], KEYLINK
 mRecBact=0.5  # how sensitive bact are to recalcitrance
 mRecFungi=0.5 #
-# resp=0.01 #respiration rate for bacteria growing on DOM / ??do we really need a different one? it was set to 0 decided to ditch it and just the next one
-#=0.05  #respiration rate resp, [gC/(gC day)], KEYLINK
-DEATH=0.05 #death rate for bacteria [gC/(gC day)], KEYLINK
-DEATHfungi=0.02 #death rate for fungi [gC/(gC day)], KEYLINK
+DEATH=0.02 #death rate for bacteria [gC/(gC day)], KEYLINK was 0.05
+DEATHfungi=0.01 #death rate for fungi [gC/(gC day)], KEYLINK was 0.02
 pCN=0.8 #sensitivity to CN ratio of consumed substrate, values 0-1, taken from KEYLINK (value for bacteria)
 recMAOM= 0.9 #recalcitrance of MAOM, (recalcitrance of POM assumed 0)
-RESPbact=0.2 #respiration rate of bacteria, [gC/(gC day)], was 0.05 KEYLINK 
-RESPfungi=0.2 #respiration rate of fungi, [gC/(gC day)], was 0.03 KEYLINK 
+RESPbact=0.4 #respiration rate of bacteria, [gC/(gC day)], was 0.05 KEYLINK  was 0.2
+RESPfungi=0.4 #respiration rate of fungi, [gC/(gC day)], was 0.03 KEYLINK  was 0.2
 T_MAXbact= 40
 T_MINbact= 0
 T_OPTbact= 25
@@ -72,8 +70,8 @@ pH=4.1 #Jílková2022
 temp = 21
 
 #those different for Jílková 2022 and experiment 2024
-d_freq = 21 #how often is substrate added, every x days, is 14 for Jílková2022, but 21 for experiment 2024
-numDays=150 #number of days of incubation experiment/how long to run the model, 150 in Jílková2022
+d_freq = 14 #how often is substrate added, every x days, is 14 for Jílková2022, but 21 for experiment 2024
+numDays=155 #number of days of incubation experiment/how long to run the model, 150 in Jílková2022
 
 #those that will be the same for all 16 runs
 BD=800   # bulk density [kg/m³]
@@ -112,7 +110,7 @@ numruns=0 #initializing the number of runs
 #these differ in DOM input amount and CN of DOM input
 
 DOMinput_treatments=np.array([10,10,0]) #exudates, leachates, control
-CN_DOMinput_treatments = np.array([6, 80, 80])  #exudates, leachates, control, CN od control DOMinput can't be zero because of dividing by it in DOM_N calculation
+CN_DOMinput_treatments = np.array([6, 80, 0])  #exudates, leachates, control, CN od control DOMinput can't be zero because of dividing by it in DOM_N calculation
 treatments = np.array(["exudates", "leachates", "control"])
 
 
@@ -244,9 +242,9 @@ for param in (paramsToTestNames):
 # initializing variables (what changes during run)
 
    #variables that will be initialized differently for different runs
-            bact_total = 50 #total biomass of bacteria [gC/m3], was 6 final noadd average from PLFA from Jílková2022
+            bact_total = 426 #total biomass of bacteria [gC/m3], was 6 final noadd average from PLFA from Jílková2022
             CN_MAOMs=15 #estimated but we don't know the true value, assumed to vary with CN_DOM
-            fungi=10 #biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
+            fungi=55 #biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
             MAOM=25368 #C in MAOM [gC/m3] average noAdd Jílková2022 
             POM=13032  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
          
@@ -256,12 +254,12 @@ for param in (paramsToTestNames):
             bact_sub = 0 # proportion of this bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
             bact_DOM = bact_total*bact_DOM_rel #biomass of bacteria growing on DOM [gC/m3]
             bact_DOM_sub = 0 # proportion of bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
-            CN_DOM=0 # 
-            DOM=0  # DOM [gC/m3]
+            CN_DOM=21 # was 0
+            DOM=5  # DOM [gC/m3] was 0
             DOM_sub = 0 # relative substrate derived C in DOM /values 0 to 1/, portion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
-            DOM_N=0 #set DOM N to zero
-            if DOM>0: DOM_N=DOM/CN_DOM #but if there is some initial DOM, calculate it from CN_DOM
-            
+            if DOM>0: 
+                DOM_N=DOM/CN_DOM #but if there is some initial DOM, calculate it from CN_DOM
+            else: DOM_N=0 #set DOM N to zero
             fungi_sub = 0 # proportion of fungal carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
             
             
@@ -273,10 +271,10 @@ for param in (paramsToTestNames):
             POM_sub = 0 # proportion of POM that is substrate derived in contrast to soil-derived / values 0 to 1/
             #check all C
             resp = 0
-            resp_all=0 #add up resp cumulatively to be able to check the whole C balance
+            # resp_all=0 #add up resp cumulatively to be able to check the whole C balance
             DOM_added=0           
             DOM_added_all=0 #add up added DOM cumulatively to be able to check the whole C balance
-            AllC = DOM + POM + MAOM + bact_total + fungi + resp_all - DOM_added_all
+            # AllC = DOM + POM + MAOM + bact_total + fungi + resp_all - DOM_added_all
             # print(AllC)
 
             
@@ -289,8 +287,8 @@ for param in (paramsToTestNames):
                     DOM_added=DOMinput #to keep track of the additions
                     DOM_added_all += DOM_added #keep track of sum of additions
                     DOM_sub_abs= DOM*DOM_sub #absolute substrate derived C in DOM [gC/m3]
-                    DOM+=DOMinput #add input to the DOM carbon pool
-                    DOM_sub_abs+=DOMinput #add all input as substrate derived C
+                    DOM += DOMinput #add input to the DOM carbon pool
+                    DOM_sub_abs += DOMinput #add all input as substrate derived C
                     if DOM>0:
                         DOM_sub= DOM_sub_abs/DOM #update relative substrate derived C in DOM
                         # if DOM_sub > 1:
@@ -309,7 +307,7 @@ for param in (paramsToTestNames):
                 modtFungi = mf.calcmodt(temp, T_OPTfungi, T_MINfungi, T_MAXfungi)
                 rRESPbact=mf.calcresp(temp, T_OPTbact, RESPbact, Q10bact)
                 rRESPfungi=mf.calcresp(temp, T_OPTfungi, RESPfungi, Q10fungi)
-                # print(rRESPbact, rRESPfungi)
+                print(rRESPbact, rRESPfungi)
    # microbial growth on DOM and priming, only susing MAOMs
                 
                 if CN_DOM>0: 
@@ -323,10 +321,10 @@ for param in (paramsToTestNames):
                     respPriming = 0
                     respPriming_sub = 0
                 resp = respDOM + respPriming
-                resp_all += resp
+                # resp_all += resp
                 bact_total = bact_DOM + bact
                 MAOM = MAOMs + MAOMp
-                AllC = DOM + POM + MAOM + bact_total + fungi + resp_all - DOM_added
+                # AllC = DOM + POM + MAOM + bact_total + fungi + resp_all - DOM_added
 
     # MAOM formation
                 MicrobialC = bact + bact_DOM + fungi #all microbes contribute to MAOM formation
@@ -404,7 +402,7 @@ for param in (paramsToTestNames):
                 baselineResp = baselineRespBact + baselineRespFungi + respDOM #of course this respDOM is higher if previous day DOM-feeding bacteria grew more because of priming
                 #all respiration
                 resp = baselineResp + respPriming
-                resp_all += baselineRespBact + baselineRespFungi + respPriming # here add up only these which have not been accounted for yet  respDOM and respPriming have been already added up
+                # resp_all += baselineRespBact + baselineRespFungi + respPriming # here add up only these which have not been accounted for yet  respDOM and respPriming have been already added up
 
                 #calculate average substrate proportions
                 MAOM_sub = MAOMp_sub*(MAOMp/MAOM) + MAOMs_sub*(MAOMs/MAOM) #average substrate proportion in MAOM
@@ -413,7 +411,7 @@ for param in (paramsToTestNames):
                 
                 respSubstrate = resp_sub * resp #substrate derived respiration (absolute)
                 respSoil = resp - respSubstrate   #soil-derived respiration (absolute)
-                AllC = DOM + POM + MAOM + bact_total + fungi + resp_all - DOM_added_all
+                # AllC = DOM + POM + MAOM + bact_total + fungi + resp_all - DOM_added_all
                 # print('line420', treatment, d, AllC)
                 
                 if(Plotting): #save data for Plotting   
