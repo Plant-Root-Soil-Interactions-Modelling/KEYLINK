@@ -107,7 +107,7 @@ numruns = 0 # initializing the number of runs
 # perform three experimental runs, one for each of the three treatments
 # these differ in DOM input amount and CN of DOM input
 
-DOMinput_treatments = np.array([10 10, 0]) # exudates, leachates, control
+DOMinput_treatments = np.array([10, 10, 0]) # exudates, leachates, control
 CN_DOMinput_treatments = np.array([6, 80, 0]) # exudates, leachates, control, CN od control DOMinput can't be zero because of dividing by it in DOM_N calculation
 treatments = np.array(["exudates", "leachates", "control"])
    
