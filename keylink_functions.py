@@ -463,6 +463,7 @@ def calcRhizosphere (Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAO
         
     mCN = min(1, (CN_bact/CN_DOM)**pCN) #effect of CN
     ExtraGrowth=(1-mCN)*growth  # what didn't yet grow in g/day because of N shortage
+    # Priming = False
     if Priming is True and mCN<1:  # if Priming is allowed and there was a shortage
         # print ('priming active')
                                                                                     # POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp
@@ -471,6 +472,7 @@ def calcRhizosphere (Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAO
         respPriming=0
         respPriming_sub=0
         PrimingGrowth = 0
+        ExtraGrowth = 0
     
     BactTurnover=DEATH*bact_DOM #death of bacteria before adding today's growth
     respDOM=rRESPbact*bact_DOM #respiration of DOM-feeding bacteria before adding today's growth without priming effect yet
@@ -510,13 +512,12 @@ def calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAO
     
     #how much of SOMdecayed will be from POM and how much from MAOM? Assume according to difficulty = k and relative pool size            
     factor=1/(1+(kPOM_MAOM*POM/(MAOMs+MAOMp)))
-    
     # can go below 0 by ecaying too much of the favourite
-    if((1-factor)*SOMprimed<POM):
+    if((1-factor)*SOMprimed<POM): #if POMprimed is less than POM available
         POMprimed=(1-factor)*SOMprimed
         MAOMprimed=factor*SOMprimed
     else:
-        POMprimed=(POM/SOMprimable)*SOMprimed
+        POMprimed=(POM/SOMprimable)*SOMprimed #if demand for POM is bigger than available POM pool, do this so that POM does not become negative
         MAOMprimed=((MAOMp+MAOMs)/SOMprimable)*SOMprimed
     # split the primed MAOM between MAOMp and MAOMs
     MAOMfactor=1/(1+(kMAOMs_MAOMp*MAOMs/MAOMp))
