@@ -70,7 +70,7 @@ temp = 21
 
 #those different for Jílková 2022 and experiment 2024
 d_freq = 14 # how often is substrate added, every x days, is 14 for Jílková2022, but 21 for experiment 2024
-numDay = 155 # number of days of incubation experiment/how long to run the model, 150 in Jílková2022
+numDays = 155 # number of days of incubation experiment/how long to run the model, 150 in Jílková2022
 
 # those that will be the same for all 16 runs
 BD = 800   # bulk density [kg/m³]
@@ -240,7 +240,7 @@ for param in (paramsToTestNames):
 
    # variables that will be initialized differently for different runs
             bact_total = 426 # total biomass of bacteria [gC/m3], was 6 final noadd average from PLFA from Jílková2022
-            CN_MAOM = 15 # estimated but we don't know the true value, assumed to vary with CN_DOM
+            CN_MAOMs = 15 # estimated but we don't know the true value, assumed to vary with CN_DOM
             fungi = 55 # biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
             MAOM = 25368 # C in MAOM [gC/m3] average noAdd Jílková2022 
             POM = 13032  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
