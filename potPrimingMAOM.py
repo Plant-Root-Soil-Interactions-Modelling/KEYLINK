@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import copy
+import os
 
 #output dataframe list
 outDataframes=[]
@@ -532,10 +533,16 @@ for param in (paramsToTestNames):
    
             
             #after each run, make a plot
+                try:
+                     os.makedirs("./output/figures")
+                except FileExistsError:
+                    # directory already exists
+                    pass
+
                 Dailyplot1(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
-                plt.savefig("output/figures/Dailyplot1_" + treatments[i] +".png")
+                plt.savefig(".\output\\figures\Dailyplot1_" + treatments[i] +".png")
                 Dailyplot2(outBact_DOM_sub, outBact_sub, outFungi_sub, outDOM_sub, outPOM_sub, outMAOMs_sub,  outMAOMp_sub)
-                plt.savefig("output/figures/Dailyplot2_" + treatments[i] +".png")
+                plt.savefig(".\output\\figures\Dailyplot2_" + treatments[i] +".png")
    ############# end of Plotting   #############   
     
         #after each three runs (for each of the three treatments), reset parameters to original, before next parameter value change
