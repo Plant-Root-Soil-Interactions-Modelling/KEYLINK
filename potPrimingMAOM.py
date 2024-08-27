@@ -592,7 +592,7 @@ for param in (paramsToTestNames):
        
 #in the end, save data output        
 if Sensitivity:
-    results_df.to_csv(".\output\data\Sensitivity.csv", index=False)
+    results_df.to_csv(".\output\data\Sensitivity.csv", index=False, float_format='%.2f')
             
 
 if (Sensitivity is False) and (Bayesian is False):
@@ -600,7 +600,7 @@ if (Sensitivity is False) and (Bayesian is False):
     # merge the three dataframes to create a data output containing all three treatments
     # dfAll=pd.concat(outDataframes)
     # dfAll.to_csv(".\output\data\Output.csv", index=False)
-    results_df.to_csv(".\output\data\Output.csv", index=False)
+    results_df.to_csv(".\output\data\Output.csv", index=False, float_format='%.2f')
 
 # if (Bayesian):
 #     return results_df
