@@ -441,13 +441,53 @@ for param in (paramsToTestNames):
                 
                 # make different output depending on the type of run
                 if Sensitivity:
-                    results_df.loc[len(results_df)] = [param, paramChange, value, treatment, d, DOM_added, DOM, bact_DOM, bact, fungi, respSubstrate, baselineResp, respSoil, POM, MAOMs, MAOMp, MAOM]
+                    results_df.loc[len(results_df)] = [param,
+                                                       paramChange,
+                                                       value,
+                                                       treatment,
+                                                       d,
+                                                       DOM_added / 0.8, # change units from gC/m3 µgC/g soil
+                                                       DOM / 0.8, # change units from gC/m3 µgC/g soil
+                                                       bact_DOM / 0.8, # change units from gC/m3 µgC/g soil
+                                                       bact / 0.8, # change units from gC/m3 µgC/g soil
+                                                       fungi / 0.8, # change units from gC/m3 µgC/g soil
+                                                       respSubstrate / (0.8 * 24), # change units from gC/m3/day to µg CO2-C/g soil/h
+                                                       baselineResp / (0.8 * 24), # change units from gC/m3/day to µg CO2-C/g soil/h
+                                                       respSoil / (0.8 * 24), # change units from gC/m3/day to µg CO2-C/g soil/h
+                                                       POM / (0.8 * 1000), # change units from gC/m3 mgC/g soil
+                                                       MAOMs / (0.8 * 1000), # change units from gC/m3 mgC/g soil
+                                                       MAOMp / (0.8 * 1000), # change units from gC/m3 mgC/g soil
+                                                       MAOM / (0.8 * 1000)] # change units from gC/m3 mgC/g soil
                 
                 if Bayesian: # variables for which we have measured data
-                    results_df.loc[len(results_df)] = [treatment, d, resp, resp_sub, POM, MAOM, bact_total, fungi, POM_sub, MAOM_sub, bact_total_sub, fungi_sub]
+                    results_df.loc[len(results_df)] = [treatment,
+                                                       d,
+                                                       resp / (0.8 * 24), # change units from gC/m3/day to µg CO2-C/g soil/h
+                                                       resp_sub / (0.8 * 24), # change units from gC/m3/day to µg CO2-C/g soil/h
+                                                       POM / (0.8 * 1000), # change units from gC/m3 mgC/g soil
+                                                       MAOM / (0.8 * 1000), # change units from gC/m3 mgC/g soil
+                                                       bact_total / 0.8, # change units from gC/m3 µgC/g soil
+                                                       fungi / 0.8, # change units from gC/m3 µgC/g soil
+                                                       POM_sub / (0.8 * 1000), # change units from gC/m3 mgC/g soil
+                                                       MAOM_sub / (0.8 * 1000), # change units from gC/m3 mgC/g soil,
+                                                       bact_total_sub / 0.8, # change units from gC/m3 µgC/g soil
+                                                       fungi_sub / 0.8] # change units from gC/m3 µgC/g soil
                
                 if Sensitivity is False and Bayesian is False: # for normal runs
-                    results_df.loc[len(results_df)] = [treatment, d, DOM_added,DOM, bact_DOM, bact, fungi, respSubstrate, baselineResp, respSoil, POM, MAOMs, MAOMp, MAOM]
+                    results_df.loc[len(results_df)] = [treatment,
+                                                       d,
+                                                       DOM_added / 0.8, # change units from gC/m3 µgC/g soil
+                                                       DOM / 0.8, # change units from gC/m3 µgC/g soil
+                                                       bact_DOM / 0.8, # change units from gC/m3 µgC/g soil
+                                                       bact / 0.8, # change units from gC/m3 µgC/g soil
+                                                       fungi / 0.8, # change units from gC/m3 µgC/g soil
+                                                       respSubstrate / (0.8 * 24), # change units from gC/m3/day to µg CO2-C/g soil/h
+                                                       baselineResp / (0.8 * 24), # change units from gC/m3/day to µg CO2-C/g soil/h
+                                                       respSoil / (0.8 * 24), # change units from gC/m3/day to µg CO2-C/g soil/h
+                                                       POM / (0.8 * 1000), # change units from gC/m3 mgC/g soil
+                                                       MAOMs / (0.8 * 1000), # change units from gC/m3 mgC/g soil
+                                                       MAOMp / (0.8 * 1000), # change units from gC/m3 mgC/g soil
+                                                       MAOM/ (0.8 * 1000)] # change units from gC/m3 mgC/g soil
        
 ############# end of daily run of coreMAOM   #############                             
      
@@ -538,7 +578,7 @@ for param in (paramsToTestNames):
                 except FileExistsError:
                     # directory already exists
                     pass
-                
+
                 #after each run, make a plot
                 Dailyplot1(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
                 plt.savefig(".\output\\figures\Dailyplot1_" + treatments[i] +".png")
