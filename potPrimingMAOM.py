@@ -414,19 +414,19 @@ for param in (paramsToTestNames):
                 if Plotting: # save data for Plotting   
                     outtreatment.append(treatment)
                     time_d.append(d) # store days in an array for plotting
-                    outDOMadded.append(DOM_added)
-                    outMAOM.append(MAOM)
-                    outMAOMp.append(MAOMp)
-                    outMAOMs.append(MAOMs)
-                    outPOM.append(POM)
-                    outDOM.append(DOM)
-                    outBact_total.append(bact_total)
-                    outbact_DOM.append(bact_DOM)
-                    outBact.append(bact)
-                    outFungi.append(fungi)
-                    outRespSubstrate.append(respSubstrate)
-                    outRespSoilBaseline.append(baselineResp)
-                    outRespSoil.append(respSoil)
+                    outDOMadded.append(DOM_added / 0.8) # change units from gC/m3 µgC/g soil
+                    outMAOM.append(MAOM / (0.8 * 1000)) # change units from gC/m3 mgC/g soil
+                    outMAOMp.append(MAOMp / (0.8 * 1000)) # change units from gC/m3 mgC/g soil)
+                    outMAOMs.append(MAOMs / (0.8 * 1000)) # change units from gC/m3 mgC/g soil)
+                    outPOM.append(POM / (0.8 * 1000)) # change units from gC/m3 mgC/g soil
+                    outDOM.append(DOM / 0.8) # change units from gC/m3 µgC/g soil)
+                    outBact_total.append(bact_total / 0.8) # change units from gC/m3 µgC/g soil
+                    outbact_DOM.append(bact_DOM / 0.8) # change units from gC/m3 µgC/g soil
+                    outBact.append(bact / 0.8) # change units from gC/m3 µgC/g soil
+                    outFungi.append(fungi / 0.8) # change units from gC/m3 µgC/g soil
+                    outRespSubstrate.append(respSubstrate / (0.8 * 24)), # change units from gC/m3/day
+                    outRespSoilBaseline.append(baselineResp / (0.8 * 24)), # change units from gC/m3/day
+                    outRespSoil.append(respSoil / (0.8 * 24)), # change units from gC/m3/day
                     # substrate-derived %
                     outBact_total_sub.append(bact_total_sub)
                     outBact_DOM_sub.append(bact_DOM_sub)
@@ -463,15 +463,15 @@ for param in (paramsToTestNames):
                     results_df.loc[len(results_df)] = [treatment,
                                                        d,
                                                        resp / (0.8 * 24), # change units from gC/m3/day to µg CO2-C/g soil/h
-                                                       resp_sub / (0.8 * 24), # change units from gC/m3/day to µg CO2-C/g soil/h
+                                                       resp_sub,
                                                        POM / (0.8 * 1000), # change units from gC/m3 mgC/g soil
                                                        MAOM / (0.8 * 1000), # change units from gC/m3 mgC/g soil
                                                        bact_total / 0.8, # change units from gC/m3 µgC/g soil
                                                        fungi / 0.8, # change units from gC/m3 µgC/g soil
-                                                       POM_sub / (0.8 * 1000), # change units from gC/m3 mgC/g soil
-                                                       MAOM_sub / (0.8 * 1000), # change units from gC/m3 mgC/g soil,
-                                                       bact_total_sub / 0.8, # change units from gC/m3 µgC/g soil
-                                                       fungi_sub / 0.8] # change units from gC/m3 µgC/g soil
+                                                       POM_sub,
+                                                       MAOM_sub,
+                                                       bact_total,
+                                                       fungi_sub]
                
                 if Sensitivity is False and Bayesian is False: # for normal runs
                     results_df.loc[len(results_df)] = [treatment,
@@ -496,22 +496,22 @@ for param in (paramsToTestNames):
      ############# Plotting   #############       
             if Plotting: # transform data for Plotting to adjusted units matching the data
                 # change units to easily understandable for the plot
-                outDOMadded2 = np.divide(outDOMadded, 0.8) # change units from gC/m3 µgC/g soil
-                outBact_total2 = np.divide(outBact_total, 0.8) # change units from gC/m3 µgC/g soil
-                outbact_DOM2 = np.divide(outbact_DOM, 0.8) 
-                outBact2 = np.divide(outBact, 0.8)
-                outFungi2 = np.divide(outFungi, 0.8)
-                outRespSubstrate2 = np.divide(outRespSubstrate, 0.8 * 24) # change units from gC/m3/day to µg CO2-C/g soil/h
-                outRespSoilBaseline2 = np.divide(outRespSoilBaseline, 0.8 * 24)
-                outRespSoil2 = np.divide(outRespSoil, 0.8 * 24)
-                outDOM2 = np.divide(outDOM, 0.8) # change units from gC/m3 µgC/g soil
-                outPOM2 = np.divide(outPOM, 0.8 * 1000) # change units from gC/m3 mgC/g soil
-                outMAOM2 = np.divide(outMAOM, 0.8 * 1000) # change units from gC/m3 mgC/g soil
-                outMAOMp2 = np.divide(outMAOMp, 0.8 * 1000) # change units from gC/m3 mgC/g soil
-                outMAOMs2 = np.divide(outMAOMs, 0.8 * 1000) # change units from gC/m3 mgC/g soil
+                # outDOMadded2 = np.divide(outDOMadded, 0.8) # change units from gC/m3 µgC/g soil
+                # outBact_total2 = np.divide(outBact_total, 0.8) # change units from gC/m3 µgC/g soil
+                # outbact_DOM2 = np.divide(outbact_DOM, 0.8) 
+                # outBact2 = np.divide(outBact, 0.8)
+                # outFungi2 = np.divide(outFungi, 0.8)
+                # outRespSubstrate2 = np.divide(outRespSubstrate, 0.8 * 24) # change units from gC/m3/day to µg CO2-C/g soil/h
+                # outRespSoilBaseline2 = np.divide(outRespSoilBaseline, 0.8 * 24)
+                # outRespSoil2 = np.divide(outRespSoil, 0.8 * 24)
+                # outDOM2 = np.divide(outDOM, 0.8) # change units from gC/m3 µgC/g soil
+                # outPOM2 = np.divide(outPOM, 0.8 * 1000) # change units from gC/m3 mgC/g soil
+                # outMAOM2 = np.divide(outMAOM, 0.8 * 1000) # change units from gC/m3 mgC/g soil
+                # outMAOMp2 = np.divide(outMAOMp, 0.8 * 1000) # change units from gC/m3 mgC/g soil
+                # outMAOMs2 = np.divide(outMAOMs, 0.8 * 1000) # change units from gC/m3 mgC/g soil
               
                 # first plot function
-                def Dailyplot1(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs): # plot in original KEYLINK units
+                def Dailyplot1(outDOMadded, outDOM, outbact_DOM, outBact, outFungi, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOMp, outMAOMs): # plot in original KEYLINK units
                     fig, ((p1, p2, p3), (p4, p5, p6)) = plt.subplots(nrows=2, ncols=3, figsize=(12, 7)) # was 10, 12
                     fig.suptitle(treatments[i], size=16)
                     fig.tight_layout(pad=2.0)
@@ -526,22 +526,22 @@ for param in (paramsToTestNames):
                     # ps[4].set_title("SOM, mgC g-1 soil")
                     ps[5].set_title("MAOM, mgC g-1 soil")
                     
-                    p1.plot(time_d, outDOMadded2)
-                    p2.plot(time_d, outDOM2)
-                    p3.plot(time_d, outBact_total2, label="bacteria")
-                    p3.plot(time_d, outbact_DOM2, label="bacteria DOM feeding")
-                    p3.plot(time_d, outBact2, label="bacteria only SOM feeding")
-                    p3.plot(time_d, outFungi2, label="fungi")
+                    p1.plot(time_d, outDOMadded)
+                    p2.plot(time_d, outDOM)
+                    p3.plot(time_d, outBact_total, label="bacteria")
+                    p3.plot(time_d, outbact_DOM, label="bacteria DOM feeding")
+                    p3.plot(time_d, outBact, label="bacteria only SOM feeding")
+                    p3.plot(time_d, outFungi, label="fungi")
                     ps[2].legend(loc=(0.4, 0.03), shadow=True) # loc='bottom right',
-                    p4.plot(time_d, outRespSubstrate2, label="substrate-derived")
-                    p4.plot(time_d, outRespSoil2, label="soil-derived incl. priming")
-                    p4.plot(time_d, outRespSoilBaseline2, label="soil-derived baseline")
+                    p4.plot(time_d, outRespSubstrate, label="substrate-derived")
+                    p4.plot(time_d, outRespSoil, label="soil-derived incl. priming")
+                    p4.plot(time_d, outRespSoilBaseline, label="soil-derived baseline")
                     ps[3].legend(loc=(0.25, 0.03), shadow=True) # loc='bottom right',
-                    p5.plot(time_d, outPOM2, label="POM")
+                    p5.plot(time_d, outPOM, label="POM")
                     ps[4].legend(loc=(0.03, 0.03), shadow=True) # loc='upper left',
-                    p6.plot(time_d, outMAOM2, label="MAOM")
-                    p6.plot(time_d, outMAOMp2, label="primary MAOM")
-                    p6.plot(time_d, outMAOMs2, label="secondary MAOM")    
+                    p6.plot(time_d, outMAOM, label="MAOM")
+                    p6.plot(time_d, outMAOMp, label="primary MAOM")
+                    p6.plot(time_d, outMAOMs, label="secondary MAOM")    
                     ps[5].legend(loc=(0.4, 0.03), shadow=True) # loc='bottom right',
                 
                 #plot substrate-derived proportions
@@ -580,7 +580,7 @@ for param in (paramsToTestNames):
                     pass
 
                 #after each run, make a plot
-                Dailyplot1(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
+                Dailyplot1(outDOMadded, outDOM, outbact_DOM, outBact, outFungi, outRespSubstrate, outRespSoil, outRespSoilBaseline, outPOM, outMAOMp, outMAOMs)
                 plt.savefig(".\output\\figures\Dailyplot1_" + treatments[i] +".png")
                 Dailyplot2(outBact_DOM_sub, outBact_sub, outFungi_sub, outDOM_sub, outPOM_sub, outMAOMs_sub,  outMAOMp_sub)
                 plt.savefig(".\output\\figures\Dailyplot2_" + treatments[i] +".png")
