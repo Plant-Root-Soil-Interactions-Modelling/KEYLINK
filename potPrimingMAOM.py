@@ -532,13 +532,14 @@ for param in (paramsToTestNames):
                     p3.plot(time_d, outResp_sub, label="total respiration")
    
             
-            #after each run, make a plot
+                # check if there is a "figures" folder; if not, create one
                 try:
                      os.makedirs("./output/figures")
                 except FileExistsError:
                     # directory already exists
                     pass
-
+                
+                #after each run, make a plot
                 Dailyplot1(outDOMadded2, outDOM2, outbact_DOM2, outBact2, outFungi2, outRespSubstrate2, outRespSoil2, outRespSoilBaseline2, outPOM2, outMAOMp2, outMAOMs2)
                 plt.savefig(".\output\\figures\Dailyplot1_" + treatments[i] +".png")
                 Dailyplot2(outBact_DOM_sub, outBact_sub, outFungi_sub, outDOM_sub, outPOM_sub, outMAOMs_sub,  outMAOMp_sub)
