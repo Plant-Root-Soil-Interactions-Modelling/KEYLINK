@@ -590,6 +590,12 @@ for param in (paramsToTestNames):
         if Sensitivity: 
             paramsToTestDict = copy.deepcopy(origValues) # reset to original if we were doing sensitivity
        
+try:
+    os.makedirs("./output/data")
+except FileExistsError:
+    # directory already exists
+    pass
+
 #in the end, save data output        
 if Sensitivity:
     results_df.to_csv(".\output\data\Sensitivity.csv", index=False, float_format='%.2f')
