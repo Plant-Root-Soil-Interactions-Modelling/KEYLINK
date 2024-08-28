@@ -998,32 +998,44 @@ for param in paramsToTestNames:
             )  # reset to original if we were doing sensitivity
 
 def drawRespPlot(respPlot):
-    # count mean values
-    soil_values = []
-    soil_values.append(sum(respPlot["soilControl"]) / len(respPlot["soilControl"]))
-    soil_values.append(sum(respPlot["soilLeachates"]) / len(respPlot["soilLeachates"]))
-    soil_values.append(sum(respPlot["soilExudates"]) / len(respPlot["soilExudates"]))
+    # count mean values of the modelled data
+    soil_values_model = []
+    soil_values_model.append(sum(respPlot["soilControl"]) / len(respPlot["soilControl"]))
+    soil_values_model.append(sum(respPlot["soilLeachates"]) / len(respPlot["soilLeachates"]))
+    soil_values_model.append(sum(respPlot["soilExudates"]) / len(respPlot["soilExudates"]))
 
-    sub_values = []
-    sub_values.append(sum(respPlot["subControl"]) / len(respPlot["subControl"]))
-    sub_values.append(sum(respPlot["subLeachates"]) / len(respPlot["subLeachates"]))
-    sub_values.append(sum(respPlot["subExudates"]) / len(respPlot["subExudates"]))
+    sub_values_model = []
+    sub_values_model.append(sum(respPlot["subControl"]) / len(respPlot["subControl"]))
+    sub_values_model.append(sum(respPlot["subLeachates"]) / len(respPlot["subLeachates"]))
+    sub_values_model.append(sum(respPlot["subExudates"]) / len(respPlot["subExudates"]))
 
     labels = ['Control', 'Leachates', 'Exudates']
 
-    # create first plot
-    plt.figure(figsize=(10, 4))
+    # measured values
+    soil_values_measure = [26.23, 32.64, 27.64]
+    sub_values_measure = [0, 6.83, 8.43]
 
+    # create plot
+    plt.figure(figsize=(8, 4))
+    x = np.arange(len(labels))  # label locations
+    width = 0.2  # width of the bars
+
+    # create first subplot
     plt.subplot(1, 2, 1)
-    plt.bar(labels, soil_values, color="gray")
+    plt.bar(x - width/2, soil_values_model, width, label="Modeled" , color="gray")
+    plt.bar(x + width/2, soil_values_measure, width, label='Measured', color='black')
     plt.title('Soil derived')
     plt.ylabel('Respiration [µg C-CO2/g soil/h]')
+    plt.xticks(x, labels)
 
-    # create second plot
+    # create second subplot
     plt.subplot(1, 2, 2)
-    plt.bar(labels, sub_values, color="black")
+    plt.bar(x - width/2, sub_values_model, width, label="Modeled" , color="gray")
+    plt.bar(x + width/2, sub_values_measure, width, label='Measured', color='black')
     plt.title('Substrate derived')
     plt.ylabel('')
+    plt.xticks(x, labels)
+    plt.legend(loc="upper left", bbox_to_anchor=(1, 1), shadow=True)
 
     plt.tight_layout()
 
