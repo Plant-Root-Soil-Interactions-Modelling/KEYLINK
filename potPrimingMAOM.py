@@ -868,12 +868,15 @@ for param in paramsToTestNames:
                     p3.plot(time_d, outBact, label="bacteria only SOM feeding")
                     p3.plot(time_d, outFungi, label="fungi")
                     ps[2].legend(loc=(0.4, 0.03), shadow=True)  # loc='bottom right',
+
                     p4.plot(time_d, outRespSubstrate, label="substrate-derived")
                     p4.plot(time_d, outRespSoil, label="soil-derived incl. priming")
                     p4.plot(time_d, outRespSoilBaseline, label="soil-derived baseline")
                     ps[3].legend(loc=(0.25, 0.03), shadow=True)  # loc='bottom right',
+
                     p5.plot(time_d, outPOM, label="POM")
                     ps[4].legend(loc=(0.03, 0.03), shadow=True)  # loc='upper left',
+
                     p6.plot(time_d, outMAOM, label="MAOM")
                     p6.plot(time_d, outMAOMp, label="primary MAOM")
                     p6.plot(time_d, outMAOMs, label="secondary MAOM")
@@ -905,16 +908,22 @@ for param in paramsToTestNames:
                     p1.plot(time_d, outBact_DOM_sub, label="bacteria DOM feeding")
                     p1.plot(time_d, outBact_sub, label="bacteria SOM feeding")
                     p1.plot(time_d, outFungi_sub, label="fungi")
-                    ps[0].legend(loc="lower right", shadow=True)  # loc='bottom right',
+                    ps[0].legend(
+                        loc="upper left", bbox_to_anchor=(1, 1), shadow=True
+                    )  # loc='bottom right',
 
                     p2.plot(time_d, outDOM_sub, label="DOM")
-                    ps[1].legend(loc="lower right", shadow=True)  # loc='bottom right',
+                    ps[1].legend(
+                        loc="upper left", bbox_to_anchor=(1, 1), shadow=True
+                    )  # loc='bottom right',
 
                     p3.plot(time_d, outPOM_sub, label="POM")
                     p3.plot(time_d, outMAOM_sub, label="MAOM")
                     p3.plot(time_d, outMAOMp_sub, label="primary MAOM")
                     p3.plot(time_d, outMAOMs_sub, label="secondary MAOM")
-                    ps[2].legend(loc="upper left", shadow=True)  # loc='bottom right',
+                    ps[2].legend(
+                        loc="upper left", bbox_to_anchor=(1, 1), shadow=True
+                    )  # loc='bottom right',
 
                     p4.plot(time_d, outResp_sub, label="total respiration")
 
@@ -949,7 +958,10 @@ for param in paramsToTestNames:
                     outMAOMs_sub,
                     outMAOMp_sub,
                 )
-                plt.savefig(".\output\\figures\Dailyplot2_" + treatments[i] + ".png")
+                plt.savefig(
+                    ".\output\\figures\Dailyplot2_" + treatments[i] + ".png",
+                    bbox_inches="tight",
+                )
         ############# end of Plotting   #############
 
         # after each three runs (for each of the three treatments), reset parameters to original, before next parameter value change
