@@ -712,13 +712,13 @@ for param in paramsToTestNames:
                     outFungi.append(fungi / 0.8)  # change units from gC/m3 µgC/g soil
                     outRespSubstrate.append(
                         respSubstrate / (0.8 * 24)
-                    ),  # change units from gC/m3/day
+                    )  # change units from gC/m3/day
                     outRespSoilBaseline.append(
                         baselineResp / (0.8 * 24)
-                    ),  # change units from gC/m3/day
+                    )  # change units from gC/m3/day
                     outRespSoil.append(
                         respSoil / (0.8 * 24)
-                    ),  # change units from gC/m3/day
+                    )  # change units from gC/m3/day
                     # substrate-derived %
                     outBact_total_sub.append(bact_total_sub)
                     outBact_DOM_sub.append(bact_DOM_sub)
