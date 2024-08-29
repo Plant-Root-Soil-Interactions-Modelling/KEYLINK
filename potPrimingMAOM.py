@@ -447,6 +447,7 @@ for param in paramsToTestNames:
                 rRESPbact = mf.calcresp(temp, T_OPTbact, RESPbact, Q10bact)
                 rRESPfungi = mf.calcresp(temp, T_OPTfungi, RESPfungi, Q10fungi)
                 # print(rRESPbact, rRESPfungi)
+
                 # microbial growth on DOM and priming, only susing MAOMs
 
                 if CN_DOM > 0:
@@ -498,10 +499,12 @@ for param in paramsToTestNames:
                 #               if (MAOMs<0):
                 #                   print('mainLine270 DOM, bact, fungi, MAOMs, MAOMp', DOM,bact, fungi, MAOMs, MAOMp)
                 else:
+
                     respDOM = 0
                     respDOM_sub = 0
                     respPriming = 0
                     respPriming_sub = 0
+
                 resp = respDOM + respPriming
                 # resp_all += resp
                 bact_total = bact_DOM + bact
@@ -548,6 +551,7 @@ for param in paramsToTestNames:
                         CN_MAOMp,
                         CN_MAOMs,
                     )
+
 
                 MAOM = MAOMs + MAOMp
 

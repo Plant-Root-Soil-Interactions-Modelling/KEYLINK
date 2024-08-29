@@ -446,8 +446,10 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
 def calcRhizosphere (Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, bact_DOM, bact_DOM_sub, CN_bact, DOM, DOM_sub, CN_DOM, GMAX, DEATH, pCN, pH, rRESPbact, KS, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp, modtBact):  
    # describes rhizosphere bacterial growth on DOM
  
+
     DOM_Nini = DOM / CN_DOM
     
+
     # print ('line 511 calcRhizosphere', 'bact_DOM=', bact_DOM, 'CN_DOM', CN_DOM)
     # calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id)
     # gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1) * GMAX #gmax for bact on POM
@@ -461,12 +463,14 @@ def calcRhizosphere (Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAO
     # def calcgrowth(biomass, source, avail, gmaxmod, Ks):
     growth = modtBact * calcgrowth(bact_DOM, DOM, 1, gmaxmod, KS * bact_DOM) # Monod kinetic equation of growth  # g day net
         
+
     mCN = min(1, (CN_bact / CN_DOM) ** pCN) # effect of CN
     ExtraGrowth = (1-mCN) * growth # what didn't yet grow in g/day because of N shortage
     # Priming = False
     if Priming is True and mCN < 1: # if Priming is allowed and there was a shortage
         # print('priming active')
         # POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp
+
         POM, MAOMs, MAOMp, respPriming, respPriming_sub, PrimingGrowth = calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp)
     else:
         respPriming = 0
@@ -478,6 +482,7 @@ def calcRhizosphere (Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAO
     respDOM = rRESPbact * bact_DOM # respiration of DOM-feeding bacteria before adding today's growth without priming effect yet
     respDOM_sub_abs = respDOM * bact_DOM_sub # what part of this respiration is substrate derived
     respDOM_sub = respDOM_sub_abs / respDOM
+
     bact_DOM += growth + PrimingGrowth - BactTurnover - respDOM
     bact_DOM_sub_abs += (growth + PrimingGrowth) * DOM_sub - BactTurnover * bact_DOM_sub - respDOM * bact_DOM_sub # add the corresponding part of growth on DOM as substrate derived C, subtract correspodning part of death and respiration
        
@@ -492,10 +497,12 @@ def calcRhizosphere (Priming, POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAO
     DOM_N = DOM_Nini - (growth + ExtraGrowth) / CN_DOM + BactTurnover / CN_bact # hopefully it's correct that when burning ExtraGrowth C, some N was lost as well
     # if DOM < 0:
     #     print ('line 520 calcRhizophere DOM=', DOM, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
+
     CN_DOM = DOM / DOM_N
         
+
     return  DOM, DOM_sub, DOM_N, CN_DOM, bact_DOM, bact_DOM_sub, POM, MAOMs,MAOMp, respDOM, respDOM_sub, respPriming, respPriming_sub
-    
+
 def calcPriming(POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp):
     # how much nitrogen can be released from SOM with the energy in remaining DOM:
     # DecayCost = how much energy will be spent on SOM decay, definite integral of a decay price function [J]
