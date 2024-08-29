@@ -103,14 +103,14 @@ PSA = np.zeros(5)
 PSA = mf.calcPoreSurfaceArea(
     PV, PRadius, PSA
 )  # pore surface area for each pore size class, calculated from  KEYLINK function
-PW = np.array(
-    [45 / 2, 37 / 2, 37 / 2, 200 / 2, 6 / 2]
-)  # pore water volume, assume all pores half filled , but water is in m³ while volume was in l
-RootHyphaeSurface = 10000  # surface area of all roots/hyphae [m2/m3] ??unit correct / look up roots surface area equivalent to that amount of DOM input
+PW = np.divide(PV,2)  # pore water volume, assume all pores half filled  [l/m3]
+RootHyphaeSurface = 71  # surface area of all roots/hyphae [m2/m3] was 10000, now changed to 71 calculated based on Brunn et al. 2022 as roots surface area equivalent to that amount of DOM input
 fractionSA = (
     RootHyphaeSurface / maxSurfaceArea
 )  # used in calcMAOM/ fraction of mineral surface area occupied by roots/hyphae
 
+
+    
 Priming = True  # flag to enable Priming effect
 Plotting = True  # flag 1 to enable making of plots, so that this can be turned off during sensitivity analysis etc.
 Bayesian = False  # flag 1 if performing Bayesian
@@ -353,12 +353,22 @@ for param in paramsToTestNames:
             # initializing variables (what changes during run)
 
             # variables that will be initialized differently for different runs
-            bact_total = 426  # total biomass of bacteria [gC/m3], was 6 final noadd average from PLFA from Jílková2022
+            bact_total = 426  # total biomass of bacteria [gC/m3] based on initial C in microbial biomass, distributed among bacteria and fungi using final PLFA ratios, was 6 final noadd average from PLFA from Jílková2022
             CN_MAOMs = 15  # estimated but we don't know the true value, assumed to vary with CN_DOM
-            fungi = 55  # biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
+            fungi = 85  # biomass of fungi [gC/m3] based on initial C in microbial biomass, distributed among bacteria and fungi using final PLFA ratios / was 1, based on final noadd in Jílková et al. 2022
             MAOM = 25368  # C in MAOM [gC/m3] average noAdd Jílková2022
             POM = 13032  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
+            TP = None
+            PV = None
 
+            if TP == None:
+                TP = mf.calcTotalporosity(MAOM + POM, BD)
+
+            if PV == None:
+                R, S, alpha, n, m = mf.calcVangenuchten(BD, MAOM + POM, fClay, 1 - fClay - fSilt)
+                PV = mf.calcPoresDistribution(R, S, alpha, n, m, TP)
+                PW = np.divide(PV,2)  # pore water volume, assume all pores half filled  [l/m3]
+            
             # same for all runs
             availability = np.zeros(3)
             bact = bact_total * (
@@ -414,7 +424,7 @@ for param in paramsToTestNames:
                     DOM += DOMinput  # add input to the DOM carbon pool
                     DOM_sub_abs += DOMinput  # add all input as substrate derived C
 
-                    if DOM > 0:
+                    if DOMinput > 0:
                         DOM_sub = (
                             DOM_sub_abs / DOM
                         )  # update relative substrate derived C in DOM
@@ -422,10 +432,10 @@ for param in paramsToTestNames:
                         # print('line265 treatment=', treatment, 'd=', d, 'DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM)
                     # else: probably not needed
                     #     DOM_sub = 0
-                    DOM_N += (
-                        DOMinput / CN_DOMinput
+                        DOM_N += (
+                            DOMinput / CN_DOMinput
                     )  # add equivalent amount of N to DON pool
-                    if DOM_N > 0:
+                    # if DOM_N > 0:
                         CN_DOM = DOM / DOM_N  # calculate new CN of DOM pool
                 else:
                     DOM_added = 0
@@ -436,7 +446,7 @@ for param in paramsToTestNames:
                 modtFungi = mf.calcmodt(temp, T_OPTfungi, T_MINfungi, T_MAXfungi)
                 rRESPbact = mf.calcresp(temp, T_OPTbact, RESPbact, Q10bact)
                 rRESPfungi = mf.calcresp(temp, T_OPTfungi, RESPfungi, Q10fungi)
-                print(rRESPbact, rRESPfungi)
+                # print(rRESPbact, rRESPfungi)
                 # microbial growth on DOM and priming, only susing MAOMs
 
                 if CN_DOM > 0:
@@ -674,7 +684,7 @@ for param in paramsToTestNames:
 
                 # calculate average substrate proportions
                 MAOM_sub = MAOMp_sub * (MAOMp / MAOM) + MAOMs_sub * (
-                    MAOMs / MAOMp_sub
+                    MAOMs / MAOMp
                 )  # average substrate proportion in MAOM
                 bact_total_sub = bact_DOM_sub * (bact_DOM / bact_total) + bact_sub * (
                     bact / bact_total

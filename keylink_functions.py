@@ -628,3 +628,58 @@ def calcMAOM (MicrobialC, DOM_N, CN_DOM, fractionSA, MAOMp, MAOMp_sub, maxMAOMp,
     # if DOM < 0:
     #     print ('line 579 calcMaom DOM=', DOM)
     return DOM, DOM_N, CN_DOM, DOM_sub, MAOMp, MAOMp_sub, MAOMs, MAOMs_sub, CN_MAOMs   
+
+#calculates total porosity from organic matter content and bulk density
+def calcTotalporosity (SOM, BD):
+    BD = BD/1000 # change units from kg/m3 to g/cm3
+    percSOM = SOM/BD/10000 * 1.72 # SOM change units from [gC/m3] to % SOM
+    # print('percSOM', percSOM)
+    Ds = 100 / (percSOM / 1.35 + (100 - percSOM) / 2.65 ) #calculate particle density
+    # print('particle density', Ds)
+    TP = 1 - BD/Ds # in m3/m3
+    # print('Total porosity in l/m3', TP * 1000)
+    return TP
+
+# calculates van genuchten model parameters of a water retention curve using pedotransfer function of Tian et al. (2021)
+def calcVangenuchten (BD, SOM, fClay, fSand):
+    BD = BD/1000 # change units from kg/m3 to g/cm3
+    OC = SOM/BD/10000 # change units from g/m3 to %    
+    # print('OC', OC)
+    clay = fClay * 100 # change units from g/g to %
+    sand = fSand * 100 # change units from g/g to %
+    # print('clay and sand', clay, sand)
+    S = -0.3334 * BD + 0.0005 * clay + 0.8945
+    R = 0.0115 * BD * pow(clay, 0.7489)
+    alpha = (0.0012 * sand + 0.0001 * clay + 0.0089 * OC + 0.0101) * pow(BD, -2.5325)
+    n = (-0.0034 * sand - 0.0186 * clay - 0.0351 * OC + 1.1477) * BD + (0.0068 * sand + 0.0217 * clay + 0.0047 * OC + 0.0080)
+    m = 1 - 1/n
+    
+    #version of pedotransfer functions without considering OC
+    # S = -0.3311 * BD + 0.0005 * clay + 0.8916
+    # R = 0.0112 * BD * pow(clay, 0.7550)
+    # alpha = (0.0014 * sand + 0.0001 * clay + 0.0159) * pow(BD, -2.8834)
+    # n = (-0.0046 * sand - 0.0212 * clay + 1.3398) * BD + (0.0079 * sand + 0.0250 * clay - 0.2617)
+    # m = 1 - 1/n
+    
+    # print ('Van genuchten model parameters', R, S, alpha, n, m)
+    return R, S, alpha, n, m
+
+def calcPoresDistribution (R, S, alpha, n, m, TP): #calculates pore volume in different pore size classes from van genuchten model parameters
+    
+    PV = np.zeros(5) #initialize empty array
+    # pore volume for each pore size class [l/m3] 
+    PV[0] = 1000 * water_content(30000, R, S, alpha, n, m) #vol inac pores, l/m3, pF = 4.5 h=30000 cm
+    PV[1] = 1000 * (water_content(1500, R, S, alpha, n, m) - water_content(30000, R, S, alpha, n, m)) #vol bact pores, l/m3
+    PV[2] = 1000 * (water_content(100, R, S, alpha, n, m) - water_content(1500, R, S, alpha, n, m)) #vol micro pores, l/m3
+    PV[3] = 1000 * (water_content(2, R, S, alpha, n, m) - water_content(100, R, S, alpha, n, m)) #vol meso pores, l/m3
+    PV[4] = 1000 * (TP - water_content(2, R, S, alpha, n, m) ) #vol macro pores, l/m3
+    # saturation = water_content(1, R, S, alpha, n, m)
+    # print('saturation', saturation)
+    # print('PV in l/m3', PV)
+    return PV
+
+
+    
+
+    
+
