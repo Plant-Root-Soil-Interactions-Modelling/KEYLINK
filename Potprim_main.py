@@ -13,9 +13,6 @@ from potPrimingMAOMfunction import *
 
 import BayesianFunctionsPotprim
 
-#from macsime import BayesianFunctions
-#from macsime.plots import bayesian_plots
-from macsime.utilities import get_results_path, save_result
 
 the_current_path = os.path.abspath(os.getcwd())
 results_path = ".\output"
@@ -190,7 +187,7 @@ log_likelihood_best_fit_param = loglikelihood_param + log_likelihood_sim0
 
 print("start saving results")
 
-save_result([[data_Simulated]], results_path, "SimdataAll")
+BayesianFunctionsPotprim.save_result([[data_Simulated]], results_path, "SimdataAll")
 # save_result([[data_Simulated]], results_path, "SimdataBestFit")
 # save_result([[CalibratedParametersValues]], results_path, "calibratedParameters")
 # save_result([[[log_likelihood_sim0]]], results_path, "logLikelyhood")
@@ -250,7 +247,7 @@ for c in range(1, NumberOfTries):  # For each trial Run
 
         # print('random value', lograndom)
         # print('logalpha', logalpha)
-        save_result([[data_Simulated]], results_path, "SimdataAll")
+        BayesianFunctionsPotprim.save_result([[data_Simulated]], results_path, "SimdataAll")
 
         if random < alpha:
             CalibratedParametersValues = candidateValue
@@ -268,9 +265,9 @@ for c in range(1, NumberOfTries):  # For each trial Run
                 BestFitParam = CalibratedParametersValues  # update most likely parameter set
 
            
-            save_result([[data_Simulated]], results_path, "SimdataBestFit")
-            save_result([[CalibratedParametersValues]], results_path, "calibratedParameters")
-            save_result([[[log_likelihood_sim0]]], results_path, "logLikelihood   ")
+            BayesianFunctionsPotprim.save_result([[data_Simulated]], results_path, "SimdataBestFit")
+            BayesianFunctionsPotprim.save_result([[CalibratedParametersValues]], results_path, "calibratedParameters")
+            BayesianFunctionsPotprim.save_result([[[log_likelihood_sim0]]], results_path, "logLikelihood   ")
 
             """
             14) test if we have enough runs: avg and stdev are table for each column of posterior

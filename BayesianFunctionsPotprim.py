@@ -13,7 +13,6 @@ import numpy as np
 from numpy import random as ra
 from scipy import stats
 
-from macsime.MacsimeCore import run_model
 
 
 def block_print():
