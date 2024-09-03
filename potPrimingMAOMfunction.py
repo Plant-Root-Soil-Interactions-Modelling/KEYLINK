@@ -475,7 +475,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
                     DOM += DOMinput  # add input to the DOM carbon pool
                     DOM_sub_abs += DOMinput  # add all input as substrate derived C
 
-                    if DOM > 0:
+                    if DOMinput > 0:
                         DOM_sub = (
                             DOM_sub_abs / DOM
                         )  # update relative substrate derived C in DOM
@@ -483,10 +483,10 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
                         # print('line265 treatment=', treatment, 'd=', d, 'DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM)
                     # else: probably not needed
                     #     DOM_sub=0
-                    DOM_N += (
-                        DOMinput / CN_DOMinput
-                    )  # add equivalent amount of N to DON pool
-
+                        DOM_N += (
+                            DOMinput / CN_DOMinput
+                        )  # add equivalent amount of N to DON pool
+                    # print('CN_DOMinput', CN_DOMinput)
                     # if DOM_N>0:
                     CN_DOM = DOM / DOM_N  # calculate new CN of DOM pool
                 else:

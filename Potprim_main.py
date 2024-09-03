@@ -141,6 +141,7 @@ numTreatments = len(inputBayesianRun)
 # "put the measured data in another dataframe per treatment number"
 data_measured = pd.DataFrame()
 data_measured = inputBayesianRun.iloc[:, 17:81]
+
 # inputBayesianRun({"sample"})
 
 # create list of calibrated parameters + only values starting with original
@@ -162,7 +163,7 @@ posteriorChain[0, :] = list(CalibratedParameters.values())
 
 # create list of lists for simulations for data on different days
 data_Simulated = [
-    {"Resp1": 0, "Resp_sub1": 0, "sim likelihood": 0}
+    {"resp1": 0, "resp_sub1": 0, "sim likelihood": 0}
     for treatment in range(numTreatments)
 ]
 
@@ -188,16 +189,19 @@ for treatment in range(numTreatments):
     treatmentVar = inputBayesianRun.iloc[
         treatment, 0:17
     ]  # to be  corrected for nr of columns needed
+    print('treatmentID', treatmentVar['treatmentID'], 'treatment', treatmentVar['treatment'])
     results_df = run_model(AllParam, treatmentVar, True, False)
     # we need to couple the output of the right day to the measured output
-    data_Simulated[treatment]["Resp1"] = results_df["resp"][0]
+    data_Simulated[treatment]["resp1"] = results_df["resp"][0]
+    data_Simulated[treatment]["resp_sub1"] = results_df["resp_sub"][0]
     # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
-
-    print('treatmentID', treatmentVar['treatmentID'], 'treatment', treatmentVar['treatment'])
-    print("datasimResp1 treatment 1", data_Simulated[treatment]["Resp1"])
+   
+    print("datasim resp1 treatment 1", data_Simulated[treatment]["resp1"])
     print("datameasured", data_measured["resp1"][treatment])
+    
+    
     likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
-        data_Simulated[treatment]["Resp1"],
+        data_Simulated[treatment]["resp1"],
         data_measured["resp1"][treatment],
         data_measured["resp1_error"][treatment],
     )
@@ -267,12 +271,12 @@ for c in range(1, NumberOfTries):  # For each trial Run
             treatmentVar = inputBayesianRun.iloc[treatment]  # to be moved & use iloc
             results_df = run_model(AllParam, treatmentVar, numTreatments, True, False)
             # we need to couple the output of the right day to the measured output
-            data_Simulated[treatment]["Resp1"] = results_df["resp"][0]
+            data_Simulated[treatment]["resp1"] = results_df["resp"][0]
             # we need to add for the treatment the likelyhood of all measurements added
             likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
-                data_Simulated[treatment]["Resp1"],
-                data_measured["Resp1"][treatment],
-                data_measured["Resp1_error"][treatment],
+                data_Simulated[treatment]["resp1"],
+                data_measured["resp1"][treatment],
+                data_measured["resp1_error"][treatment],
             )
             data_Simulated[treatment]["sim likelihood"] += likelyhood
 
