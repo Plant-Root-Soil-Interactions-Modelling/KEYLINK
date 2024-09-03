@@ -118,7 +118,7 @@ numTreatments = len(inputBayesianRun)
 
 #"put the measured data in another dataframe per treatment number"                   
 data_measured=pd.DataFrame()
-data_measured = inputBayesianRun.iloc[:,18:24]
+data_measured = inputBayesianRun.iloc[:,17:81]
     #inputBayesianRun({"sample"})
  
 # create list of calibrated parameters + only values starting with original
@@ -158,14 +158,14 @@ treatmentVar=()
 results_df=pd.DataFrame()
 #data_Simulated=pd.DataFrame()
 for treatment in range (numTreatments): 
-    treatmentVar=inputBayesianRun.iloc[treatment,0:15]  # to be  corrected for nr of columns needed
-    results_df=run_model(AllParam, treatmentVar, numTreatments, True, False)
+    treatmentVar=inputBayesianRun.iloc[treatment,0:17]  # to be  corrected for nr of columns needed
+    results_df=run_model(AllParam, treatmentVar, True, False)
     # we need to couple the output of the right day to the measured output
     data_Simulated[treatment]['Resp1']=results_df['resp'][0]
     # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
     print('datasimResp1 treatment 1', data_Simulated[treatment]['Resp1'])
-    print('datameasured', data_measured['Resp1'][treatment])
-    likelyhood=BayesianFunctionsPotprim.calc_sim_likelyhood(data_Simulated[treatment]['Resp1'], data_measured['Resp1'][treatment], data_measured['Resp1_error'][treatment]) 
+    print('datameasured', data_measured['resp1'][treatment])
+    likelyhood=BayesianFunctionsPotprim.calc_sim_likelyhood(data_Simulated[treatment]['Resp1'], data_measured['resp1'][treatment], data_measured['resp1_error'][treatment]) 
     data_Simulated[treatment]['sim likelihood']+=likelyhood         
 print(results_df)
 
@@ -297,34 +297,4 @@ df = pd.DataFrame(priorChain, columns=list(CalibratedParameters.keys()))
 
 #bayesian_plots(df=df, path=file_name, columns=5, save_to_file=True)
 
-def calc_sim_likelyhood(measurement, simulation, error):
-    if measurement == 0:
-        sim_likelihood = 0
 
-    else:
-        if error == 0:  # assumption for missing error values
-            error = measurement / 5
-        sim_likelihood = -0.5 * ((measurement - simulation) / error) ** 2 - np.log(error)
-
-    return sim_likelihood
-
-# call the model and get the difference between measured and simulated
-def run_model_bayesian(totallist_df, results_path, num_field, data_measured=None):
-    for treatment in numTreatments:
-        model_result = run_model(run_input,
-                             results_path, bayesian=True)
-    # TODO would be nice if we automatically use the names in the measured data but not important
-
-    # Export Data created by the model, for Yield the yield of the first season (=summer)
-    # Add dSOC to initial SOC of first season, is in kg/m² (as in input) or ppm of top 30 cm
-        for i in measuredDays:
-            sim_resp = {
-                model_result[0][i]
-                }
-
-   
-        if data_measured is not None:
-            calculation = calc_sim_likelyhood(measured_resp, sim_resp, measured_resp_error)
-            data_sim[treatment] = calculation
-    
-    return data_sim 

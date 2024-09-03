@@ -11,7 +11,7 @@ import pandas as pd
 import copy
 
 
-def run_model(AllParam, treatmentVar, numTreatments, Bayesian, Sensitivity):
+def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
 #output dataframe list
     outDataframes=[]
     # devide 'input' into: parametersToCalibrate, ParametersCalibrated, Inputvariables (run-specific)
@@ -265,11 +265,11 @@ def run_model(AllParam, treatmentVar, numTreatments, Bayesian, Sensitivity):
     # initializing variables (what changes during run)
     
        #variables that will be initialized differently for different runs
-                bact_total = 50 #total biomass of bacteria [gC/m3], was 6 final noadd average from PLFA from Jílková2022
-                CN_MAOMs=15 #estimated but we don't know the true value, assumed to vary with CN_DOM
-                fungi=10 #biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
-                MAOM=25368 #C in MAOM [gC/m3] average noAdd Jílková2022 
-                POM=13032  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
+                bact_total = treatmentVar['bact_total'] #total biomass of bacteria [gC/m3], was 6 final noadd average from PLFA from Jílková2022
+                CN_MAOMs = treatmentVar['CN_MAOMs'] #estimated but we don't know the true value, assumed to vary with CN_DOM
+                fungi= treatmentVar['fungi'] #biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
+                MAOM = treatmentVar['MAOM'] #C in MAOM [gC/m3] average noAdd Jílková2022 
+                POM = treatmentVar['POM']  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
              
        #same for all runs      
                 availability=np.zeros(3)
