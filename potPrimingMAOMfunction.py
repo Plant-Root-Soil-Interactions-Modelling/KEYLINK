@@ -148,7 +148,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
     )  # used in calcMAOM/ fraction of mineral surface area occupied by roots/hyphae
 
     Priming = True  # flag to enable Priming effect
-    Plotting = True  # flag 1 to enable making of plots, so that this can be turned off during sensitivity analysis etc.
+    Plotting = False  # flag 1 to enable making of plots, so that this can be turned off during sensitivity analysis etc.
     Bayesian = True  # flag 1 if performing Bayesian
     Sensitivity = False
 
