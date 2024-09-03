@@ -65,8 +65,8 @@ steps in code below:
 #     print(f'model ran for {time.strftime("%H:%M:%S", time.gmtime(end - start))}')
 
 
-if __name__ != '__main__':
-    exit(0)
+# if __name__ != '__main__':
+#     exit(0)
 
 # Initialize parser
 parser = argparse.ArgumentParser(description="Run Bayesian optimization")
@@ -163,6 +163,7 @@ for treatment in range (numTreatments):
     # we need to couple the output of the right day to the measured output
     data_Simulated[treatment]['Resp1']=results_df['resp'][0]
     # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
+    print('treatmentID', treatmentVar['treatmentID'], 'treatment', treatmentVar['treatment'])
     print('datasimResp1 treatment 1', data_Simulated[treatment]['Resp1'])
     print('datameasured', data_measured['resp1'][treatment])
     likelyhood=BayesianFunctionsPotprim.calc_sim_likelyhood(data_Simulated[treatment]['Resp1'], data_measured['resp1'][treatment], data_measured['resp1_error'][treatment]) 
