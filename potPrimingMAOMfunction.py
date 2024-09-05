@@ -1134,20 +1134,5 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
     # drawRespPlot(respPlot)
     # plt.savefig("./output/figures/respPlot.png")
 
-    try:
-        os.makedirs("./output/data")
-    except FileExistsError:
-        # directory already exists
-        pass
-
-    # in the end, save data output
-
-    if (Sensitivity is False) and (Bayesian is False):
-        # after running the outermost loop (for three different treatments)
-        # merge the three dataframes to create a data output containing all three treatments
-        # dfAll=pd.concat(outDataframes)
-        # dfAll.to_csv(".\output\data\Output.csv", index=False)
-        results_df.to_csv(".\output\data\Output.csv", index=False, float_format="%.2f")
-
     # if (Bayesian):
     return results_df, Bayesian, Sensitivity
