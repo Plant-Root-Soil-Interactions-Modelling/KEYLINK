@@ -203,10 +203,12 @@ for treatment in range(numTreatments):
         temp_df_list
     )  # append doesn't work for dataframes, so the lists have to be appended to later use concat
 
+    if Sensitivity:
+        break  # to have only one set of Sensitivity data (for one treatment)
+
     # we need to couple the output of the right day to the measured output
-    if not Sensitivity:
-        data_Simulated[treatment]["resp1"] = temp_df_list["resp"]
-        data_Simulated[treatment]["resp_sub1"] = temp_df_list["resp_sub"]
+    data_Simulated[treatment]["resp1"] = temp_df_list["resp"]
+    data_Simulated[treatment]["resp_sub1"] = temp_df_list["resp_sub"]
     # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
 
     # print("datasim resp1 treatment 1", data_Simulated[treatment]["resp1"])
@@ -223,6 +225,7 @@ for treatment in range(numTreatments):
 results_df = pd.concat(df_list, ignore_index=True)  # add all the rows to the results_df
 
 print(results_df)
+
 
 if Sensitivity:
     results_df.to_csv(".\output\data\Sensitivity.csv", index=False, float_format="%.2f")
