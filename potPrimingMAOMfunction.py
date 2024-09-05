@@ -492,8 +492,8 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
                 # saturation of MAOMs depends on amount of MAOMp so recalculated every day
                 maxMAOMs = MAOMp * MAOMratioSP  # maximum primary MAOM
 
-                if maxMAOMs < 0:
-                    print("MAOMp2: ", MAOMp)
+                # if maxMAOMs < 0:
+                #     print("MAOMp2: ", MAOMp)
 
                 # find t modifier
                 modtBact = mf.calcmodt(temp, T_OPTbact, T_MINbact, T_MAXbact)
@@ -613,8 +613,9 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
                 )  # calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
                 # calculate maximal growth (gmax) for bacteria/fungi on POM/MAOM separately
 
-                if CN_MAOMs <= 0:
-                    print("CN_MAOMs: ", CN_MAOMs)
+                # if CN_MAOMs <= 0:
+                #     print("CN_MAOMs: ", CN_MAOMs)
+
                 gmaxbPOM = (
                     mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1) * GMAX
                 )  # gmax for bact on POM
