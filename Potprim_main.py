@@ -197,13 +197,16 @@ for treatment in range(numTreatments):
     #     treatmentVar["treatment"],
     # )
     temp_df_list, Bayesian, Sensitivity = run_model(
-        AllParam, treatmentVar, Bayesian=False, Sensitivity=True
+        AllParam, treatmentVar, Bayesian=False, Sensitivity=False
     )
     df_list.append(
         temp_df_list
     )  # append doesn't work for dataframes, so the lists have to be appended to later use concat
 
     if Sensitivity:
+        temp_df_list.to_csv(
+            ".\output\data\Sensitivity.csv", index=False, float_format="%.2f"
+        )
         break  # to have only one set of Sensitivity data (for one treatment)
 
     # we need to couple the output of the right day to the measured output
@@ -222,13 +225,25 @@ for treatment in range(numTreatments):
         )
         data_Simulated[treatment]["sim likelihood"] += likelyhood
 
+
 results_df = pd.concat(df_list, ignore_index=True)  # add all the rows to the results_df
 
+# in the end, save data output
+try:
+    os.makedirs("./output/data")
+except FileExistsError:
+    # directory already exists
+    pass
+
+if (Sensitivity is False) and (Bayesian is False):
+    # after running the outermost loop (for three different treatments)
+    # merge the three dataframes to create a data output containing all three treatments
+    # dfAll=pd.concat(outDataframes)
+    # dfAll.to_csv(".\output\data\Output.csv", index=False)
+    results_df.to_csv(".\output\data\Output.csv", index=False, float_format="%.2f")
+
+
 print(results_df)
-
-
-if Sensitivity:
-    results_df.to_csv(".\output\data\Sensitivity.csv", index=False, float_format="%.2f")
 
 
 # 4) calculate the likelihood of each run for each field from the differences between measured and simulated and error
