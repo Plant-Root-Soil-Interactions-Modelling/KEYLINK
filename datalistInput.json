@@ -38,6 +38,6 @@
 "MM_Bact_MAOM":1.10,
 "MM_SA_MAOM":0.001,
 "MM_DOM_MAOM":0.025 ,
-"Priming_max":10
+"Priming_max":0.5
 
 }

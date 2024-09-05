@@ -65,7 +65,6 @@ steps in code below:
 #     print(f'model ran for {time.strftime("%H:%M:%S", time.gmtime(end - start))}')
 
 
-
 # if __name__ != '__main__':
 #     exit(0)
 
@@ -184,30 +183,49 @@ loglikelihood_param = np.sum(
 # 3) Simulated Data in a similar frame as the measured values, 1 run is over all treatments
 treatmentVar = ()
 results_df = pd.DataFrame()
+df_list = []
+temp_df_list = []  # temporrary df_list to store returned dataframe
 # data_Simulated=pd.DataFrame()
 for treatment in range(numTreatments):
     treatmentVar = inputBayesianRun.iloc[
         treatment, 0:17
     ]  # to be  corrected for nr of columns needed
-    print('treatmentID', treatmentVar['treatmentID'], 'treatment', treatmentVar['treatment'])
-    results_df = run_model(AllParam, treatmentVar, True, False)
-    # we need to couple the output of the right day to the measured output
-    data_Simulated[treatment]["resp1"] = results_df["resp"][0]
-    data_Simulated[treatment]["resp_sub1"] = results_df["resp_sub"][0]
-    # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
-   
-    print("datasim resp1 treatment 1", data_Simulated[treatment]["resp1"])
-    print("datameasured", data_measured["resp1"][treatment])
-    
-    
-    likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
-        data_Simulated[treatment]["resp1"],
-        data_measured["resp1"][treatment],
-        data_measured["resp1_error"][treatment],
+    # print(
+    #     "treatmentID",
+    #     treatmentVar["treatmentID"],
+    #     "treatment",
+    #     treatmentVar["treatment"],
+    # )
+    temp_df_list, Bayesian, Sensitivity = run_model(
+        AllParam, treatmentVar, Bayesian=False, Sensitivity=True
     )
-    data_Simulated[treatment]["sim likelihood"] += likelyhood
+    df_list.append(
+        temp_df_list
+    )  # append doesn't work for dataframes, so the lists have to be appended to later use concat
+
+    # we need to couple the output of the right day to the measured output
+    if not Sensitivity:
+        data_Simulated[treatment]["resp1"] = temp_df_list["resp"]
+        data_Simulated[treatment]["resp_sub1"] = temp_df_list["resp_sub"]
+    # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
+
+    # print("datasim resp1 treatment 1", data_Simulated[treatment]["resp1"])
+    # print("datameasured", data_measured["resp1"][treatment])
+
+    if Bayesian:
+        likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+            data_Simulated[treatment]["resp1"],
+            data_measured["resp1"][treatment],
+            data_measured["resp1_error"][treatment],
+        )
+        data_Simulated[treatment]["sim likelihood"] += likelyhood
+
+results_df = pd.concat(df_list, ignore_index=True)  # add all the rows to the results_df
 
 print(results_df)
+
+if Sensitivity:
+    results_df.to_csv(".\output\data\Sensitivity.csv", index=False, float_format="%.2f")
 
 
 # 4) calculate the likelihood of each run for each field from the differences between measured and simulated and error
@@ -269,7 +287,8 @@ for c in range(1, NumberOfTries):  # For each trial Run
 
             # 9) run the model for each treatment with the new parameters
             treatmentVar = inputBayesianRun.iloc[treatment]  # to be moved & use iloc
-            results_df = run_model(AllParam, treatmentVar, numTreatments, True, False)
+            results_df = run_model(AllParam, treatmentVar, numTreatments, False, False)
+            print(results_df)
             # we need to couple the output of the right day to the measured output
             data_Simulated[treatment]["resp1"] = results_df["resp"][0]
             # we need to add for the treatment the likelyhood of all measurements added

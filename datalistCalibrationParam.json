@@ -18,7 +18,7 @@
 	"MM_Bact_MAOM":1.10,
 	"MM_SA_MAOM":0.001,
 	"MM_DOM_MAOM":0.025,
-	"Priming_max":10
+	"Priming_max":0.5
 	},
 "MaxParam":{
 	"bact_DOM_rel":0.3,
@@ -40,7 +40,7 @@
 	"MM_Bact_MAOM":2.10,
 	"MM_SA_MAOM":0.004,
 	"MM_DOM_MAOM":0.05,
-	"Priming_max":20
+	"Priming_max":1
 	},
 "MinParam":{
 	"bact_DOM_rel":0.1,
@@ -62,6 +62,6 @@
 	"MM_Bact_MAOM":0.60,
 	"MM_SA_MAOM":0.0001,
 	"MM_DOM_MAOM":0.0025,
-	"Priming_max":1
+	"Priming_max":0
 	}
 }

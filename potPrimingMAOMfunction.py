@@ -149,8 +149,8 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
 
     Priming = True  # flag to enable Priming effect
     Plotting = False  # flag 1 to enable making of plots, so that this can be turned off during sensitivity analysis etc.
-    Bayesian = True  # flag 1 if performing Bayesian
-    Sensitivity = False
+    # Bayesian = True  # flag 1 if performing Bayesian
+    # Sensitivity = False
 
     # create dictionary for respiration plot
     respPlot = {
@@ -174,10 +174,10 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
 
     # DOMinput_treatments = np.array([10, 10, 0])  # exudates, leachates, control
     # CN_DOMinput_treatments = np.array(
-        # [6, 80, 0]
+    # [6, 80, 0]
     # )  # exudates, leachates, control, CN od control DOMinput can't be zero because of dividing by it in DOM_N calculation
     # treatments = np.array(["exudates", "leachates", "control"])
-    treatment = treatmentVar['treatment']
+    treatment = treatmentVar["treatment"]
     if Sensitivity:
         paramsToTestValues = (
             bact_DOM_rel,
@@ -253,7 +253,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
         origValues = copy.deepcopy(
             paramsToTestDict
         )  # need deepcopy to not have a pointer but really full copy of values
-        print("initial", paramsToTestDict)  # check
+        # print("initial", paramsToTestDict)  # check
 
     elif Bayesian:
         numParams = 1
@@ -301,9 +301,9 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
             "bact_DOM",
             "bact",
             "fungi",
-            "resp_substrate",
+            "resp_sub",
             "resp_soil_baseline",
-            "resp_soil",
+            "resp",
             "POM",
             "MAOMs",
             "MAOMp",
@@ -397,9 +397,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
             fungi = treatmentVar[
                 "fungi"
             ]  # biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
-            MAOM = treatmentVar[
-                "MAOM"
-            ]  # C in MAOM [gC/m3] average noAdd Jílková2022
+            MAOM = treatmentVar["MAOM"]  # C in MAOM [gC/m3] average noAdd Jílková2022
             POM = treatmentVar[
                 "POM"
             ]  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
@@ -481,18 +479,22 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
                         )  # update relative substrate derived C in DOM
                         # if DOM_sub > 1:
                         # print('line265 treatment=', treatment, 'd=', d, 'DOM_sub=', DOM_sub, 'DOM_sub_abs', DOM_sub_abs, 'DOM=', DOM)
-                    # else: probably not needed
-                    #     DOM_sub=0
+                        # else: probably not needed
+                        #     DOM_sub=0
                         DOM_N += (
                             DOMinput / CN_DOMinput
                         )  # add equivalent amount of N to DON pool
-                    # print('CN_DOMinput', CN_DOMinput)
-                    # if DOM_N>0:
-                    CN_DOM = DOM / DOM_N  # calculate new CN of DOM pool
+                        # print('CN_DOMinput', CN_DOMinput)
+                        # if DOM_N>0:
+                        CN_DOM = DOM / DOM_N  # calculate new CN of DOM pool
                 else:
                     DOM_added = 0
                 # saturation of MAOMs depends on amount of MAOMp so recalculated every day
                 maxMAOMs = MAOMp * MAOMratioSP  # maximum primary MAOM
+
+                if maxMAOMs < 0:
+                    print("MAOMp2: ", MAOMp)
+
                 # find t modifier
                 modtBact = mf.calcmodt(temp, T_OPTbact, T_MINbact, T_MAXbact)
                 modtFungi = mf.calcmodt(temp, T_OPTfungi, T_MINfungi, T_MAXfungi)
@@ -547,352 +549,355 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
                         modtBact,
                     )
                 # print('calc.Rhizo')
-            #               if (MAOMs<0):
-            #                   print('mainLine270 DOM, bact, fungi, MAOMs, MAOMp', DOM,bact, fungi, MAOMs, MAOMp)
-            else:
+                #               if (MAOMs<0):
+                #                   print('mainLine270 DOM, bact, fungi, MAOMs, MAOMp', DOM,bact, fungi, MAOMs, MAOMp)
+                else:
 
-                respDOM = 0
-                respDOM_sub = 0
-                respPriming = 0
-                respPriming_sub = 0
+                    respDOM = 0
+                    respDOM_sub = 0
+                    respPriming = 0
+                    respPriming_sub = 0
 
-            resp = respDOM + respPriming
-            # resp_all += resp
-            bact_total = bact_DOM + bact
-            MAOM = MAOMs + MAOMp
-            # AllC = DOM + POM + MAOM + bact_total + fungi + resp_all - DOM_added
+                resp = respDOM + respPriming
+                # resp_all += resp
+                bact_total = bact_DOM + bact
+                MAOM = MAOMs + MAOMp
+                # AllC = DOM + POM + MAOM + bact_total + fungi + resp_all - DOM_added
 
-            # MAOM formation
-            MicrobialC = (
-                bact + bact_DOM + fungi
-            )  # all microbes contribute to MAOM formation
-            if CN_DOM > 0:
-                (
-                    DOM,
-                    DOM_N,
-                    CN_DOM,
-                    DOM_sub,
-                    MAOMp,
-                    MAOMp_sub,
-                    MAOMs,
-                    MAOMs_sub,
-                    CN_MAOMs,
-                ) = mf.calcMAOM(
-                    MicrobialC,
-                    DOM_N,
-                    CN_DOM,
-                    fractionSA,
-                    MAOMp,
-                    MAOMp_sub,
-                    maxMAOMp,
-                    DOM,
-                    DOM_sub,
-                    MAOMs,
-                    MAOMs_sub,
-                    maxMAOMs,
-                    MAOMsmaxrate,
-                    MAOMpmaxrate,
-                    MM_DOM_MAOM,
-                    maxEffectBactMAOM,
-                    MM_Bact_MAOM,
-                    maxEffectN_MAOM,
-                    MM_N_MAOM,
-                    maxEffectSA_MAOM,
-                    MM_SA_MAOM,
-                    CN_MAOMp,
-                    CN_MAOMs,
+                # MAOM formation
+                MicrobialC = (
+                    bact + bact_DOM + fungi
+                )  # all microbes contribute to MAOM formation
+                if CN_DOM > 0:
+                    (
+                        DOM,
+                        DOM_N,
+                        CN_DOM,
+                        DOM_sub,
+                        MAOMp,
+                        MAOMp_sub,
+                        MAOMs,
+                        MAOMs_sub,
+                        CN_MAOMs,
+                    ) = mf.calcMAOM(
+                        MicrobialC,
+                        DOM_N,
+                        CN_DOM,
+                        fractionSA,
+                        MAOMp,
+                        MAOMp_sub,
+                        maxMAOMp,
+                        DOM,
+                        DOM_sub,
+                        MAOMs,
+                        MAOMs_sub,
+                        maxMAOMs,
+                        MAOMsmaxrate,
+                        MAOMpmaxrate,
+                        MM_DOM_MAOM,
+                        maxEffectBactMAOM,
+                        MM_Bact_MAOM,
+                        maxEffectN_MAOM,
+                        MM_N_MAOM,
+                        maxEffectSA_MAOM,
+                        MM_SA_MAOM,
+                        CN_MAOMp,
+                        CN_MAOMs,
+                    )
+
+                MAOM = MAOMs + MAOMp
+
+                # baseline microbial growth on SOM (without substrate DOM additions)
+                availability = mf.calcAvailPot(
+                    PV, PW
+                )  # calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
+                # calculate maximal growth (gmax) for bacteria/fungi on POM/MAOM separately
+
+                if CN_MAOMs <= 0:
+                    print("CN_MAOMs: ", CN_MAOMs)
+                gmaxbPOM = (
+                    mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1) * GMAX
+                )  # gmax for bact on POM
+                gmaxfPOM = (
+                    mf.calcgmaxmod(CN_fungi, CN_POM, pCN, 0.0, 0, pH, 2) * GMAXfungi
+                )  # gmax for fungi on POM
+                # we assume MAOMp can only be lost through priming, so normal growth uses MAOMs
+                gmaxbMAOM = (
+                    mf.calcgmaxmod(CN_bact, CN_MAOMs, pCN, recMAOM, mRecBact, pH, 1)
+                    * GMAX
+                )  # gmax for bact on MAOM
+                gmaxfMAOM = (
+                    mf.calcgmaxmod(CN_fungi, CN_MAOMs, pCN, recMAOM, mRecFungi, pH, 2)
+                    * GMAXfungi
+                )  # gmax for fungi on MAOM
+                # calculate substrate derived C in bact and fungi
+                DOM_sub_abs = (
+                    DOM * DOM_sub
+                )  # recalculate because changesin calc.Rhizosphere
+                POM_sub_abs = (
+                    POM * POM_sub
+                )  # recalculate because changes in calc.Rhizosphere
+                MAOMs_sub_abs = (
+                    MAOMs * MAOMs_sub
+                )  # recalculate because changes in calc.Rhizosphere and calc.MAOM
+                bact_sub_abs = (
+                    bact * bact_sub
+                )  # absolute substrate derived C in bacteria [gC/m3]
+                fungi_sub_abs = (
+                    fungi * fungi_sub
+                )  # absolute substrate derived C in fungi [gC/m3]
+                #               if (bact<0):
+                #                  print('mainLine290 DOM, bact, fungi', DOM,bact, fungi)
+                # growth equations (dB/dt) for each functional group and for variations in C and N pools
+                # only feed on secondary MAOM
+                bactPOMgrowth = modtBact * mf.calcgrowth(
+                    bact, POM, availability[0], gmaxbPOM, KSbact * bact
+                )
+                bactMAOMgrowth = modtBact * mf.calcgrowth(
+                    bact, MAOMs, availability[0], gmaxbMAOM, KSbact * bact
+                )
+                dbact = bactPOMgrowth + bactMAOMgrowth - DEATH * bact - rRESPbact * bact
+
+                fungiPOMgrowth = modtFungi * mf.calcgrowth(
+                    fungi, POM, availability[1], gmaxfPOM, KSfungi * fungi
+                )
+                fungiMAOMgrowth = modtFungi * mf.calcgrowth(
+                    fungi, MAOMs, availability[1], gmaxfMAOM, KSfungi * fungi
+                )
+                dfungi = (
+                    fungiPOMgrowth
+                    + fungiMAOMgrowth
+                    - DEATHfungi * fungi
+                    - rRESPfungi * fungi
                 )
 
-            MAOM = MAOMs + MAOMp
+                DOM += (
+                    DEATH * bact + DEATHfungi * fungi
+                )  # add dead bacteria and fungi to DOM
+                POM += (
+                    -bactPOMgrowth - fungiPOMgrowth
+                )  # subtract what has been eaten from POM
+                MAOMs += -bactMAOMgrowth - fungiMAOMgrowth  # and MAOMs
 
-            # baseline microbial growth on SOM (without substrate DOM additions)
-            availability = mf.calcAvailPot(
-                PV, PW
-            )  # calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
-            # calculate maximal growth (gmax) for bacteria/fungi on POM/MAOM separately
-            gmaxbPOM = (
-                mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1) * GMAX
-            )  # gmax for bact on POM
-            gmaxfPOM = (
-                mf.calcgmaxmod(CN_fungi, CN_POM, pCN, 0.0, 0, pH, 2) * GMAXfungi
-            )  # gmax for fungi on POM
-            # we assume MAOMp can only be lost through priming, so normal growth uses MAOMs
-            gmaxbMAOM = (
-                mf.calcgmaxmod(CN_bact, CN_MAOMs, pCN, recMAOM, mRecBact, pH, 1)
-                * GMAX
-            )  # gmax for bact on MAOM
-            gmaxfMAOM = (
-                mf.calcgmaxmod(CN_fungi, CN_MAOMs, pCN, recMAOM, mRecFungi, pH, 2)
-                * GMAXfungi
-            )  # gmax for fungi on MAOM
-            # calculate substrate derived C in bact and fungi
-            DOM_sub_abs = (
-                DOM * DOM_sub
-            )  # recalculate because changesin calc.Rhizosphere
-            POM_sub_abs = (
-                POM * POM_sub
-            )  # recalculate because changes in calc.Rhizosphere
-            MAOMs_sub_abs = (
-                MAOMs * MAOMs_sub
-            )  # recalculate because changes in calc.Rhizosphere and calc.MAOM
-            bact_sub_abs = (
-                bact * bact_sub
-            )  # absolute substrate derived C in bacteria [gC/m3]
-            fungi_sub_abs = (
-                fungi * fungi_sub
-            )  # absolute substrate derived C in fungi [gC/m3]
-            #               if (bact<0):
-            #                  print('mainLine290 DOM, bact, fungi', DOM,bact, fungi)
-            # growth equations (dB/dt) for each functional group and for variations in C and N pools
-            # only feed on secondary MAOM
-            bactPOMgrowth = modtBact * mf.calcgrowth(
-                bact, POM, availability[0], gmaxbPOM, KSbact * bact
-            )
-            bactMAOMgrowth = modtBact * mf.calcgrowth(
-                bact, MAOMs, availability[0], gmaxbMAOM, KSbact * bact
-            )
-            dbact = bactPOMgrowth + bactMAOMgrowth - DEATH * bact - rRESPbact * bact
+                # update CN DOM
+                DOM_N += DEATH * bact / CN_bact + DEATHfungi * fungi / CN_fungi
+                CN_DOM = DOM / DOM_N  # recalculate CN DOM
 
-            fungiPOMgrowth = modtFungi * mf.calcgrowth(
-                fungi, POM, availability[1], gmaxfPOM, KSfungi * fungi
-            )
-            fungiMAOMgrowth = modtFungi * mf.calcgrowth(
-                fungi, MAOMs, availability[1], gmaxfMAOM, KSfungi * fungi
-            )
-            dfungi = (
-                fungiPOMgrowth
-                + fungiMAOMgrowth
-                - DEATHfungi * fungi
-                - rRESPfungi * fungi
-            )
+                #    if (-dbact>bact):
+                #        print('mainLine307  bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact', bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact)
 
-            DOM += (
-                DEATH * bact + DEATHfungi * fungi
-            )  # add dead bacteria and fungi to DOM
-            POM += (
-                -bactPOMgrowth - fungiPOMgrowth
-            )  # subtract what has been eaten from POM
-            MAOMs += -bactMAOMgrowth - fungiMAOMgrowth  # and MAOMs
+                DOM_sub_abs += (
+                    DEATH * bact * bact_sub + DEATHfungi * fungi * fungi_sub
+                )  # add corresponding part of substrate derived C to DOM
+                POM_sub_abs -= (bactPOMgrowth + fungiPOMgrowth) * POM_sub
+                MAOMs_sub_abs -= (bactMAOMgrowth + fungiMAOMgrowth) * MAOMs_sub
+                fungi_sub_abs += (
+                    fungiMAOMgrowth * MAOMs_sub
+                    + fungiPOMgrowth * POM_sub
+                    - DEATHfungi * fungi * fungi_sub
+                    - rRESPfungi * fungi * fungi_sub
+                )  # add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
+                bact_sub_abs += (
+                    bactMAOMgrowth * MAOMs_sub
+                    + bactPOMgrowth * POM_sub
+                    - DEATH * bact * bact_sub
+                    - rRESPbact * bact * bact_sub
+                )  # add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
 
-            # update CN DOM
-            DOM_N += DEATH * bact / CN_bact + DEATHfungi * fungi / CN_fungi
-            CN_DOM = DOM / DOM_N  # recalculate CN DOM
+                baselineRespBact = rRESPbact * bact
+                baselineRespBact_sub_abs = (
+                    baselineRespBact * bact_sub
+                )  # what part of this respiration is substrate derived
+                baselineRespBact_sub = baselineRespBact_sub_abs / baselineRespBact
+                bact += dbact
 
-            #    if (-dbact>bact):
-            #        print('mainLine307  bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact', bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact)
+                baselineRespFungi = rRESPfungi * fungi
+                baselineRespFungi_sub_abs = (
+                    baselineRespFungi * fungi_sub
+                )  # what part of this respiration is substrate derived
+                baselineRespFungi_sub = baselineRespFungi_sub_abs / baselineRespFungi
+                fungi += dfungi
 
-            DOM_sub_abs += (
-                DEATH * bact * bact_sub + DEATHfungi * fungi * fungi_sub
-            )  # add corresponding part of substrate derived C to DOM
-            POM_sub_abs -= (bactPOMgrowth + fungiPOMgrowth) * POM_sub
-            MAOMs_sub_abs -= (bactMAOMgrowth + fungiMAOMgrowth) * MAOMs_sub
-            fungi_sub_abs += (
-                fungiMAOMgrowth * MAOMs_sub
-                + fungiPOMgrowth * POM_sub
-                - DEATHfungi * fungi * fungi_sub
-                - rRESPfungi * fungi * fungi_sub
-            )  # add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
-            bact_sub_abs += (
-                bactMAOMgrowth * MAOMs_sub
-                + bactPOMgrowth * POM_sub
-                - DEATH * bact * bact_sub
-                - rRESPbact * bact * bact_sub
-            )  # add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
+                # update relative substrate derived C proportions
+                DOM_sub = DOM_sub_abs / DOM  # relative substrate derived C in DOM
+                POM_sub = POM_sub_abs / POM  # relative substrate derived C in DOM
+                MAOMs_sub = MAOMs_sub_abs / MAOMs  # relative substrate derived C in DOM
+                fungi_sub = (
+                    fungi_sub_abs / fungi
+                )  # update relative substrate derived C in fungi
+                # print(' treatment, day, fungi_sub', treatment, d, fungi_sub)
+                bact_sub = (
+                    bact_sub_abs / bact
+                )  # update relative substrate derived C in bacteria
+                # add up things
+                MAOM = MAOMp + MAOMs
+                bact_total = bact + bact_DOM
+                # baseline respiration without priming
+                baselineResp = (
+                    baselineRespBact + baselineRespFungi + respDOM
+                )  # of course this respDOM is higher if previous day DOM-feeding bacteria grew more because of priming
+                # all respiration
+                resp = baselineResp + respPriming
 
-            baselineRespBact = rRESPbact * bact
-            baselineRespBact_sub_abs = (
-                baselineRespBact * bact_sub
-            )  # what part of this respiration is substrate derived
-            baselineRespBact_sub = baselineRespBact_sub_abs / baselineRespBact
-            bact += dbact
+                # calculate average substrate proportions
+                MAOM_sub = MAOMp_sub * (MAOMp / MAOM) + MAOMs_sub * (
+                    MAOMs / MAOM
+                )  # average substrate proportion in MAOM
+                bact_total_sub = bact_DOM_sub * (bact_DOM / bact_total) + bact_sub * (
+                    bact / bact_total
+                )  # average substrate proportion in bacteria
+                resp_sub = (
+                    baselineRespBact_sub * (baselineRespBact / resp)
+                    + baselineRespFungi_sub * (baselineRespFungi / resp)
+                    + respDOM_sub * (respDOM / resp)
+                    + respPriming_sub * (respPriming / resp)
+                )
 
-            baselineRespFungi = rRESPfungi * fungi
-            baselineRespFungi_sub_abs = (
-                baselineRespFungi * fungi_sub
-            )  # what part of this respiration is substrate derived
-            baselineRespFungi_sub = baselineRespFungi_sub_abs / baselineRespFungi
-            fungi += dfungi
+                respSubstrate = (
+                    resp_sub * resp
+                )  # substrate derived respiration (absolute)
+                respSoil = resp - respSubstrate  # soil-derived respiration (absolute)
+                # AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
+                # print('line412', treatment, d, AllC)
 
-            # update relative substrate derived C proportions
-            DOM_sub = DOM_sub_abs / DOM  # relative substrate derived C in DOM
-            POM_sub = POM_sub_abs / POM  # relative substrate derived C in DOM
-            MAOMs_sub = MAOMs_sub_abs / MAOMs  # relative substrate derived C in DOM
-            fungi_sub = (
-                fungi_sub_abs / fungi
-            )  # update relative substrate derived C in fungi
-            # print(' treatment, day, fungi_sub', treatment, d, fungi_sub)
-            bact_sub = (
-                bact_sub_abs / bact
-            )  # update relative substrate derived C in bacteria
-            # add up things
-            MAOM = MAOMp + MAOMs
-            bact_total = bact + bact_DOM
-            # baseline respiration without priming
-            baselineResp = (
-                baselineRespBact + baselineRespFungi + respDOM
-            )  # of course this respDOM is higher if previous day DOM-feeding bacteria grew more because of priming
-            # all respiration
-            resp = baselineResp + respPriming
+                if Plotting:  # save data for Plotting
+                    outtreatment.append(treatment)
+                    time_d.append(d)  # store days in an array for plotting
+                    outDOMadded.append(
+                        DOM_added / 0.8
+                    )  # change units from gC/m3 µgC/g soil
+                    outMAOM.append(
+                        MAOM / (0.8 * 1000)
+                    )  # change units from gC/m3 mgC/g soil
+                    outMAOMp.append(
+                        MAOMp / (0.8 * 1000)
+                    )  # change units from gC/m3 mgC/g soil)
+                    outMAOMs.append(
+                        MAOMs / (0.8 * 1000)
+                    )  # change units from gC/m3 mgC/g soil)
+                    outPOM.append(
+                        POM / (0.8 * 1000)
+                    )  # change units from gC/m3 mgC/g soil
+                    outDOM.append(DOM / 0.8)  # change units from gC/m3 µgC/g soil)
+                    outBact_total.append(
+                        bact_total / 0.8
+                    )  # change units from gC/m3 µgC/g soil
+                    outbact_DOM.append(
+                        bact_DOM / 0.8
+                    )  # change units from gC/m3 µgC/g soil
+                    outBact.append(bact / 0.8)  # change units from gC/m3 µgC/g soil
+                    outFungi.append(fungi / 0.8)  # change units from gC/m3 µgC/g soil
+                    outRespSubstrate.append(
+                        respSubstrate / (0.8 * 24)
+                    )  # change units from gC/m3/day
+                    outRespSoilBaseline.append(
+                        baselineResp / (0.8 * 24)
+                    )  # change units from gC/m3/day
+                    outRespSoil.append(
+                        respSoil / (0.8 * 24)
+                    )  # change units from gC/m3/day
+                    # substrate-derived %
+                    outBact_total_sub.append(bact_total_sub)
+                    outBact_DOM_sub.append(bact_DOM_sub)
+                    outBact_sub.append(bact_sub)
+                    outFungi_sub.append(fungi_sub)
+                    outDOM_sub.append(DOM_sub)
+                    outPOM_sub.append(POM_sub)
+                    outMAOM_sub.append(MAOM_sub)
+                    outMAOMs_sub.append(MAOMs_sub)
+                    outMAOMp_sub.append(MAOMp_sub)
+                    outResp_sub.append(resp_sub)
 
-            # calculate average substrate proportions
-            MAOM_sub = MAOMp_sub * (MAOMp / MAOM) + MAOMs_sub * (
-                MAOMs / MAOM
-            )  # average substrate proportion in MAOM
-            bact_total_sub = bact_DOM_sub * (bact_DOM / bact_total) + bact_sub * (
-                bact / bact_total
-            )  # average substrate proportion in bacteria
-            resp_sub = (
-                baselineRespBact_sub * (baselineRespBact / resp)
-                + baselineRespFungi_sub * (baselineRespFungi / resp)
-                + respDOM_sub * (respDOM / resp)
-                + respPriming_sub * (respPriming / resp)
-            )
+                    if Sensitivity is False and Bayesian is False:  # for normal runs
+                        if treatment == "control":
+                            respPlot["soilControl"].append(respSoil / (0.8 * 24))
+                            respPlot["subControl"].append(respSubstrate / (0.8 * 24))
 
-            respSubstrate = (
-                resp_sub * resp
-            )  # substrate derived respiration (absolute)
-            respSoil = resp - respSubstrate  # soil-derived respiration (absolute)
-            # AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
-            # print('line412', treatment, d, AllC)
+                        elif treatment == "exudates":
+                            respPlot["soilExudates"].append(respSoil / (0.8 * 24))
+                            respPlot["subExudates"].append(respSubstrate / (0.8 * 24))
 
-            if Plotting:  # save data for Plotting
-                outtreatment.append(treatment)
-                time_d.append(d)  # store days in an array for plotting
-                outDOMadded.append(
-                    DOM_added / 0.8
-                )  # change units from gC/m3 µgC/g soil
-                outMAOM.append(
-                    MAOM / (0.8 * 1000)
-                )  # change units from gC/m3 mgC/g soil
-                outMAOMp.append(
-                    MAOMp / (0.8 * 1000)
-                )  # change units from gC/m3 mgC/g soil)
-                outMAOMs.append(
-                    MAOMs / (0.8 * 1000)
-                )  # change units from gC/m3 mgC/g soil)
-                outPOM.append(
-                    POM / (0.8 * 1000)
-                )  # change units from gC/m3 mgC/g soil
-                outDOM.append(DOM / 0.8)  # change units from gC/m3 µgC/g soil)
-                outBact_total.append(
-                    bact_total / 0.8
-                )  # change units from gC/m3 µgC/g soil
-                outbact_DOM.append(
-                    bact_DOM / 0.8
-                )  # change units from gC/m3 µgC/g soil
-                outBact.append(bact / 0.8)  # change units from gC/m3 µgC/g soil
-                outFungi.append(fungi / 0.8)  # change units from gC/m3 µgC/g soil
-                outRespSubstrate.append(
-                    respSubstrate / (0.8 * 24)
-                )  # change units from gC/m3/day
-                outRespSoilBaseline.append(
-                    baselineResp / (0.8 * 24)
-                )  # change units from gC/m3/day
-                outRespSoil.append(
-                    respSoil / (0.8 * 24)
-                )  # change units from gC/m3/day
-                # substrate-derived %
-                outBact_total_sub.append(bact_total_sub)
-                outBact_DOM_sub.append(bact_DOM_sub)
-                outBact_sub.append(bact_sub)
-                outFungi_sub.append(fungi_sub)
-                outDOM_sub.append(DOM_sub)
-                outPOM_sub.append(POM_sub)
-                outMAOM_sub.append(MAOM_sub)
-                outMAOMs_sub.append(MAOMs_sub)
-                outMAOMp_sub.append(MAOMp_sub)
-                outResp_sub.append(resp_sub)
+                        elif treatment == "leachates":
+                            respPlot["soilLeachates"].append(respSoil / (0.8 * 24))
+                            respPlot["subLeachates"].append(respSubstrate / (0.8 * 24))
+
+                    # make different output depending on the type of run
+                    # make different output depending on the type of run
+                if Sensitivity:
+                    results_df.loc[len(results_df)] = [
+                        param,
+                        paramChange,
+                        value,
+                        treatment,
+                        d,
+                        DOM_added / 0.8,  # change units from gC/m3 µgC/g soil
+                        DOM / 0.8,  # change units from gC/m3 µgC/g soil
+                        bact_DOM / 0.8,  # change units from gC/m3 µgC/g soil
+                        bact / 0.8,  # change units from gC/m3 µgC/g soil
+                        fungi / 0.8,  # change units from gC/m3 µgC/g soil
+                        respSubstrate
+                        / (
+                            0.8 * 24
+                        ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                        baselineResp
+                        / (
+                            0.8 * 24
+                        ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                        respSoil
+                        / (
+                            0.8 * 24
+                        ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                        POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                        MAOMs / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                        MAOMp / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                        MAOM / (0.8 * 1000),
+                    ]  # change units from gC/m3 mgC/g soil
+
+                if Bayesian:  # variables for which we have measured data
+                    results_df.loc[len(results_df)] = [
+                        treatment,
+                        d,
+                        resp
+                        / (
+                            0.8 * 24
+                        ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                        resp_sub,
+                        POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                        MAOM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                        bact_total / 0.8,  # change units from gC/m3 µgC/g soil
+                        fungi / 0.8,  # change units from gC/m3 µgC/g soil
+                        POM_sub,
+                        MAOM_sub,
+                        bact_total,
+                        fungi_sub,
+                    ]
 
                 if Sensitivity is False and Bayesian is False:  # for normal runs
-                    if treatment == "control":
-                        respPlot["soilControl"].append(respSoil / (0.8 * 24))
-                        respPlot["subControl"].append(respSubstrate / (0.8 * 24))
-
-                    elif treatment == "exudates":
-                        respPlot["soilExudates"].append(respSoil / (0.8 * 24))
-                        respPlot["subExudates"].append(respSubstrate / (0.8 * 24))
-
-                    elif treatment == "leachates":
-                        respPlot["soilLeachates"].append(respSoil / (0.8 * 24))
-                        respPlot["subLeachates"].append(respSubstrate / (0.8 * 24))
-
-                # make different output depending on the type of run
-                # make different output depending on the type of run
-            if Sensitivity:
-                results_df.loc[len(results_df)] = [
-                    param,
-                    paramChange,
-                    value,
-                    treatment,
-                    d,
-                    DOM_added / 0.8,  # change units from gC/m3 µgC/g soil
-                    DOM / 0.8,  # change units from gC/m3 µgC/g soil
-                    bact_DOM / 0.8,  # change units from gC/m3 µgC/g soil
-                    bact / 0.8,  # change units from gC/m3 µgC/g soil
-                    fungi / 0.8,  # change units from gC/m3 µgC/g soil
-                    respSubstrate
-                    / (
-                        0.8 * 24
-                    ),  # change units from gC/m3/day to µg CO2-C/g soil/h
-                    baselineResp
-                    / (
-                        0.8 * 24
-                    ),  # change units from gC/m3/day to µg CO2-C/g soil/h
-                    respSoil
-                    / (
-                        0.8 * 24
-                    ),  # change units from gC/m3/day to µg CO2-C/g soil/h
-                    POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                    MAOMs / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                    MAOMp / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                    MAOM / (0.8 * 1000),
-                ]  # change units from gC/m3 mgC/g soil
-
-            if Bayesian:  # variables for which we have measured data
-                results_df.loc[len(results_df)] = [
-                    treatment,
-                    d,
-                    resp
-                    / (
-                        0.8 * 24
-                    ),  # change units from gC/m3/day to µg CO2-C/g soil/h
-                    resp_sub,
-                    POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                    MAOM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                    bact_total / 0.8,  # change units from gC/m3 µgC/g soil
-                    fungi / 0.8,  # change units from gC/m3 µgC/g soil
-                    POM_sub,
-                    MAOM_sub,
-                    bact_total,
-                    fungi_sub,
-                ]
-
-            if Sensitivity is False and Bayesian is False:  # for normal runs
-                results_df.loc[len(results_df)] = [
-                    treatment,
-                    d,
-                    DOM_added / 0.8,  # change units from gC/m3 µgC/g soil
-                    DOM / 0.8,  # change units from gC/m3 µgC/g soil
-                    bact_DOM / 0.8,  # change units from gC/m3 µgC/g soil
-                    bact / 0.8,  # change units from gC/m3 µgC/g soil
-                    fungi / 0.8,  # change units from gC/m3 µgC/g soil
-                    respSubstrate
-                    / (
-                        0.8 * 24
-                    ),  # change units from gC/m3/day to µg CO2-C/g soil/h
-                    baselineResp
-                    / (
-                        0.8 * 24
-                    ),  # change units from gC/m3/day to µg CO2-C/g soil/h
-                    respSoil
-                    / (
-                        0.8 * 24
-                    ),  # change units from gC/m3/day to µg CO2-C/g soil/h
-                    POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                    MAOMs / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                    MAOMp / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                    MAOM / (0.8 * 1000),
-                ]  # change units from gC/m3 mgC/g soil
+                    results_df.loc[len(results_df)] = [
+                        treatment,
+                        d,
+                        DOM_added / 0.8,  # change units from gC/m3 µgC/g soil
+                        DOM / 0.8,  # change units from gC/m3 µgC/g soil
+                        bact_DOM / 0.8,  # change units from gC/m3 µgC/g soil
+                        bact / 0.8,  # change units from gC/m3 µgC/g soil
+                        fungi / 0.8,  # change units from gC/m3 µgC/g soil
+                        respSubstrate
+                        / (
+                            0.8 * 24
+                        ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                        baselineResp
+                        / (
+                            0.8 * 24
+                        ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                        respSoil
+                        / (
+                            0.8 * 24
+                        ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                        POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                        MAOMs / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                        MAOMp / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                        MAOM / (0.8 * 1000),
+                    ]  # change units from gC/m3 mgC/g soil
 
                 ############# end of daily run of coreMAOM   #############
 
@@ -958,9 +963,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
                         )  # loc='bottom right',
 
                         p4.plot(time_d, outRespSubstrate, label="substrate-derived")
-                        p4.plot(
-                            time_d, outRespSoil, label="soil-derived incl. priming"
-                        )
+                        p4.plot(time_d, outRespSoil, label="soil-derived incl. priming")
                         p4.plot(
                             time_d,
                             outRespSoilBaseline,
@@ -971,9 +974,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
                         )  # loc='bottom right',
 
                         p5.plot(time_d, outPOM, label="POM")
-                        ps[4].legend(
-                            loc=(0.03, 0.03), shadow=True
-                        )  # loc='upper left',
+                        ps[4].legend(loc=(0.03, 0.03), shadow=True)  # loc='upper left',
 
                         p6.plot(time_d, outMAOM, label="MAOM")
                         p6.plot(time_d, outMAOMp, label="primary MAOM")
@@ -1005,9 +1006,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
                         ps[2].set_title("substrate derived % of respiration")
 
                         p1.plot(time_d, outBact_total_sub, label="bacteria")
-                        p1.plot(
-                            time_d, outBact_DOM_sub, label="bacteria DOM feeding"
-                        )
+                        p1.plot(time_d, outBact_DOM_sub, label="bacteria DOM feeding")
                         p1.plot(time_d, outBact_sub, label="bacteria SOM feeding")
                         p1.plot(time_d, outFungi_sub, label="fungi")
                         ps[0].legend(
@@ -1050,9 +1049,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
                         outMAOMp,
                         outMAOMs,
                     )
-                    plt.savefig(
-                        ".\output\\figures\Dailyplot1_" + treatment + ".png"
-                    )
+                    plt.savefig(".\output\\figures\Dailyplot1_" + treatment + ".png")
 
                     Dailyplot2(
                         outBact_DOM_sub,
@@ -1143,10 +1140,6 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
         pass
 
     # in the end, save data output
-    if Sensitivity:
-        results_df.to_csv(
-            ".\output\data\Sensitivity.csv", index=False, float_format="%.2f"
-        )
 
     if (Sensitivity is False) and (Bayesian is False):
         # after running the outermost loop (for three different treatments)
@@ -1156,4 +1149,4 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
         results_df.to_csv(".\output\data\Output.csv", index=False, float_format="%.2f")
 
     # if (Bayesian):
-    return results_df
+    return results_df, Bayesian, Sensitivity
