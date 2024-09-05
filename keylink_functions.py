@@ -945,19 +945,19 @@ def calcPriming(
     POM -= POMprimed
     MAOMs -= MAOMsprimed
 
-    if MAOMpprimed > MAOMp:
-        print(
-            "MAOMp v Priming před odečtením: ",
-            MAOMp,
-            "MAOMpprimed: ",
-            MAOMpprimed,
-            "kpriming: ",
-            kpriming,
-            "SOMprimed: ",
-            SOMprimed, 
-            "SOMprimable: ",
-            SOMprimable
-        )
+    # if MAOMpprimed > MAOMp:
+    #     print(
+    #         "MAOMp v Priming před odečtením: ",
+    #         MAOMp,
+    #         "MAOMpprimed: ",
+    #         MAOMpprimed,
+    #         "kpriming: ",
+    #         kpriming,
+    #         "SOMprimed: ",
+    #         SOMprimed,
+    #         "SOMprimable: ",
+    #         SOMprimable
+    #     )
 
     MAOMp -= MAOMpprimed
 
@@ -1040,20 +1040,20 @@ def calcMAOM(
         DOM * fMic * fRhizosphere * fSatMAOMs * MAOMsmaxrate * DOM / (DOM + MM_DOM_MAOM)
     )
 
-    if dMAOMs < 0:
-        print(
-            "dMAOMs: ",
-            dMAOMs,
-            "fSatMAOMs: ",
-            fSatMAOMs,
-            "MAOMs: ",
-            MAOMs,
-            "maxMAOMs: ",
-            maxMAOMs,
-            "MAOMp: ",
-            MAOMp,
-        )
-        exit()
+    # if dMAOMs < 0:
+    #     print(
+    #         "dMAOMs: ",
+    #         dMAOMs,
+    #         "fSatMAOMs: ",
+    #         fSatMAOMs,
+    #         "MAOMs: ",
+    #         MAOMs,
+    #         "maxMAOMs: ",
+    #         maxMAOMs,
+    #         "MAOMp: ",
+    #         MAOMp,
+    #     )
+    #     exit()
     # if not yet saturated so there is still some potential rate of MAOM formation
     # MAOMs takes over CN of DOM, so CN of MAOMs changes but that of DOM does not
     # if dMAOMs <= 0 or dMAOMp <= 0: print("calcMAOM line 591", dMAOMs, dMAOMp)
