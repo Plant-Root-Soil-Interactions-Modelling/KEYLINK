@@ -17,6 +17,162 @@ import BayesianFunctionsPotprim
 the_current_path = os.path.abspath(os.getcwd())
 results_path = ".\output"
 
+############## Modes #################################
+Sensitivity = True
+Bayesian = False
+
+############## Read data #############################
+# read the fixed parameter list
+inputfileParam = open(
+    "datalistInput.json"
+)  # input parameters (all) is always in same filenam
+AllParam = json.load(inputfileParam)
+
+# Parameteres from AllParam (for Sensitivity)
+bact_DOM_rel = AllParam["bact_DOM_rel"]
+DOM_EC = AllParam["DOM_EC"]
+kpriming = AllParam["kpriming"]
+KS = AllParam["KS"]
+KSfungi = AllParam["KSfungi"]
+KSbact = AllParam["KSbact"]
+kMAOMs_MAOMp = AllParam["kMAOMs_MAOMp"]
+kPOM_MAOM = AllParam["kPOM_MAOM"]
+MAOMpmaxrate = AllParam["MAOMpmaxrate"]
+MAOMsmaxrate = AllParam["MAOMsmaxrate"]
+MAOMmaxrate = AllParam["MAOMmaxrate"]
+MAOMratioSP = AllParam["MAOMratioSP"]
+maxEffectBactMAOM = AllParam["maxEffectBactMAOM"]
+maxEffectSA_MAOM = AllParam["maxEffectSA_MAOM"]
+maxEffectN_MAOM = AllParam["maxEffectN_MAOM"]
+MM_N_MAOM = AllParam["MM_N_MAOM"]
+MM_Bact_MAOM = AllParam["MM_Bact_MAOM"]
+MM_SA_MAOM = AllParam["MM_SA_MAOM"]
+MM_DOM_MAOM = AllParam["MM_DOM_MAOM"]
+Priming_max = AllParam["Priming_max"]
+
+# Create variables
+df_list = []
+temp_df_list = []  # temporary df_list to store returned dataframe
+
+############## Sensitivity ###########################
+if Sensitivity:
+    paramsToTestValues = (
+        bact_DOM_rel,
+        DOM_EC,
+        kpriming,
+        KS,
+        KSfungi,
+        KSbact,
+        kPOM_MAOM,
+        MAOMpmaxrate,
+        MAOMsmaxrate,
+        MAOMmaxrate,
+        MAOMratioSP,
+        maxEffectBactMAOM,
+        maxEffectSA_MAOM,
+        maxEffectN_MAOM,
+        MM_N_MAOM,
+        MM_Bact_MAOM,
+        MM_SA_MAOM,
+        MM_DOM_MAOM,
+        Priming_max,
+    )
+
+    paramsToTestNames = (
+        "bact_DOM_rel",
+        "DOM_EC",
+        "kpriming",
+        "KS",
+        "KSfungi",
+        "KSbact",
+        "kPOM_MAOM",
+        "MAOMpmaxrate",
+        "MAOMsmaxrate",
+        "MAOMmaxrate",
+        "MAOMratioSP",
+        "maxEffectBactMAOM",
+        "maxEffectSA_MAOM",
+        "maxEffectN_MAOM",
+        "MM_N_MAOM",
+        "MM_Bact_MAOM",
+        "MM_SA_MAOM",
+        "MM_DOM_MAOM",
+        "Priming_max",
+    )
+
+    paramsToTestDict = dict(zip(paramsToTestNames, paramsToTestValues))
+    paramChanges = np.array([-50, 0, 100])  # % changes to try for each parameter
+    numParams = len(paramsToTestValues)
+    numValues = len(paramChanges)
+    # numRuns_total= len(paramChanges) * len(paramsToTestValues)  # number of sensitivity runs
+    # todo, check how MAOM, MAOMs and MAOMp are calculate throughout the run
+
+    # Treatments
+    inputRun = pd.read_csv(
+        "Bayesian_run_input.csv", header=0, skiprows=0
+    )  # maybe we need to change the file??
+    numTreatments = len(inputRun)
+
+    for param in paramsToTestNames:
+        for paramChange in paramChanges:
+            # calculate by how much to change the parameter value, using a relative parameter change
+            delta = (
+                paramsToTestDict[param] * paramChange / 100
+            )  # I change 1 parameter value
+            # caculate new value of parameter
+            value = paramsToTestDict[param] + delta
+            paramsToTestDict[param] = value
+
+            # for i in range(len(DOMinput_treatments)):
+            # numruns = numruns + 1
+            # I want to use thevalues from the dict, for sensitivity, so i put all of the values back in the variable (not the fastest way)
+            # needs to be changed ifyou change the parameters to test
+            bact_DOM_rel = paramsToTestDict["bact_DOM_rel"]
+            DOM_EC = paramsToTestDict["DOM_EC"]
+            kpriming = paramsToTestDict["kpriming"]
+            KS = paramsToTestDict["KS"]
+            KSfungi = paramsToTestDict["KSfungi"]
+            KSbact = paramsToTestDict["KSbact"]
+            kPOM_MAOM = paramsToTestDict["kPOM_MAOM"]
+            MAOMpmaxrate = paramsToTestDict["MAOMpmaxrate"]
+            MAOMsmaxrate = paramsToTestDict["MAOMsmaxrate"]
+            MAOMmaxrate = paramsToTestDict["MAOMmaxrate"]
+            MAOMratioSP = paramsToTestDict["MAOMratioSP"]
+            maxEffectBactMAOM = paramsToTestDict["maxEffectBactMAOM"]
+            maxEffectSA_MAOM = paramsToTestDict["maxEffectSA_MAOM"]
+            maxEffectN_MAOM = paramsToTestDict["maxEffectN_MAOM"]
+            MM_N_MAOM = paramsToTestDict["MM_N_MAOM"]
+            MM_Bact_MAOM = paramsToTestDict["MM_Bact_MAOM"]
+            MM_SA_MAOM = paramsToTestDict["MM_SA_MAOM"]
+            MM_DOM_MAOM = paramsToTestDict["MM_DOM_MAOM"]
+
+            for treatment in range(numTreatments):
+                treatmentVar = inputRun.iloc[treatment, 0:17]
+
+                temp_df_list, Bayesian, Sensitivity = run_model(
+                    AllParam, treatmentVar, Bayesian=False, Sensitivity=False
+                )
+                df_list.append(
+                    temp_df_list
+                )  # append doesn't work for dataframes, so the lists have to be appended to later use concat
+
+    # in the end, save data output
+    try:
+        os.makedirs("./output/data")
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    results_df = pd.concat(
+        df_list, ignore_index=True
+    )  # add all the rows to the results_df
+    results_df.to_csv(
+        ".\output\data\Sensitivity.csv",
+        index=False,
+        float_format="%.2f",
+    )
+
+
 """
 key bayesian principle: the likelihood of a run is the sum of the likelihood of the parameters 
 and how good the results fit. 
@@ -108,11 +264,6 @@ t1 = time.perf_counter()
 
 # numTreatments = len(calibrationData_df['Treatments'])
 
-# read the fixed parameter list
-inputfileParam = open(
-    "datalistInput.json"
-)  # input parameters (all) is always in same filenam
-AllParam = json.load(inputfileParam)
 
 # read the Parameter data to  and the fixed parameter values and put them together
 inputCalibrationParamfile = open("datalistCalibrationParam.json")
@@ -183,8 +334,7 @@ loglikelihood_param = np.sum(
 # 3) Simulated Data in a similar frame as the measured values, 1 run is over all treatments
 treatmentVar = ()
 results_df = pd.DataFrame()
-df_list = []
-temp_df_list = []  # temporrary df_list to store returned dataframe
+
 # data_Simulated=pd.DataFrame()
 for treatment in range(numTreatments):
     treatmentVar = inputBayesianRun.iloc[
