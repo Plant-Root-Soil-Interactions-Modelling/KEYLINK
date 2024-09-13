@@ -8,11 +8,11 @@ import keylink_functions as mf
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import copy
+
 import os
 
 
-def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
+def run_model(AllParam, treatmentVar, mode_):
     # output dataframe list
     outDataframes = []
     # devide 'input' into: parametersToCalibrate, ParametersCalibrated, Inputvariables (run-specific)
@@ -29,7 +29,6 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
     # kPOM_MAOM = 8 #ratio of POM to MAOM decayed / overall SOM decay is partitioned using this fixed ratios really unavailable, is k-POM/k_MAOM in israel code
     # kMAOMs_MAOMp = 8 #ratio of MAOMs to MAOMp decayed / overall MAOM decay is partitioned using this fixed ratios really unavailable,
     # MAOMpmaxrate = 0.1 #maximum rate of primary MAOM formation
-    # MAOMsmaxrate = 0.1 #maximum rate of secondary MAOM formation
     # MAOMmaxrate=0.2 # max proportion of DOM stabilized in MAOM per day [unitless]
     # MAOMratioSP = 2 #ratio of secondary to primary MAOM
     # maxEffectBactMAOM=0.9 #(half as slow when no bacteria, rate becomes 1-value)
@@ -46,11 +45,10 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
     KS = AllParam["KS"]
     KSfungi = AllParam["KSfungi"]
     KSbact = AllParam["KSbact"]
-    kMAOMs_MAOMp = AllParam["kMAOMs_MAOMp"]
     kPOM_MAOM = AllParam["kPOM_MAOM"]
+    kMAOMs_MAOMp = AllParam["kMAOMs_MAOMp"]
     MAOMpmaxrate = AllParam["MAOMpmaxrate"]
     MAOMsmaxrate = AllParam["MAOMsmaxrate"]
-    MAOMmaxrate = AllParam["MAOMmaxrate"]
     MAOMratioSP = AllParam["MAOMratioSP"]
     maxEffectBactMAOM = AllParam["maxEffectBactMAOM"]
     maxEffectSA_MAOM = AllParam["maxEffectSA_MAOM"]
@@ -108,6 +106,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
     CN_POM = treatmentVar["CN_POM"]  # 24 #CN of SOM, Jílková2022
     pH = treatmentVar["pH"]  # 4.1 #Jílková2022
     temp = treatmentVar["temp"]  # 21
+    treatment = treatmentVar["treatment"]
 
     # those different for Jílková 2022 and experiment 2024
     d_freq = 14  # how often is substrate added, every x days, is 14 for Jílková2022, but 21 for experiment 2024
@@ -128,20 +127,19 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
     maxSurfaceArea = (
         claySA * BD * fClay + siltSA * BD * fSilt
     )  # total surface area of clay and silt in m²/m³
-    PV = 15  #!TODO volume of micropores [l/m3] but overwritten by next line
-    PV = np.array(
-        [45, 37, 37, 200, 6]
-    )  # pore volume for each pore size class [l/m3] / todo: estimate for our soils
-    PRadius = np.array(
-        [0.05, 0.525, 8, 382.5, 875]
-    )  # average radius of each pore size class [µm], defined by KEYLINK
-    PSA = np.zeros(5)
-    PSA = mf.calcPoreSurfaceArea(
-        PV, PRadius, PSA
-    )  # pore surface area for each pore size class, calculated from  KEYLINK function
-    PW = np.divide(
-        PV, 2
-    )  # pore water volume, assume all pores half filled , but water is in m³ while volume was in l
+    # PV = np.array(
+    #     [45, 37, 37, 200, 6]
+    # )  # pore volume for each pore size class [l/m3] 
+    # PRadius = np.array(
+    #     [0.05, 0.525, 8, 382.5, 875]
+    # )  # average radius of each pore size class [µm], defined by KEYLINK
+    # PSA = np.zeros(5)
+    # PSA = mf.calcPoreSurfaceArea(
+    #     PV, PRadius, PSA
+    # )  # pore surface area for each pore size class, calculated from  KEYLINK function
+    # PW = np.divide(
+    #     PV, 2
+    # )  # pore water volume, assume all pores half filled , but water is in m³ while volume was in l
     RootHyphaeSurface = 71  # surface area of all roots/hyphae [m2/m3] ??unit correct / look up roots surface area equivalent to that amount of DOM input
     fractionSA = (
         RootHyphaeSurface / maxSurfaceArea
@@ -162,27 +160,24 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
         "subExudates": [],
     }
 
-    if Sensitivity or Bayesian:  # safety
+    if mode_ == "Sensitivity" or mode_ == "Bayesian": #safety
         Plotting = False
 
     # numruns = 0  # initializing the number of runs
 
     # run the daily calculations
 
-    # perform three experimental runs, one for each of the three treatments
-    # these differ in DOM input amount and CN of DOM input
 
     # DOMinput_treatments = np.array([10, 10, 0])  # exudates, leachates, control
     # CN_DOMinput_treatments = np.array(
     # [6, 80, 0]
-    # )  # exudates, leachates, control, CN od control DOMinput can't be zero because of dividing by it in DOM_N calculation
+    
     # treatments = np.array(["exudates", "leachates", "control"])
-    treatment = treatmentVar["treatment"]
-    if Sensitivity:
+
+    
+    #define different output for different modes
+    if mode_ == "Sensitivity":
         column_names = [
-            "Parameter",
-            "Parameter_change",
-            "value",
             "treatment",
             "day",
             "DOMaddition",
@@ -199,19 +194,11 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
             "MAOM",
         ]
 
-    results_df = pd.DataFrame(columns=column_names)
-    origValues = copy.deepcopy(
-        paramsToTestDict
-    )  # need deepcopy to not have a pointer but really full copy of values
+        results_df = pd.DataFrame(columns=column_names)
+
     # print("initial", paramsToTestDict)  # check
 
-    if Bayesian:
-        numParams = 1
-        numValues = 1
-        paramsToTestValues = bact_DOM_rel
-        paramsToTestNames = ["bact_DOM_rel"]
-        # paramsToTestDict=dict(zip(paramsToTestNames, paramsToTestValues))
-        paramChanges = np.array([0])  # % changes to try for each parameter
+    if mode_ == "Bayesian":
 
         # variables for which we have measured data
         # treatment, d, resp, resp_sub, POM, MAOM, bact_total, fungi, POM_sub, MAOM_sub, bact_total_sub, fungi_sub]
@@ -232,17 +219,8 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
 
         results_df = pd.DataFrame(columns=column_names)
 
-    else:  # normal runs
-        # numruns=1
-        numParams = 1
-        numValues = 1
-        paramsToTestValues = bact_DOM_rel
-        paramsToTestNames = ["bact_DOM_rel"]
-        # paramsToTestDict=dict(zip(paramsToTestNames, paramsToTestValues))
-        paramChanges = np.array([0])  # % changes to try for each parameter
+    if mode_ == "Normal":  # normal runs
 
-        # numRuns_total= len(paramChanges) * len(paramsToTestValues)  # number of sensitivity runs
-        # todo, check how MAOM, MAOMs and MAOMp are calculate throughout the run
         column_names = [
             "treatment",
             "day",
@@ -261,14 +239,6 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
         ]
 
         results_df = pd.DataFrame(columns=column_names)
-        # origValues=copy.deepcopy(paramsToTestDict)   # need deepcopy to not have a pointer but really full copy of values
-
-            # DOMinput = DOMinput_treatments[i]
-            # CN_DOMinput = CN_DOMinput_treatments[i]
-            # treatment = treatments[i]
-
-            # initialization
-            # output objects initialized as empty
 
     if Plotting:  # only need these if plotting
         time_d = []
@@ -322,13 +292,16 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
         TP = mf.calcTotalporosity(MAOM + POM, BD)
 
     if PV == None:
-        R, S, alpha, n, m = mf.calcVangenuchten(
-            BD, MAOM + POM, fClay, 1 - fClay - fSilt
-        )
+        R, S, alpha, n, m = mf.calcVangenuchten(BD, MAOM + POM, fClay, 1 - fClay - fSilt)
         PV = mf.calcPoresDistribution(R, S, alpha, n, m, TP)
         PW = np.divide(
             PV, 2
-        )  # pore water volume, assume all pores half filled  [l/m3]
+        ) # pore water volume, assume all pores half filled  [l/m3]
+        # PSA = np.zeros(5)
+        # PSA = mf.calcPoreSurfaceArea(
+        #     PV, PRadius, PSA
+        # )  # pore surface area for each pore size class, calculated from  KEYLINK function, not used currently
+        
 
     # same for all runs
     availability = np.zeros(3)
@@ -354,9 +327,9 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
 
     fungi_sub = 0  # proportion of fungal carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
 
-    MAOMunavail = (
-        PSA[0] / sum(PSA)
-    ) * MAOM  # the portion of MAOM stored in the smallest pores is really unavailable
+    # MAOMunavail = (
+    #     PSA[0] / sum(PSA)
+    # ) * MAOM  # the portion of MAOM stored in the smallest pores is really unavailable
     MAOMp = MAOM / (
         MAOMratioSP + 1
     )  # primary MAOM [gC/m3] initialised at the ratio of saturation
@@ -723,7 +696,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
             outMAOMp_sub.append(MAOMp_sub)
             outResp_sub.append(resp_sub)
 
-            if Sensitivity is False and Bayesian is False:  # for normal runs
+            if mode_ == 'Normal':  # for normal runs
                 if treatment == "control":
                     respPlot["soilControl"].append(respSoil / (0.8 * 24))
                     respPlot["subControl"].append(respSubstrate / (0.8 * 24))
@@ -738,11 +711,8 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
 
             # make different output depending on the type of run
             # make different output depending on the type of run
-        if Sensitivity:
+        if mode_ == "Sensitivity":
             results_df.loc[len(results_df)] = [
-                param,
-                paramChange,
-                value,
                 treatment,
                 d,
                 DOM_added / 0.8,  # change units from gC/m3 µgC/g soil
@@ -768,7 +738,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
                 MAOM / (0.8 * 1000),
             ]  # change units from gC/m3 mgC/g soil
 
-        if Bayesian:  # variables for which we have measured data
+        if mode_ == "Bayesian":  # variables for which we have measured data
             results_df.loc[len(results_df)] = [
                 treatment,
                 d,
@@ -787,7 +757,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
                 fungi_sub,
             ]
 
-        if Sensitivity is False and Bayesian is False:  # for normal runs
+        if mode_ == "Normal":  # for normal runs
             results_df.loc[len(results_df)] = [
                 treatment,
                 d,
@@ -981,11 +951,7 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
             )
     ############# end of Plotting   #############
 
-    # after each three runs (for each of the three treatments), reset parameters to original, before next parameter value change
-    if Sensitivity:
-        paramsToTestDict = copy.deepcopy(
-            origValues
-        )  # reset to original if we were doing sensitivity
+
 
     # def drawRespPlot(respPlot):
     #     # count mean values of the modelled data
@@ -1049,4 +1015,4 @@ def run_model(AllParam, treatmentVar, Bayesian, Sensitivity):
     # plt.savefig("./output/figures/respPlot.png")
 
     # if (Bayesian):
-    return results_df, Bayesian, Sensitivity
+    return results_df
