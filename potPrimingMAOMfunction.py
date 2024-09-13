@@ -110,7 +110,7 @@ def run_model(AllParam, treatmentVar, mode_):
 
     # those different for Jílková 2022 and experiment 2024
     d_freq = 14  # how often is substrate added, every x days, is 14 for Jílková2022, but 21 for experiment 2024
-    numDays = 155  # number of days of incubation experiment/how long to run the model, 150 in Jílková2022
+    numDays = 161  # number of days of incubation experiment/how long to run the model, 155 in Jílková2022, 161 in Jílková 2024
 
     # those that will be the same for all 16 runs
     BD = 800  # bulk density [kg/m³]

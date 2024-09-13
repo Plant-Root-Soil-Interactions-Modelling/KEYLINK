@@ -12,6 +12,7 @@ import csv
 import numpy as np
 from numpy import random as ra
 from scipy import stats
+import re
 
 
 
@@ -167,3 +168,18 @@ def check_dataframe_significant_change(df, alpha, num_identical_results):
             return False
     # when all parameters converge return true
     return True
+
+def split_alphanumeric_list(string_list): #returns nonnumeric and numeric part of string list as two lists
+    non_numeric_list = []
+    numeric_list = []
+    for string in string_list:
+
+        # Find all non-digit characters, then all digit characters        
+        [non_numeric] = re.findall(r'\D+', string)
+        [numeric] = re.findall(r'\d+', string)
+        numeric = int(numeric)
+        non_numeric_list.append(non_numeric)
+        
+        numeric_list.append(numeric)
+     
+    return non_numeric_list, numeric_list
