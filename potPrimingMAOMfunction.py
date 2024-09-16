@@ -12,7 +12,7 @@ import pandas as pd
 import os
 
 
-def run_model(AllParam, treatmentVar, mode_):
+def run_model(AllParam, treatmentVar, mode_, Plotting):
     # output dataframe list
     outDataframes = []
     # devide 'input' into: parametersToCalibrate, ParametersCalibrated, Inputvariables (run-specific)
@@ -146,19 +146,9 @@ def run_model(AllParam, treatmentVar, mode_):
     )  # used in calcMAOM/ fraction of mineral surface area occupied by roots/hyphae
 
     Priming = True  # flag to enable Priming effect
-    Plotting = False  # flag 1 to enable making of plots, so that this can be turned off during sensitivity analysis etc.
+    # Plotting = False  # flag 1 to enable making of plots, so that this can be turned off during sensitivity analysis etc.
     # Bayesian = True  # flag 1 if performing Bayesian
     # Sensitivity = False
-
-    # create dictionary for respiration plot
-    respPlot = {
-        "soilControl": [],
-        "soilLeachates": [],
-        "soilExudates": [],
-        "subControl": [],
-        "subLeachates": [],
-        "subExudates": [],
-    }
 
     if mode_ == "Sensitivity" or mode_ == "Bayesian":  # safety
         Plotting = False
@@ -229,7 +219,7 @@ def run_model(AllParam, treatmentVar, mode_):
             "fungi",
             "respSubstrate",
             "baselineResp",
-            "resp",
+            "respSoil",
             "POM",
             "MAOMs",
             "MAOMp",
@@ -657,19 +647,6 @@ def run_model(AllParam, treatmentVar, mode_):
             outMAOMp_sub.append(MAOMp_sub)
             outResp_sub.append(resp_sub)
 
-            if mode_ == "Normal":  # for normal runs
-                if treatment == "control":
-                    respPlot["soilControl"].append(respSoil / (0.8 * 24))
-                    respPlot["subControl"].append(respSubstrate / (0.8 * 24))
-
-                elif treatment == "exudates":
-                    respPlot["soilExudates"].append(respSoil / (0.8 * 24))
-                    respPlot["subExudates"].append(respSubstrate / (0.8 * 24))
-
-                elif treatment == "leachates":
-                    respPlot["soilLeachates"].append(respSoil / (0.8 * 24))
-                    respPlot["subLeachates"].append(respSubstrate / (0.8 * 24))
-
             # make different output depending on the type of run
             # make different output depending on the type of run
         if mode_ == "Sensitivity":
@@ -735,220 +712,191 @@ def run_model(AllParam, treatmentVar, mode_):
         # after the total run is completed (after numDays)
 
         ############# Plotting   #############
-        if Plotting:  # transform data for Plotting to adjusted units matching the data
-            # change units to easily understandable for the plot
-            # outDOMadded2 = np.divide(outDOMadded, 0.8) # change units from gC/m3 µgC/g soil
-            # outBact_total2 = np.divide(outBact_total, 0.8) # change units from gC/m3 µgC/g soil
-            # outbact_DOM2 = np.divide(outbact_DOM, 0.8)
-            # outBact2 = np.divide(outBact, 0.8)
-            # outFungi2 = np.divide(outFungi, 0.8)
-            # outRespSubstrate2 = np.divide(outRespSubstrate, 0.8 * 24) # change units from gC/m3/day to µg CO2-C/g soil/h
-            # outRespSoilBaseline2 = np.divide(outRespSoilBaseline, 0.8 * 24)
-            # outRespSoil2 = np.divide(outRespSoil, 0.8 * 24)
-            # outDOM2 = np.divide(outDOM, 0.8) # change units from gC/m3 µgC/g soil
-            # outPOM2 = np.divide(outPOM, 0.8 * 1000) # change units from gC/m3 mgC/g soil
-            # outMAOM2 = np.divide(outMAOM, 0.8 * 1000) # change units from gC/m3 mgC/g soil
-            # outMAOMp2 = np.divide(outMAOMp, 0.8 * 1000) # change units from gC/m3 mgC/g soil
-            # outMAOMs2 = np.divide(outMAOMs, 0.8 * 1000) # change units from gC/m3 mgC/g soil
+    if Plotting:  # transform data for Plotting to adjusted units matching the data
+        # change units to easily understandable for the plot
+        # outDOMadded2 = np.divide(outDOMadded, 0.8) # change units from gC/m3 µgC/g soil
+        # outBact_total2 = np.divide(outBact_total, 0.8) # change units from gC/m3 µgC/g soil
+        # outbact_DOM2 = np.divide(outbact_DOM, 0.8)
+        # outBact2 = np.divide(outBact, 0.8)
+        # outFungi2 = np.divide(outFungi, 0.8)
+        # outRespSubstrate2 = np.divide(outRespSubstrate, 0.8 * 24) # change units from gC/m3/day to µg CO2-C/g soil/h
+        # outRespSoilBaseline2 = np.divide(outRespSoilBaseline, 0.8 * 24)
+        # outRespSoil2 = np.divide(outRespSoil, 0.8 * 24)
+        # outDOM2 = np.divide(outDOM, 0.8) # change units from gC/m3 µgC/g soil
+        # outPOM2 = np.divide(outPOM, 0.8 * 1000) # change units from gC/m3 mgC/g soil
+        # outMAOM2 = np.divide(outMAOM, 0.8 * 1000) # change units from gC/m3 mgC/g soil
+        # outMAOMp2 = np.divide(outMAOMp, 0.8 * 1000) # change units from gC/m3 mgC/g soil
+        # outMAOMs2 = np.divide(outMAOMs, 0.8 * 1000) # change units from gC/m3 mgC/g soil
 
-            # first plot function
-            def Dailyplot1(
-                outDOMadded,
-                outDOM,
-                outbact_DOM,
-                outBact,
-                outFungi,
-                outRespSubstrate,
-                outRespSoil,
+        # first plot function
+        def Dailyplot1(
+            outDOMadded,
+            outDOM,
+            outbact_DOM,
+            outBact,
+            outFungi,
+            outRespSubstrate,
+            outRespSoil,
+            outRespSoilBaseline,
+            outPOM,
+            outMAOMp,
+            outMAOMs,
+            treatment,
+        ):  # plot in original KEYLINK units
+
+            fig, ((p1, p2, p3), (p4, p5, p6)) = plt.subplots(
+                nrows=2, ncols=3, figsize=(12, 8)
+            )  # was 10, 12
+            fig.suptitle(treatment, size=16)
+            fig.tight_layout(pad=2.0)
+            ps = (p1, p2, p3, p4, p5, p6)
+            plt.subplots_adjust(bottom=0.2, hspace=0.6)
+
+            # counter = count(0, 1)
+            # columns = list(df)
+            ps[0].set_title("DOM additions, µgC g-1 soil")
+            ps[1].set_title("DOM, µgC g-1 soil")
+            ps[2].set_title("POM, mgC g-1 soil")
+            ps[3].set_title("Microbial biomass, µgC g-1 soil")
+            ps[4].set_title("Respiration, µg C-CO2 g-1 soil h-1")
+            # ps[4].set_title("SOM, mgC g-1 soil")
+            ps[5].set_title("MAOM, mgC g-1 soil")
+
+            p1.plot(time_d, outDOMadded, label="DOM")
+            ps[0].legend(
+                loc="upper left", bbox_to_anchor=(0, -0.15), shadow=True
+            )  # loc='upper left',
+
+            p2.plot(time_d, outDOM, label="DOM")
+            ps[1].legend(
+                loc="upper left", bbox_to_anchor=(0, -0.15), shadow=True
+            )  # loc='upper left',
+
+            p3.plot(time_d, outPOM, label="POM")
+            ps[2].legend(
+                loc="upper left", bbox_to_anchor=(0, -0.15), shadow=True
+            )  # loc='upper left',
+
+            p4.plot(time_d, outBact_total, label="bacteria")
+            p4.plot(time_d, outbact_DOM, label="bacteria DOM feeding")
+            p4.plot(time_d, outBact, label="bacteria only SOM feeding")
+            p4.plot(time_d, outFungi, label="fungi")
+            ps[3].legend(
+                loc="upper left", bbox_to_anchor=(0, -0.15), shadow=True
+            )  # loc='bottom right',
+
+            p5.plot(time_d, outRespSubstrate, label="substrate-derived")
+            p5.plot(time_d, outRespSoil, label="soil-derived incl. priming")
+            p5.plot(
+                time_d,
                 outRespSoilBaseline,
-                outPOM,
-                outMAOMp,
-                outMAOMs,
-            ):  # plot in original KEYLINK units
-                fig, ((p1, p2, p3), (p4, p5, p6)) = plt.subplots(
-                    nrows=2, ncols=3, figsize=(12, 7)
-                )  # was 10, 12
-                fig.suptitle(treatment, size=16)
-                fig.tight_layout(pad=2.0)
-                ps = (p1, p2, p3, p4, p5, p6)
-                # counter = count(0, 1)
-                # columns = list(df)
-                ps[0].set_title("DOM additions, µgC g-1 soil")
-                ps[1].set_title("DOM, µgC g-1 soil")
-                ps[2].set_title("Microbial biomass, µgC g-1 soil")
-                ps[3].set_title("Respiration, µg C-CO2 g-1 soil h-1")
-                ps[4].set_title("POM, mgC g-1 soil")
-                # ps[4].set_title("SOM, mgC g-1 soil")
-                ps[5].set_title("MAOM, mgC g-1 soil")
-
-                p1.plot(time_d, outDOMadded)
-                p2.plot(time_d, outDOM)
-                p3.plot(time_d, outBact_total, label="bacteria")
-                p3.plot(time_d, outbact_DOM, label="bacteria DOM feeding")
-                p3.plot(time_d, outBact, label="bacteria only SOM feeding")
-                p3.plot(time_d, outFungi, label="fungi")
-                ps[2].legend(loc=(0.4, 0.03), shadow=True)  # loc='bottom right',
-
-                p4.plot(time_d, outRespSubstrate, label="substrate-derived")
-                p4.plot(time_d, outRespSoil, label="soil-derived incl. priming")
-                p4.plot(
-                    time_d,
-                    outRespSoilBaseline,
-                    label="soil-derived baseline",
-                )
-                ps[3].legend(loc=(0.25, 0.03), shadow=True)  # loc='bottom right',
-
-                p5.plot(time_d, outPOM, label="POM")
-                ps[4].legend(loc=(0.03, 0.03), shadow=True)  # loc='upper left',
-
-                p6.plot(time_d, outMAOM, label="MAOM")
-                p6.plot(time_d, outMAOMp, label="primary MAOM")
-                p6.plot(time_d, outMAOMs, label="secondary MAOM")
-                ps[5].legend(loc=(0.4, 0.03), shadow=True)  # loc='bottom right',
-
-            # plot substrate-derived proportions
-            def Dailyplot2(
-                outBact_DOM_sub,
-                outBact_sub,
-                outFungi_sub,
-                outDOM_sub,
-                outPOM_sub,
-                outMAOMs_sub,
-                outMAOMp_sub,
-            ):
-                fig, (p1, p2, p3, p4) = plt.subplots(
-                    nrows=4, ncols=1, figsize=(5, 14)
-                )  # was 10,12
-                fig.suptitle(treatment, size=16)
-                fig.tight_layout(pad=3.0)
-                ps = (p1, p2, p3, p4)
-                # counter = count(0, 1)
-                # columns = list(df)
-                ps[0].set_title("substrate derived % of microbial pools")
-                ps[1].set_title("substrate derived % of SOM pools")
-                ps[2].set_title("substrate derived % of respiration")
-
-                p1.plot(time_d, outBact_total_sub, label="bacteria")
-                p1.plot(time_d, outBact_DOM_sub, label="bacteria DOM feeding")
-                p1.plot(time_d, outBact_sub, label="bacteria SOM feeding")
-                p1.plot(time_d, outFungi_sub, label="fungi")
-                ps[0].legend(
-                    loc="upper left", bbox_to_anchor=(1, 1), shadow=True
-                )  # loc='bottom right',
-
-                p2.plot(time_d, outDOM_sub, label="DOM")
-                ps[1].legend(
-                    loc="upper left", bbox_to_anchor=(1, 1), shadow=True
-                )  # loc='bottom right',
-
-                p3.plot(time_d, outPOM_sub, label="POM")
-                p3.plot(time_d, outMAOM_sub, label="MAOM")
-                p3.plot(time_d, outMAOMp_sub, label="primary MAOM")
-                p3.plot(time_d, outMAOMs_sub, label="secondary MAOM")
-                ps[2].legend(
-                    loc="upper left", bbox_to_anchor=(1, 1), shadow=True
-                )  # loc='bottom right',
-
-                p4.plot(time_d, outResp_sub, label="total respiration")
-
-            # check if there is a "figures" folder; if not, create one
-            try:
-                os.makedirs("./output/figures")
-            except FileExistsError:
-                # directory already exists
-                pass
-
-            # after each run, make a plot
-            Dailyplot1(
-                outDOMadded,
-                outDOM,
-                outbact_DOM,
-                outBact,
-                outFungi,
-                outRespSubstrate,
-                outRespSoil,
-                outRespSoilBaseline,
-                outPOM,
-                outMAOMp,
-                outMAOMs,
+                label="soil-derived baseline",
             )
+            ps[4].legend(
+                loc="upper left", bbox_to_anchor=(0, -0.15), shadow=True
+            )  # loc='bottom right',
+
+            p6.plot(time_d, outMAOM, label="MAOM")
+            p6.plot(time_d, outMAOMp, label="primary MAOM")
+            p6.plot(time_d, outMAOMs, label="secondary MAOM")
+            ps[5].legend(
+                loc="upper left", bbox_to_anchor=(0, -0.15), shadow=True
+            )  # loc='bottom right',
+
             plt.savefig(".\output\\figures\Dailyplot1_" + treatment + ".png")
+            plt.close()
 
-            Dailyplot2(
-                outBact_DOM_sub,
-                outBact_sub,
-                outFungi_sub,
-                outDOM_sub,
-                outPOM_sub,
-                outMAOMs_sub,
-                outMAOMp_sub,
-            )
+        # plot substrate-derived proportions
+        def Dailyplot2(
+            outBact_DOM_sub,
+            outBact_sub,
+            outFungi_sub,
+            outDOM_sub,
+            outPOM_sub,
+            outMAOMs_sub,
+            outMAOMp_sub,
+            treatment,
+        ):
+            fig, (p1, p2, p3, p4) = plt.subplots(
+                nrows=4, ncols=1, figsize=(5, 14)
+            )  # was 10,12
+            fig.suptitle(treatment, size=16)
+            fig.tight_layout(pad=3.0)
+            ps = (p1, p2, p3, p4)
+            # counter = count(0, 1)
+            # columns = list(df)
+            ps[0].set_title("substrate derived % of microbial pools")
+            ps[1].set_title("substrate derived % of SOM pools")
+            ps[2].set_title("substrate derived % of respiration")
+            ps[3].set_title("total respiration")
+
+            p1.plot(time_d, outBact_total_sub, label="bacteria")
+            p1.plot(time_d, outBact_DOM_sub, label="bacteria DOM feeding")
+            p1.plot(time_d, outBact_sub, label="bacteria SOM feeding")
+            p1.plot(time_d, outFungi_sub, label="fungi")
+            ps[0].legend(
+                loc="upper left", bbox_to_anchor=(1, 1), shadow=True
+            )  # loc='bottom right',
+
+            p2.plot(time_d, outDOM_sub, label="DOM")
+            ps[1].legend(
+                loc="upper left", bbox_to_anchor=(1, 1), shadow=True
+            )  # loc='bottom right',
+
+            p3.plot(time_d, outPOM_sub, label="POM")
+            p3.plot(time_d, outMAOM_sub, label="MAOM")
+            p3.plot(time_d, outMAOMp_sub, label="primary MAOM")
+            p3.plot(time_d, outMAOMs_sub, label="secondary MAOM")
+            ps[2].legend(
+                loc="upper left", bbox_to_anchor=(1, 1), shadow=True
+            )  # loc='bottom right',
+
+            p4.plot(time_d, outResp_sub, label="respiration")
+            ps[3].legend(
+                loc="upper left", bbox_to_anchor=(1, 1), shadow=True
+            )  # loc='bottom right',
+
             plt.savefig(
                 ".\output\\figures\Dailyplot2_" + treatment + ".png",
                 bbox_inches="tight",
             )
+            plt.close()
+
+        # check if there is a "figures" folder; if not, create one
+        try:
+            os.makedirs("./output/figures")
+        except FileExistsError:
+            # directory already exists
+            pass
+
+        # after each run, make a plot
+        Dailyplot1(
+            outDOMadded,
+            outDOM,
+            outbact_DOM,
+            outBact,
+            outFungi,
+            outRespSubstrate,
+            outRespSoil,
+            outRespSoilBaseline,
+            outPOM,
+            outMAOMp,
+            outMAOMs,
+            treatment,
+        )
+
+        Dailyplot2(
+            outBact_DOM_sub,
+            outBact_sub,
+            outFungi_sub,
+            outDOM_sub,
+            outPOM_sub,
+            outMAOMs_sub,
+            outMAOMp_sub,
+            treatment,
+        )
+
     ############# end of Plotting   #############
-
-    # def drawRespPlot(respPlot):
-    #     # count mean values of the modelled data
-    #     soil_values_model = []
-    #     soil_values_model.append(
-    #         sum(respPlot["soilControl"]) / len(respPlot["soilControl"])
-    #     )
-    #     soil_values_model.append(
-    #         sum(respPlot["soilLeachates"]) / len(respPlot["soilLeachates"])
-    #     )
-    #     soil_values_model.append(
-    #         sum(respPlot["soilExudates"]) / len(respPlot["soilExudates"])
-    #     )
-
-    #     sub_values_model = []
-    #     sub_values_model.append(
-    #         sum(respPlot["subControl"]) / len(respPlot["subControl"])
-    #     )
-    #     sub_values_model.append(
-    #         sum(respPlot["subLeachates"]) / len(respPlot["subLeachates"])
-    #     )
-    #     sub_values_model.append(
-    #         sum(respPlot["subExudates"]) / len(respPlot["subExudates"])
-    #     )
-
-    #     labels = ["Control", "Leachates", "Exudates"]
-
-    #     # measured values
-    #     soil_values_measure = [26.23, 32.64, 27.64]
-    #     sub_values_measure = [0, 6.83, 8.43]
-
-    #     # create plot
-    #     plt.figure(figsize=(8, 4))
-    #     x = np.arange(len(labels))  # label locations
-    #     width = 0.2  # width of the bars
-
-    #     # create first subplot
-    #     plt.subplot(1, 2, 1)
-    #     plt.bar(x - width / 2, soil_values_model, width, label="Modeled", color="gray")
-    #     plt.bar(
-    #         x + width / 2, soil_values_measure, width, label="Measured", color="black"
-    #     )
-    #     plt.title("Soil derived")
-    #     plt.ylabel("Respiration [µg C-CO2/g soil/h]")
-    #     plt.xticks(x, labels)
-
-    #     # create second subplot
-    #     plt.subplot(1, 2, 2)
-    #     plt.bar(x - width / 2, sub_values_model, width, label="Modeled", color="gray")
-    #     plt.bar(
-    #         x + width / 2, sub_values_measure, width, label="Measured", color="black"
-    #     )
-    #     plt.title("Substrate derived")
-    #     plt.ylabel("")
-    #     plt.xticks(x, labels)
-    #     plt.legend(loc="upper left", bbox_to_anchor=(1, 1), shadow=True)
-
-    #     plt.tight_layout()
-
-    # drawRespPlot(respPlot)
-    # plt.savefig("./output/figures/respPlot.png")
 
     # if (Bayesian):
     return results_df
