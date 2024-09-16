@@ -30,10 +30,12 @@ modes = Literal["Normal", "Sensitivity", "Bayesian"]
 options = get_args(modes)
 
 #set the mode to Normal, Sensitivity or Bayesian
-mode_ = 'Sensitivity'
+mode_ = 'Normal'
 #check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
-#
+
+#if the Normal mode was chosen, you can decide to turn on the Plotting
+Plotting = True
 
 ############## Read data #############################
 # read the fixed parameter list
@@ -58,15 +60,29 @@ if mode_ == "Normal":
     )  
     
     numTreatments = len(inputRun)
+
+    # create lists for respiration plot
+    respSoil_mean_model = []
+    respSubstrate_mean_model = []
+    respSoil_mean_measure = []
+    respSubstrate_mean_measure = []
+    labels = []
     
     for treatment in range(numTreatments):
         treatmentVar = inputRun.iloc[treatment, 0:17]
         
         temp_df = run_model(
-            AllParam, treatmentVar, mode_ = "Normal"
+            AllParam, treatmentVar, mode_ = "Normal", Plotting=False
         )
         df_list.append(temp_df)
-        
+
+        # storing values for respiration plot
+        labels.append(temp_df["treatment"][1])
+        respSoil_mean_model.append((temp_df["respSoil"].mean()) / 0.8 * 24)
+        respSubstrate_mean_model.append((temp_df["respSubstrate"].mean()) / 0.8 * 24)
+        respSoil_mean_measure.append(((inputRun.iloc[treatment, 17:37]).mean()) / 0.8 * 24)
+        respSubstrate_mean_measure.append(((inputRun.iloc[treatment, 37:48]).mean()) / 0.8 * 24)
+
     results_df = pd.concat(
         df_list, ignore_index=True
     )  # add all the rows to the results_df
@@ -82,8 +98,40 @@ if mode_ == "Normal":
         index=False,
         float_format="%.2f",
     )
+
+############## Creating the Respiration Plot #########
+    if Plotting:
+        # create plot
+        plt.figure(figsize=(10,12))
+        x = np.arange(len(labels))  # label locations
+        width = 0.3  # width of the bars
+
+        # create first subplot
+        plt.subplot(2, 1, 1)
+        plt.bar(x - width / 2, respSoil_mean_model, width, label="Modeled", color="gray")
+        plt.bar(
+            x + width / 2, respSoil_mean_measure, width, label="Measured", color="black"
+        )
+        plt.title("Soil derived")
+        plt.ylabel("Respiration [µg C-CO2/g soil/h]")
+        plt.xticks(x, labels, rotation=90, ha='center')
+        plt.legend(loc="upper left", bbox_to_anchor=(1, 1), shadow=True)
+
+        # create second subplot
+        plt.subplot(2, 1, 2)
+        plt.bar(x - width / 2, respSubstrate_mean_model, width, label="Modeled", color="gray")
+        plt.bar(
+            x + width / 2, respSubstrate_mean_measure, width, label="Measured", color="black"
+        )
+        plt.title("Substrate derived")
+        plt.ylabel("Respiration [µg C-CO2/g soil/h]")
+        plt.xticks(x, labels, rotation=90, ha='center')
         
-       
+
+        plt.tight_layout()
+
+        plt.savefig("./output/figures/respPlot.png")
+        
         
 ############## Sensitivity ###########################
 if mode_ == 'Sensitivity':
@@ -189,7 +237,7 @@ if mode_ == 'Sensitivity':
                 treatmentVar = inputRun.iloc[treatment, 0:17]
  
                 temp_df = run_model(
-                    AllParam, treatmentVar, mode_ = "Sensitivity"
+                    AllParam, treatmentVar, mode_ = "Sensitivity", Plotting=False
                 )
                 #add to the simulated values information about the parameter, its change and value
                 # temp_df_list = [param, paramChange, value] + temp_df_list    
@@ -423,7 +471,7 @@ if mode_ == 'Bayesian':
         # )
 
         results_df = run_model(
-            AllParam, treatmentVar, mode_ = "Bayesian"
+            AllParam, treatmentVar, mode_ = "Bayesian", Plotting=False
         )
         # df_list.append(
         #     temp_df_list

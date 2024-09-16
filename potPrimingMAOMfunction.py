@@ -12,7 +12,7 @@ import pandas as pd
 import os
 
 
-def run_model(AllParam, treatmentVar, mode_):
+def run_model(AllParam, treatmentVar, mode_, Plotting):
     # output dataframe list
     outDataframes = []
     # devide 'input' into: parametersToCalibrate, ParametersCalibrated, Inputvariables (run-specific)
@@ -146,19 +146,9 @@ def run_model(AllParam, treatmentVar, mode_):
     )  # used in calcMAOM/ fraction of mineral surface area occupied by roots/hyphae
 
     Priming = True  # flag to enable Priming effect
-    Plotting = False  # flag 1 to enable making of plots, so that this can be turned off during sensitivity analysis etc.
+    # Plotting = False  # flag 1 to enable making of plots, so that this can be turned off during sensitivity analysis etc.
     # Bayesian = True  # flag 1 if performing Bayesian
     # Sensitivity = False
-
-    # create dictionary for respiration plot
-    respPlot = {
-        "soilControl": [],
-        "soilLeachates": [],
-        "soilExudates": [],
-        "subControl": [],
-        "subLeachates": [],
-        "subExudates": [],
-    }
 
     if mode_ == "Sensitivity" or mode_ == "Bayesian":  # safety
         Plotting = False
@@ -229,7 +219,7 @@ def run_model(AllParam, treatmentVar, mode_):
             "fungi",
             "respSubstrate",
             "baselineResp",
-            "resp",
+            "respSoil",
             "POM",
             "MAOMs",
             "MAOMp",
@@ -657,19 +647,6 @@ def run_model(AllParam, treatmentVar, mode_):
             outMAOMp_sub.append(MAOMp_sub)
             outResp_sub.append(resp_sub)
 
-            if mode_ == "Normal":  # for normal runs
-                if treatment == "control":
-                    respPlot["soilControl"].append(respSoil / (0.8 * 24))
-                    respPlot["subControl"].append(respSubstrate / (0.8 * 24))
-
-                elif treatment == "exudates":
-                    respPlot["soilExudates"].append(respSoil / (0.8 * 24))
-                    respPlot["subExudates"].append(respSubstrate / (0.8 * 24))
-
-                elif treatment == "leachates":
-                    respPlot["soilLeachates"].append(respSoil / (0.8 * 24))
-                    respPlot["subLeachates"].append(respSubstrate / (0.8 * 24))
-
             # make different output depending on the type of run
             # make different output depending on the type of run
         if mode_ == "Sensitivity":
@@ -888,67 +865,6 @@ def run_model(AllParam, treatmentVar, mode_):
                 bbox_inches="tight",
             )
     ############# end of Plotting   #############
-
-    # def drawRespPlot(respPlot):
-    #     # count mean values of the modelled data
-    #     soil_values_model = []
-    #     soil_values_model.append(
-    #         sum(respPlot["soilControl"]) / len(respPlot["soilControl"])
-    #     )
-    #     soil_values_model.append(
-    #         sum(respPlot["soilLeachates"]) / len(respPlot["soilLeachates"])
-    #     )
-    #     soil_values_model.append(
-    #         sum(respPlot["soilExudates"]) / len(respPlot["soilExudates"])
-    #     )
-
-    #     sub_values_model = []
-    #     sub_values_model.append(
-    #         sum(respPlot["subControl"]) / len(respPlot["subControl"])
-    #     )
-    #     sub_values_model.append(
-    #         sum(respPlot["subLeachates"]) / len(respPlot["subLeachates"])
-    #     )
-    #     sub_values_model.append(
-    #         sum(respPlot["subExudates"]) / len(respPlot["subExudates"])
-    #     )
-
-    #     labels = ["Control", "Leachates", "Exudates"]
-
-    #     # measured values
-    #     soil_values_measure = [26.23, 32.64, 27.64]
-    #     sub_values_measure = [0, 6.83, 8.43]
-
-    #     # create plot
-    #     plt.figure(figsize=(8, 4))
-    #     x = np.arange(len(labels))  # label locations
-    #     width = 0.2  # width of the bars
-
-    #     # create first subplot
-    #     plt.subplot(1, 2, 1)
-    #     plt.bar(x - width / 2, soil_values_model, width, label="Modeled", color="gray")
-    #     plt.bar(
-    #         x + width / 2, soil_values_measure, width, label="Measured", color="black"
-    #     )
-    #     plt.title("Soil derived")
-    #     plt.ylabel("Respiration [µg C-CO2/g soil/h]")
-    #     plt.xticks(x, labels)
-
-    #     # create second subplot
-    #     plt.subplot(1, 2, 2)
-    #     plt.bar(x - width / 2, sub_values_model, width, label="Modeled", color="gray")
-    #     plt.bar(
-    #         x + width / 2, sub_values_measure, width, label="Measured", color="black"
-    #     )
-    #     plt.title("Substrate derived")
-    #     plt.ylabel("")
-    #     plt.xticks(x, labels)
-    #     plt.legend(loc="upper left", bbox_to_anchor=(1, 1), shadow=True)
-
-    #     plt.tight_layout()
-
-    # drawRespPlot(respPlot)
-    # plt.savefig("./output/figures/respPlot.png")
 
     # if (Bayesian):
     return results_df
