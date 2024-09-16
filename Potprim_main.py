@@ -147,6 +147,7 @@ if mode_ == 'Sensitivity':
         "Bayesian_run_input.csv", header=0, skiprows=0
     )  
     numTreatments = len(inputRun)
+    run_info_list = []
 
     for param in paramsToTestNames:
         # if param == 'DOM_EC': 
@@ -187,7 +188,7 @@ if mode_ == 'Sensitivity':
 
             for treatment in range(numTreatments):
                 treatmentVar = inputRun.iloc[treatment, 0:17]
- 
+                
                 temp_df = run_model(
                     AllParam, treatmentVar, mode_ = "Sensitivity"
                 )
@@ -201,10 +202,19 @@ if mode_ == 'Sensitivity':
                     'paramChange': np.full(length, paramChange),
                     'value': np.full(length, value)
                 })
+                
                 temp_df = info_df.join(temp_df)
                 df_list.append(
                     temp_df
                 )  # append doesn't work for dataframes, so the dataframes have to be appended to a list to later use concat
+                #save parameter set for each run
+                All_param_series = pd.Series(AllParam)
+                info_series = pd.Series([param, paramChange, value], index=['param', 'paramChange', 'value'])
+                # Concatenate the three Series
+                
+                run_info = pd.concat([info_series, treatmentVar, All_param_series])
+                run_info_list.append(run_info)
+                
             # after all runs with one parameter set, reset parameters to original, before next parameter value change
             # paramsToTestDict = copy.deepcopy(origValues)
         #after all changes tried for certain parameter, reset its value to original value
@@ -213,6 +223,9 @@ if mode_ == 'Sensitivity':
     results_df = pd.concat(
         df_list, ignore_index=True
     )  # add all the rows to the results_df
+    run_info_df = pd.concat(
+        run_info_list, ignore_index=True
+    ) 
     
     try:
         os.makedirs("./output/data")
@@ -222,6 +235,12 @@ if mode_ == 'Sensitivity':
     
     results_df.to_csv(
         ".\output\data\Sensitivity.csv",
+        index=False,
+        float_format="%.2f",
+    )
+    
+    run_info_df.to_csv(
+        ".\output\data\Sensitivity_runs.csv",
         index=False,
         float_format="%.2f",
     )
