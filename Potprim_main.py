@@ -72,16 +72,17 @@ if mode_ == "Normal":
         treatmentVar = inputRun.iloc[treatment, 0:17]
         
         temp_df = run_model(
-            AllParam, treatmentVar, mode_ = "Normal", Plotting=False
+            AllParam, treatmentVar, mode_ = "Normal", Plotting=Plotting
         )
         df_list.append(temp_df)
 
         # storing values for respiration plot
-        labels.append(temp_df["treatment"][1])
-        respSoil_mean_model.append((temp_df["respSoil"].mean()) / 0.8 * 24)
-        respSubstrate_mean_model.append((temp_df["respSubstrate"].mean()) / 0.8 * 24)
-        respSoil_mean_measure.append((inputRun.iloc[treatment, 17:37]).mean())
-        respSubstrate_mean_measure.append((inputRun.iloc[treatment, 37:48]).mean())
+        if Plotting:
+            labels.append(temp_df["treatment"][1])
+            respSoil_mean_model.append((temp_df["respSoil"].mean()) / 0.8 * 24)
+            respSubstrate_mean_model.append((temp_df["respSubstrate"].mean()) / 0.8 * 24)
+            respSoil_mean_measure.append((inputRun.iloc[treatment, 17:37]).mean())
+            respSubstrate_mean_measure.append((inputRun.iloc[treatment, 37:48]).mean())
 
     results_df = pd.concat(
         df_list, ignore_index=True
@@ -131,6 +132,7 @@ if mode_ == "Normal":
         plt.tight_layout()
 
         plt.savefig("./output/figures/respPlot.png")
+        plt.close()
         
         
 ############## Sensitivity ###########################
