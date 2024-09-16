@@ -129,7 +129,7 @@ def run_model(AllParam, treatmentVar, mode_):
     )  # total surface area of clay and silt in m²/m³
     # PV = np.array(
     #     [45, 37, 37, 200, 6]
-    # )  # pore volume for each pore size class [l/m3] 
+    # )  # pore volume for each pore size class [l/m3]
     # PRadius = np.array(
     #     [0.05, 0.525, 8, 382.5, 875]
     # )  # average radius of each pore size class [µm], defined by KEYLINK
@@ -160,22 +160,20 @@ def run_model(AllParam, treatmentVar, mode_):
         "subExudates": [],
     }
 
-    if mode_ == "Sensitivity" or mode_ == "Bayesian": #safety
+    if mode_ == "Sensitivity" or mode_ == "Bayesian":  # safety
         Plotting = False
 
     # numruns = 0  # initializing the number of runs
 
     # run the daily calculations
 
-
     # DOMinput_treatments = np.array([10, 10, 0])  # exudates, leachates, control
     # CN_DOMinput_treatments = np.array(
     # [6, 80, 0]
-    
+
     # treatments = np.array(["exudates", "leachates", "control"])
 
-    
-    #define different output for different modes
+    # define different output for different modes
     if mode_ == "Sensitivity":
         column_names = [
             "treatment",
@@ -229,8 +227,8 @@ def run_model(AllParam, treatmentVar, mode_):
             "bact_DOM",
             "bact",
             "fungi",
-            "resp_sub",
-            "resp_soil_baseline",
+            "respSubstrate",
+            "baselineResp",
             "resp",
             "POM",
             "MAOMs",
@@ -292,16 +290,15 @@ def run_model(AllParam, treatmentVar, mode_):
         TP = mf.calcTotalporosity(MAOM + POM, BD)
 
     if PV == None:
-        R, S, alpha, n, m = mf.calcVangenuchten(BD, MAOM + POM, fClay, 1 - fClay - fSilt)
+        R, S, alpha, n, m = mf.calcVangenuchten(
+            BD, MAOM + POM, fClay, 1 - fClay - fSilt
+        )
         PV = mf.calcPoresDistribution(R, S, alpha, n, m, TP)
-        PW = np.divide(
-            PV, 2
-        ) # pore water volume, assume all pores half filled  [l/m3]
+        PW = np.divide(PV, 2)  # pore water volume, assume all pores half filled  [l/m3]
         # PSA = np.zeros(5)
         # PSA = mf.calcPoreSurfaceArea(
         #     PV, PRadius, PSA
         # )  # pore surface area for each pore size class, calculated from  KEYLINK function, not used currently
-        
 
     # same for all runs
     availability = np.zeros(3)
@@ -309,9 +306,7 @@ def run_model(AllParam, treatmentVar, mode_):
         1 - bact_DOM_rel
     )  # biomass of bacteria growing on POM and MAOM but not on DOM [gC/m3]
     bact_sub = 0  # proportion of this bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
-    bact_DOM = (
-        bact_total * bact_DOM_rel
-    )  # biomass of bacteria growing on DOM [gC/m3]
+    bact_DOM = bact_total * bact_DOM_rel  # biomass of bacteria growing on DOM [gC/m3]
     bact_DOM_sub = 0  # proportion of bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
     CN_DOM = 0  #
     DOM = 0  # DOM [gC/m3]
@@ -349,14 +344,10 @@ def run_model(AllParam, treatmentVar, mode_):
 
     for d in range(numDays):
         # on day 0 and then every 14 days, add DOM
-        if (
-            d == 0 or (d % d_freq) == 0
-        ):  # on first day and then every d_freq days
+        if d == 0 or (d % d_freq) == 0:  # on first day and then every d_freq days
             DOM_added = DOMinput  # to keep track of the additions
             DOM_added_all += DOM_added  # keep track of sum of additions
-            DOM_sub_abs = (
-                DOM * DOM_sub
-            )  # absolute substrate derived C in DOM [gC/m3]
+            DOM_sub_abs = DOM * DOM_sub  # absolute substrate derived C in DOM [gC/m3]
             DOM += DOMinput  # add input to the DOM carbon pool
             DOM_sub_abs += DOMinput  # add all input as substrate derived C
 
@@ -511,20 +502,15 @@ def run_model(AllParam, treatmentVar, mode_):
         )  # gmax for fungi on POM
         # we assume MAOMp can only be lost through priming, so normal growth uses MAOMs
         gmaxbMAOM = (
-            mf.calcgmaxmod(CN_bact, CN_MAOMs, pCN, recMAOM, mRecBact, pH, 1)
-            * GMAX
+            mf.calcgmaxmod(CN_bact, CN_MAOMs, pCN, recMAOM, mRecBact, pH, 1) * GMAX
         )  # gmax for bact on MAOM
         gmaxfMAOM = (
             mf.calcgmaxmod(CN_fungi, CN_MAOMs, pCN, recMAOM, mRecFungi, pH, 2)
             * GMAXfungi
         )  # gmax for fungi on MAOM
         # calculate substrate derived C in bact and fungi
-        DOM_sub_abs = (
-            DOM * DOM_sub
-        )  # recalculate because changesin calc.Rhizosphere
-        POM_sub_abs = (
-            POM * POM_sub
-        )  # recalculate because changes in calc.Rhizosphere
+        DOM_sub_abs = DOM * DOM_sub  # recalculate because changesin calc.Rhizosphere
+        POM_sub_abs = POM * POM_sub  # recalculate because changes in calc.Rhizosphere
         MAOMs_sub_abs = (
             MAOMs * MAOMs_sub
         )  # recalculate because changes in calc.Rhizosphere and calc.MAOM
@@ -553,18 +539,11 @@ def run_model(AllParam, treatmentVar, mode_):
             fungi, MAOMs, availability[1], gmaxfMAOM, KSfungi * fungi
         )
         dfungi = (
-            fungiPOMgrowth
-            + fungiMAOMgrowth
-            - DEATHfungi * fungi
-            - rRESPfungi * fungi
+            fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi * fungi - rRESPfungi * fungi
         )
 
-        DOM += (
-            DEATH * bact + DEATHfungi * fungi
-        )  # add dead bacteria and fungi to DOM
-        POM += (
-            -bactPOMgrowth - fungiPOMgrowth
-        )  # subtract what has been eaten from POM
+        DOM += DEATH * bact + DEATHfungi * fungi  # add dead bacteria and fungi to DOM
+        POM += -bactPOMgrowth - fungiPOMgrowth  # subtract what has been eaten from POM
         MAOMs += -bactMAOMgrowth - fungiMAOMgrowth  # and MAOMs
 
         # update CN DOM
@@ -641,9 +620,7 @@ def run_model(AllParam, treatmentVar, mode_):
             + respPriming_sub * (respPriming / resp)
         )
 
-        respSubstrate = (
-            resp_sub * resp
-        )  # substrate derived respiration (absolute)
+        respSubstrate = resp_sub * resp  # substrate derived respiration (absolute)
         respSoil = resp - respSubstrate  # soil-derived respiration (absolute)
         # AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
         # print('line412', treatment, d, AllC)
@@ -651,28 +628,14 @@ def run_model(AllParam, treatmentVar, mode_):
         if Plotting:  # save data for Plotting
             outtreatment.append(treatment)
             time_d.append(d)  # store days in an array for plotting
-            outDOMadded.append(
-                DOM_added / 0.8
-            )  # change units from gC/m3 µgC/g soil
-            outMAOM.append(
-                MAOM / (0.8 * 1000)
-            )  # change units from gC/m3 mgC/g soil
-            outMAOMp.append(
-                MAOMp / (0.8 * 1000)
-            )  # change units from gC/m3 mgC/g soil)
-            outMAOMs.append(
-                MAOMs / (0.8 * 1000)
-            )  # change units from gC/m3 mgC/g soil)
-            outPOM.append(
-                POM / (0.8 * 1000)
-            )  # change units from gC/m3 mgC/g soil
+            outDOMadded.append(DOM_added / 0.8)  # change units from gC/m3 µgC/g soil
+            outMAOM.append(MAOM / (0.8 * 1000))  # change units from gC/m3 mgC/g soil
+            outMAOMp.append(MAOMp / (0.8 * 1000))  # change units from gC/m3 mgC/g soil)
+            outMAOMs.append(MAOMs / (0.8 * 1000))  # change units from gC/m3 mgC/g soil)
+            outPOM.append(POM / (0.8 * 1000))  # change units from gC/m3 mgC/g soil
             outDOM.append(DOM / 0.8)  # change units from gC/m3 µgC/g soil)
-            outBact_total.append(
-                bact_total / 0.8
-            )  # change units from gC/m3 µgC/g soil
-            outbact_DOM.append(
-                bact_DOM / 0.8
-            )  # change units from gC/m3 µgC/g soil
+            outBact_total.append(bact_total / 0.8)  # change units from gC/m3 µgC/g soil
+            outbact_DOM.append(bact_DOM / 0.8)  # change units from gC/m3 µgC/g soil
             outBact.append(bact / 0.8)  # change units from gC/m3 µgC/g soil
             outFungi.append(fungi / 0.8)  # change units from gC/m3 µgC/g soil
             outRespSubstrate.append(
@@ -681,9 +644,7 @@ def run_model(AllParam, treatmentVar, mode_):
             outRespSoilBaseline.append(
                 baselineResp / (0.8 * 24)
             )  # change units from gC/m3/day
-            outRespSoil.append(
-                respSoil / (0.8 * 24)
-            )  # change units from gC/m3/day
+            outRespSoil.append(respSoil / (0.8 * 24))  # change units from gC/m3/day
             # substrate-derived %
             outBact_total_sub.append(bact_total_sub)
             outBact_DOM_sub.append(bact_DOM_sub)
@@ -696,7 +657,7 @@ def run_model(AllParam, treatmentVar, mode_):
             outMAOMp_sub.append(MAOMp_sub)
             outResp_sub.append(resp_sub)
 
-            if mode_ == 'Normal':  # for normal runs
+            if mode_ == "Normal":  # for normal runs
                 if treatment == "control":
                     respPlot["soilControl"].append(respSoil / (0.8 * 24))
                     respPlot["subControl"].append(respSubstrate / (0.8 * 24))
@@ -721,17 +682,11 @@ def run_model(AllParam, treatmentVar, mode_):
                 bact / 0.8,  # change units from gC/m3 µgC/g soil
                 fungi / 0.8,  # change units from gC/m3 µgC/g soil
                 respSubstrate
-                / (
-                    0.8 * 24
-                ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
                 baselineResp
-                / (
-                    0.8 * 24
-                ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
                 respSoil
-                / (
-                    0.8 * 24
-                ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
                 POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 MAOMs / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 MAOMp / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
@@ -742,10 +697,7 @@ def run_model(AllParam, treatmentVar, mode_):
             results_df.loc[len(results_df)] = [
                 treatment,
                 d,
-                resp
-                / (
-                    0.8 * 24
-                ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                resp / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
                 resp_sub,
                 POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 MAOM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
@@ -767,17 +719,11 @@ def run_model(AllParam, treatmentVar, mode_):
                 bact / 0.8,  # change units from gC/m3 µgC/g soil
                 fungi / 0.8,  # change units from gC/m3 µgC/g soil
                 respSubstrate
-                / (
-                    0.8 * 24
-                ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
                 baselineResp
-                / (
-                    0.8 * 24
-                ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
                 respSoil
-                / (
-                    0.8 * 24
-                ),  # change units from gC/m3/day to µg CO2-C/g soil/h
+                / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
                 POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 MAOMs / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 MAOMp / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
@@ -789,9 +735,7 @@ def run_model(AllParam, treatmentVar, mode_):
         # after the total run is completed (after numDays)
 
         ############# Plotting   #############
-        if (
-            Plotting
-        ):  # transform data for Plotting to adjusted units matching the data
+        if Plotting:  # transform data for Plotting to adjusted units matching the data
             # change units to easily understandable for the plot
             # outDOMadded2 = np.divide(outDOMadded, 0.8) # change units from gC/m3 µgC/g soil
             # outBact_total2 = np.divide(outBact_total, 0.8) # change units from gC/m3 µgC/g soil
@@ -843,9 +787,7 @@ def run_model(AllParam, treatmentVar, mode_):
                 p3.plot(time_d, outbact_DOM, label="bacteria DOM feeding")
                 p3.plot(time_d, outBact, label="bacteria only SOM feeding")
                 p3.plot(time_d, outFungi, label="fungi")
-                ps[2].legend(
-                    loc=(0.4, 0.03), shadow=True
-                )  # loc='bottom right',
+                ps[2].legend(loc=(0.4, 0.03), shadow=True)  # loc='bottom right',
 
                 p4.plot(time_d, outRespSubstrate, label="substrate-derived")
                 p4.plot(time_d, outRespSoil, label="soil-derived incl. priming")
@@ -854,9 +796,7 @@ def run_model(AllParam, treatmentVar, mode_):
                     outRespSoilBaseline,
                     label="soil-derived baseline",
                 )
-                ps[3].legend(
-                    loc=(0.25, 0.03), shadow=True
-                )  # loc='bottom right',
+                ps[3].legend(loc=(0.25, 0.03), shadow=True)  # loc='bottom right',
 
                 p5.plot(time_d, outPOM, label="POM")
                 ps[4].legend(loc=(0.03, 0.03), shadow=True)  # loc='upper left',
@@ -864,9 +804,7 @@ def run_model(AllParam, treatmentVar, mode_):
                 p6.plot(time_d, outMAOM, label="MAOM")
                 p6.plot(time_d, outMAOMp, label="primary MAOM")
                 p6.plot(time_d, outMAOMs, label="secondary MAOM")
-                ps[5].legend(
-                    loc=(0.4, 0.03), shadow=True
-                )  # loc='bottom right',
+                ps[5].legend(loc=(0.4, 0.03), shadow=True)  # loc='bottom right',
 
             # plot substrate-derived proportions
             def Dailyplot2(
@@ -950,8 +888,6 @@ def run_model(AllParam, treatmentVar, mode_):
                 bbox_inches="tight",
             )
     ############# end of Plotting   #############
-
-
 
     # def drawRespPlot(respPlot):
     #     # count mean values of the modelled data
