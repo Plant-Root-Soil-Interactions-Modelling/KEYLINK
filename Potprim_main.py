@@ -30,7 +30,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian"]
 options = get_args(modes)
 
 #set the mode to Normal, Sensitivity or Bayesian
-mode_ = 'Bayesian'
+mode_ = 'Sensitivity'
 #check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 #
@@ -158,30 +158,32 @@ if mode_ == 'Sensitivity':
             )  # I change 1 parameter value
             # caculate new value of parameter
             value = paramsToTestDict[param] + delta
-            paramsToTestDict[param] = value
+            #change the value directly in the parameter set then used by run_model
+            AllParam[param] = value
 
             # for i in range(len(DOMinput_treatments)):
             # numruns = numruns + 1
             # I want to use thevalues from the dict, for sensitivity, so i put all of the values back in the variable (not the fastest way)
             # needs to be changed ifyou change the parameters to test
-            bact_DOM_rel = paramsToTestDict["bact_DOM_rel"]
-            DOM_EC = paramsToTestDict["DOM_EC"]
-            kpriming = paramsToTestDict["kpriming"]
-            KS = paramsToTestDict["KS"]
-            KSfungi = paramsToTestDict["KSfungi"]
-            KSbact = paramsToTestDict["KSbact"]
-            kPOM_MAOM = paramsToTestDict["kPOM_MAOM"]
-            kMAOMs_MAOMp = paramsToTestDict["kMAOMs_MAOMp"]
-            MAOMpmaxrate = paramsToTestDict["MAOMpmaxrate"]
-            MAOMsmaxrate = paramsToTestDict["MAOMsmaxrate"]
-            MAOMratioSP = paramsToTestDict["MAOMratioSP"]
-            maxEffectBactMAOM = paramsToTestDict["maxEffectBactMAOM"]
-            maxEffectSA_MAOM = paramsToTestDict["maxEffectSA_MAOM"]
-            maxEffectN_MAOM = paramsToTestDict["maxEffectN_MAOM"]
-            MM_N_MAOM = paramsToTestDict["MM_N_MAOM"]
-            MM_Bact_MAOM = paramsToTestDict["MM_Bact_MAOM"]
-            MM_SA_MAOM = paramsToTestDict["MM_SA_MAOM"]
-            MM_DOM_MAOM = paramsToTestDict["MM_DOM_MAOM"]
+            # bact_DOM_rel = paramsToTestDict["bact_DOM_rel"]
+            # DOM_EC = paramsToTestDict["DOM_EC"]
+            # kpriming = paramsToTestDict["kpriming"]
+            # KS = paramsToTestDict["KS"]
+            # KSfungi = paramsToTestDict["KSfungi"]
+            # KSbact = paramsToTestDict["KSbact"]
+            # kPOM_MAOM = paramsToTestDict["kPOM_MAOM"]
+            # kMAOMs_MAOMp = paramsToTestDict["kMAOMs_MAOMp"]
+            # MAOMpmaxrate = paramsToTestDict["MAOMpmaxrate"]
+            # MAOMsmaxrate = paramsToTestDict["MAOMsmaxrate"]
+            # MAOMratioSP = paramsToTestDict["MAOMratioSP"]
+            # maxEffectBactMAOM = paramsToTestDict["maxEffectBactMAOM"]
+            # maxEffectSA_MAOM = paramsToTestDict["maxEffectSA_MAOM"]
+            # maxEffectN_MAOM = paramsToTestDict["maxEffectN_MAOM"]
+            # MM_N_MAOM = paramsToTestDict["MM_N_MAOM"]
+            # MM_Bact_MAOM = paramsToTestDict["MM_Bact_MAOM"]
+            # MM_SA_MAOM = paramsToTestDict["MM_SA_MAOM"]
+            # MM_DOM_MAOM = paramsToTestDict["MM_DOM_MAOM"]
+            # Priming_max = paramsToTestDict["Priming_max"]
 
             for treatment in range(numTreatments):
                 treatmentVar = inputRun.iloc[treatment, 0:17]
@@ -204,7 +206,9 @@ if mode_ == 'Sensitivity':
                     temp_df
                 )  # append doesn't work for dataframes, so the dataframes have to be appended to a list to later use concat
             # after all runs with one parameter set, reset parameters to original, before next parameter value change
-            paramsToTestDict = copy.deepcopy(origValues)
+            # paramsToTestDict = copy.deepcopy(origValues)
+        #after all changes tried for certain parameter, reset its value to original value
+        AllParam[param] = paramsToTestDict[param] 
      
     results_df = pd.concat(
         df_list, ignore_index=True
