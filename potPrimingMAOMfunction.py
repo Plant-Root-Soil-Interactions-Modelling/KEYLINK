@@ -828,6 +828,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting):
             ps[0].set_title("substrate derived % of microbial pools")
             ps[1].set_title("substrate derived % of SOM pools")
             ps[2].set_title("substrate derived % of respiration")
+            ps[3].set_title("total respiration")
 
             p1.plot(time_d, outBact_total_sub, label="bacteria")
             p1.plot(time_d, outBact_DOM_sub, label="bacteria DOM feeding")
@@ -850,7 +851,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting):
                 loc="upper left", bbox_to_anchor=(1, 1), shadow=True
             )  # loc='bottom right',
 
-            p4.plot(time_d, outResp_sub, label="total respiration")
+            p4.plot(time_d, outResp_sub, label="respiration")
+            ps[3].legend(
+                loc="upper left", bbox_to_anchor=(1, 1), shadow=True
+            )  # loc='bottom right',
 
             plt.savefig(
                 ".\output\\figures\Dailyplot2_" + treatment + ".png",
@@ -881,16 +885,16 @@ def run_model(AllParam, treatmentVar, mode_, Plotting):
             treatment,
         )
 
-        # Dailyplot2(
-        #     outBact_DOM_sub,
-        #     outBact_sub,
-        #     outFungi_sub,
-        #     outDOM_sub,
-        #     outPOM_sub,
-        #     outMAOMs_sub,
-        #     outMAOMp_sub,
-        #     treatment,
-        # )
+        Dailyplot2(
+            outBact_DOM_sub,
+            outBact_sub,
+            outFungi_sub,
+            outDOM_sub,
+            outPOM_sub,
+            outMAOMs_sub,
+            outMAOMp_sub,
+            treatment,
+        )
 
     ############# end of Plotting   #############
 
