@@ -80,8 +80,8 @@ if mode_ == "Normal":
         labels.append(temp_df["treatment"][1])
         respSoil_mean_model.append((temp_df["respSoil"].mean()) / 0.8 * 24)
         respSubstrate_mean_model.append((temp_df["respSubstrate"].mean()) / 0.8 * 24)
-        respSoil_mean_measure.append(((inputRun.iloc[treatment, 17:37]).mean()) / 0.8 * 24)
-        respSubstrate_mean_measure.append(((inputRun.iloc[treatment, 37:48]).mean()) / 0.8 * 24)
+        respSoil_mean_measure.append((inputRun.iloc[treatment, 17:37]).mean())
+        respSubstrate_mean_measure.append((inputRun.iloc[treatment, 37:48]).mean())
 
     results_df = pd.concat(
         df_list, ignore_index=True
