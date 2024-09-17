@@ -26,16 +26,51 @@ results_path = ".\output"
 
 ############## Modes #################################
 #set allowed values for mode
-modes = Literal["Normal", "Sensitivity", "Bayesian"]
+modes = Literal["Normal", "Sensitivity", "Bayesian", "Jilkova2022"]
 options = get_args(modes)
 
 #set the mode to Normal, Sensitivity or Bayesian
-mode_ = 'Normal'
+mode_ = 'Jilkova2022'
 #check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
-#if the Normal mode was chosen, you can decide to turn on the Plotting
+#if the Normal or Jilkova2022 mode was chosen, you can decide to turn on the Plotting
 Plotting = True
+
+############## Creating the Respiration Plot #########
+def drawRespPlot (labels, respSoil_mean_model, respSoil_mean_measure, respSubstrate_mean_model, respSubstrate_mean_measure):
+    # create plot
+    plt.figure(figsize=(10,12))
+    x = np.arange(len(labels))  # label locations
+    width = 0.3  # width of the bars
+
+    # create first subplot
+    plt.subplot(2, 1, 1)
+    plt.bar(x - width / 2, respSoil_mean_model, width, label="Modeled", color="gray")
+    plt.bar(
+        x + width / 2, respSoil_mean_measure, width, label="Measured", color="black"
+    )
+    plt.title("Soil derived")
+    plt.ylabel("Respiration [µg C-CO2/g soil/h]")
+    plt.xticks(x, labels, rotation=90, ha='center')
+    plt.legend(loc="upper left", bbox_to_anchor=(1, 1), shadow=True)
+
+    # create second subplot
+    plt.subplot(2, 1, 2)
+    plt.bar(x - width / 2, respSubstrate_mean_model, width, label="Modeled", color="gray")
+    plt.bar(
+        x + width / 2, respSubstrate_mean_measure, width, label="Measured", color="black"
+    )
+    plt.title("Substrate derived")
+    plt.ylabel("Respiration [µg C-CO2/g soil/h]")
+    plt.xticks(x, labels, rotation=90, ha='center')
+    
+
+    plt.tight_layout()
+
+    plt.savefig("./output/figures/respPlot.png")
+    plt.close()
+        
 
 ############## Read data #############################
 # read the fixed parameter list
@@ -52,7 +87,6 @@ temp_df = []  # temporary df to store returned dataframe
 
 
 ############## Normal run ###########################
-# todo: Plotting 
 if mode_ == "Normal":
     # Treatments
     inputRun = pd.read_csv(
@@ -100,40 +134,68 @@ if mode_ == "Normal":
         float_format="%.2f",
     )
 
-############## Creating the Respiration Plot #########
     if Plotting:
-        # create plot
-        plt.figure(figsize=(10,12))
-        x = np.arange(len(labels))  # label locations
-        width = 0.3  # width of the bars
+        drawRespPlot(labels, respSoil_mean_model, respSoil_mean_measure, respSubstrate_mean_model, respSubstrate_mean_measure)
 
-        # create first subplot
-        plt.subplot(2, 1, 1)
-        plt.bar(x - width / 2, respSoil_mean_model, width, label="Modeled", color="gray")
-        plt.bar(
-            x + width / 2, respSoil_mean_measure, width, label="Measured", color="black"
-        )
-        plt.title("Soil derived")
-        plt.ylabel("Respiration [µg C-CO2/g soil/h]")
-        plt.xticks(x, labels, rotation=90, ha='center')
-        plt.legend(loc="upper left", bbox_to_anchor=(1, 1), shadow=True)
+############## Jilkova2022 run ###########################
+if mode_ == "Jilkova2022":
+    # Treatments
+    inputRun = pd.read_csv(
+        "Normal_run_input_2022.csv", header=0, skiprows=0
+    )  
+    
+    numTreatments = len(inputRun)
 
-        # create second subplot
-        plt.subplot(2, 1, 2)
-        plt.bar(x - width / 2, respSubstrate_mean_model, width, label="Modeled", color="gray")
-        plt.bar(
-            x + width / 2, respSubstrate_mean_measure, width, label="Measured", color="black"
-        )
-        plt.title("Substrate derived")
-        plt.ylabel("Respiration [µg C-CO2/g soil/h]")
-        plt.xticks(x, labels, rotation=90, ha='center')
+    # create lists for respiration plot
+    respSoil_mean_model = []
+    respSubstrate_mean_model = []
+    respSoil_mean_measure = []
+    respSubstrate_mean_measure = []
+    labels = []
+    
+    for treatment in range(numTreatments):
+        treatmentVar = inputRun.iloc[treatment, 0:17]
         
+        temp_df = run_model(
+            AllParam, treatmentVar, mode_ = "Normal", Plotting=Plotting
+        )
+        df_list.append(temp_df)
 
-        plt.tight_layout()
+        # storing values for respiration plot
+        if Plotting:
+            labels.append(temp_df["treatment"][1])
+            respSoil_mean_model.append((temp_df["respSoil"].mean()) / 0.8 * 24)
+            respSubstrate_mean_model.append((temp_df["respSubstrate"].mean()) / 0.8 * 24)
 
-        plt.savefig("./output/figures/respPlot.png")
-        plt.close()
-        
+            if temp_df["treatment"][1] == "control":
+                respSoil_mean_measure.append(0.3199)
+                respSubstrate_mean_measure.append(0)
+            if temp_df["treatment"][1] == "leachates":
+                respSoil_mean_measure.append(0.3980)
+                respSubstrate_mean_measure.append(0.0833)
+            if temp_df["treatment"][1] == "exudates":
+                respSoil_mean_measure.append(0.3371)
+                respSubstrate_mean_measure.append(0.1028)
+                
+
+    results_df = pd.concat(
+        df_list, ignore_index=True
+    )  # add all the rows to the results_df
+    
+    try:
+        os.makedirs("./output/data")
+    except FileExistsError:
+        # directory already exists
+        pass
+    
+    results_df.to_csv(
+        "./output/data/Normal2022.csv",
+        index=False,
+        float_format="%.2f",
+    )
+
+    if Plotting:
+        drawRespPlot(labels, respSoil_mean_model, respSoil_mean_measure, respSubstrate_mean_model, respSubstrate_mean_measure)
         
 ############## Sensitivity ###########################
 if mode_ == 'Sensitivity':
