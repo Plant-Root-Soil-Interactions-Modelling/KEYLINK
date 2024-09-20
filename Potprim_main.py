@@ -30,12 +30,12 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Jilkova2022"]
 options = get_args(modes)
 
 #set the mode to Normal, Sensitivity or Bayesian
-mode_ = 'Jilkova2022'
+mode_ = "Bayesian" #'Jilkova2022'
 #check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
 #if the Normal or Jilkova2022 mode was chosen, you can decide to turn on the Plotting
-Plotting = True
+Plotting = False
 
 ############## Creating the Respiration Plot #########
 def drawRespPlot (labels, respSoil_mean_model, respSoil_mean_measure, respSubstrate_mean_model, respSubstrate_mean_measure):
@@ -612,7 +612,7 @@ if mode_ == 'Bayesian':
     
       
     
-    # 4) calculate the likelihood of each run for each field from the differences between measured and simulated and error
+    # 4) calculate the likelihood of each run for each treatment from the differences between measured and simulated and error
     # create empty list(logLi) and store all the differences between measured and simulated per day
     likelihood_simulated = 0
     for treatment in range(
@@ -658,16 +658,20 @@ if mode_ == 'Bayesian':
                 AllParam,
             )
         )
-        # print(candidateValue)
+        print(candidateValue)
         
         # 8) calculate the likelihood of these new parameters, assuming a uniform distribution
         # pdf=probability density function, the likelihood of the parameter set
+        test=stats.uniform.pdf(candidateValue, MinimalOption, MaximumOption)
+        test2=np.log(test)
         loglikelihood_param1 = np.sum(
             np.log(stats.uniform.pdf(candidateValue, MinimalOption, MaximumOption))
         )
+        # a good set has no 0 likelyhood so product is a value but can be negative
+        LikelyhoodTest=np.product(stats.uniform.pdf(candidateValue, MinimalOption, MaximumOption))
         # print('loglikelihood_param1',loglikelihood_param1)
         if (
-            loglikelihood_param1 > 0
+            LikelyhoodTest != 0
         ):  
             print('line 537 entered the next parameter set try yaay')
             # if the parameter you want to try is in the range between min and max
@@ -677,7 +681,7 @@ if mode_ == 'Bayesian':
                 # print(treatment)
                 # 9) run the model for each treatment with the new parameters
                 treatmentVar = inputBayesianRun.iloc[treatment, 0:17]  # to be moved & use iloc
-                results_df = run_model(AllParam, treatmentVar, mode_)
+                results_df = run_model(AllParam, treatmentVar, mode_, False)
                 # print(results_df)
                 # we need to couple the output of the right day to the measured output
                 data_Simulated[treatment]["resp1"] = results_df.at[0,'resp']
@@ -784,7 +788,7 @@ if mode_ == 'Bayesian':
                 parameters = pd.read_csv(
                     os.path.join(results_path, "calibratedParameters.csv")
                 )
-                if BayesianFunctions.check_dataframe_significant_change(
+                if BayesianFunctionsPotprim.check_dataframe_significant_change(
                     parameters, alpha=0.5, num_identical_results=50
                 ):
                     print("Hurraaayyy!!! converged")
