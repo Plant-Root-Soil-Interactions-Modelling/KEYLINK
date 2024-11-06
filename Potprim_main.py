@@ -717,7 +717,9 @@ if mode_ == "Bayesian":
                 treatmentVar = inputBayesianRun.iloc[
                     treatment, 0:17
                 ]  # to be moved & use iloc
-                results_df = run_model(AllParam, treatmentVar, mode_, False)
+                results_df = run_model(
+                    AllParam, treatmentVar, mode_, False, numDays=161
+                )
                 # print(results_df)
                 # we need to couple the output of the right day to the measured output
                 data_Simulated[treatment]["resp1"] = results_df.at[0, "resp"]
