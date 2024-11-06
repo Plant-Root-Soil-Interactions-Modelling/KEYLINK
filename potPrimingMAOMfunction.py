@@ -98,7 +98,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
     # those which will change for different runs
     DOMinput = treatmentVar[
         "DOMinput"
-    ]  # 10 #DOM added in each addition [gC/m3], Jílková2022
+    ]  # 10 #DOM added in each addition [gC/m3], Jílková2022 >> in Jilkova2024, it was 0.5 mgC, therefore it is 5 gC/m3
     CN_DOMinput = treatmentVar[
         "CN_DOMinput"
     ]  #  #CN of the daily input [unitless], Jílková2022: leachates 80, exudates 6
@@ -109,7 +109,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
     treatment = treatmentVar["treatment"]
 
     # those different for Jílková 2022 and experiment 2024
-    d_freq = 14  # how often is substrate added, every x days, is 14 for Jílková2022, but 21 for experiment 2024
+    d_freq = (
+        14  # how often is substrate added, every x days, is 14 for Jílková2022 and 2024
+    )
     # numDays = 161  # number of days of incubation experiment/how long to run the model, 155 in Jílková2022, 161 in Jílková 2024
 
     # those that will be the same for all 16 runs
