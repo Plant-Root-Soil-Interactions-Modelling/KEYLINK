@@ -117,7 +117,7 @@ if mode_ == "Normal":
         treatmentVar = inputRun.iloc[treatment, 0:17]
 
         results_df = run_model(
-            AllParam, treatmentVar, mode_="Normal", Plotting=Plotting
+            AllParam, treatmentVar, mode_="Normal", Plotting=Plotting, numDays=161
         )
         df_list.append(results_df)
 
@@ -174,7 +174,7 @@ if mode_ == "Jilkova2022":
         treatmentVar = inputRun.iloc[treatment, 0:17]
 
         results_df = run_model(
-            AllParam, treatmentVar, mode_="Normal", Plotting=Plotting
+            AllParam, treatmentVar, mode_="Normal", Plotting=Plotting, numDays=155
         )
         df_list.append(results_df)
 
@@ -324,7 +324,11 @@ if mode_ == "Sensitivity":
                 treatmentVar = inputRun.iloc[treatment, 0:17]
 
                 results_df = run_model(
-                    AllParam, treatmentVar, mode_="Sensitivity", Plotting=False
+                    AllParam,
+                    treatmentVar,
+                    mode_="Sensitivity",
+                    Plotting=False,
+                    numDays=161,
                 )
                 # add to the simulated values information about the parameter, its change and value
                 # temp_df_list = [param, paramChange, value] + temp_df_list
