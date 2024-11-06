@@ -584,7 +584,9 @@ if mode_ == "Bayesian":
         #     treatmentVar["treatment"],
         # )
 
-        results_df = run_model(AllParam, treatmentVar, mode_="Bayesian", Plotting=False)
+        results_df = run_model(
+            AllParam, treatmentVar, mode_="Bayesian", Plotting=False, numDays=161
+        )
         # df_list.append(
         #     temp_df_list
         # )  # append doesn't work for dataframes, so the lists have to be appended to later use concat
