@@ -32,12 +32,12 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Jilkova2022"]
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Bayesian"  #'Jilkova2022'
+mode_ = "Normal"  #'Jilkova2022'
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
 # if the Normal or Jilkova2022 mode was chosen, you can decide to turn on the Plotting
-Plotting = False
+Plotting = True
 
 
 ############## Creating the Respiration Plot #########
@@ -327,7 +327,7 @@ if mode_ == "Sensitivity":
                     AllParam,
                     treatmentVar,
                     mode_="Sensitivity",
-                    Plotting=False,
+                    Plotting=Plotting,
                     numDays=161,
                 )
                 # add to the simulated values information about the parameter, its change and value
@@ -585,7 +585,7 @@ if mode_ == "Bayesian":
         # )
 
         results_df = run_model(
-            AllParam, treatmentVar, mode_="Bayesian", Plotting=False, numDays=161
+            AllParam, treatmentVar, mode_="Bayesian", Plotting=Plotting, numDays=161
         )
         # df_list.append(
         #     temp_df_list
