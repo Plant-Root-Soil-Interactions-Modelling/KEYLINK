@@ -719,6 +719,7 @@ def fCompSpecies(
 
 
 def calcRhizosphere(
+    treatmentID,
     Priming,
     POM,
     POM_sub,
@@ -776,6 +777,11 @@ def calcRhizosphere(
         1 - mCN
     ) * growth  # what didn't yet grow in g/day because of N shortage
     # Priming = False
+
+    # print(treatment, "CN_bact: ", CN_bact, "CN_DOM: ", CN_DOM, "pCN: ", pCN)
+    # if treatment == 5:
+    #     exit()
+
     if Priming is True and mCN < 1:  # if Priming is allowed and there was a shortage
         # print('priming active')
         # POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp

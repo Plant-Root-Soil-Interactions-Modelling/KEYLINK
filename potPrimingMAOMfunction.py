@@ -107,6 +107,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
     pH = treatmentVar["pH"]  # 4.1 #Jílková2022
     temp = treatmentVar["temp"]  # 21
     treatment = treatmentVar["treatment"]
+    treatmentID = treatmentVar["treatmentID"]
 
     # those different for Jílková 2022 and experiment 2024
     d_freq = (
@@ -336,6 +337,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
 
     for d in range(numDays):
         # on day 0 and then every 14 days, add DOM
+        # if treatmentID == 5:
+        #     print(treatmentID, "CN_DOM in the beginning of day: ", CN_DOM)
+
         if d == 0 or (d % d_freq) == 0:  # on first day and then every d_freq days
             DOM_added = DOMinput  # to keep track of the additions
             DOM_added_all += DOM_added  # keep track of sum of additions
@@ -357,6 +361,13 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
                 # print('CN_DOMinput', CN_DOMinput)
                 # if DOM_N>0:
                 CN_DOM = DOM / DOM_N  # calculate new CN of DOM pool
+
+                # if treatmentID == 5:
+                #     print(
+                #         treatmentID,
+                #         "CN_DOM recalculated in the beginning of input day: ",
+                #         CN_DOM,
+                #     )
         else:
             DOM_added = 0
         # saturation of MAOMs depends on amount of MAOMp so recalculated every day
@@ -389,6 +400,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
                 respPriming,
                 respPriming_sub,
             ) = mf.calcRhizosphere(
+                treatmentID,
                 Priming,
                 POM,
                 POM_sub,
@@ -427,6 +439,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
             respDOM_sub = 0
             respPriming = 0
             respPriming_sub = 0
+
+        # if treatmentID == 5:
+        #     print(treatmentID, "CN_DOM after calcRhizosphere: ", CN_DOM)
 
         resp = respDOM + respPriming
         # resp_all += resp
@@ -474,6 +489,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
                 CN_MAOMp,
                 CN_MAOMs,
             )
+
+        # if treatmentID == 5:
+        #     print(treatmentID, "CN_DOM after calcMAOM: ", CN_DOM)
 
         MAOM = MAOMs + MAOMp
 
@@ -541,6 +559,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
         # update CN DOM
         DOM_N += DEATH * bact / CN_bact + DEATHfungi * fungi / CN_fungi
         CN_DOM = DOM / DOM_N  # recalculate CN DOM
+
+        # if treatmentID == 5:
+        #     print(treatmentID, "CN_DOM in the end of the day: ", CN_DOM)
 
         #    if (-dbact>bact):
         #        print('mainLine307  bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact', bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact)
@@ -616,6 +637,23 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
         respSoil = resp - respSubstrate  # soil-derived respiration (absolute)
         # AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
         # print('line412', treatment, d, AllC)
+
+        # tady jsou ještě nějaké malinké hodnoty, ale jsou
+        # if treatmentID == 5 or treatmentID == 1 or treatmentID == 3:
+        #     print(
+        #         treatmentID,
+        #         "respSubstrate: ",
+        #         respSubstrate,
+        #         "resp_sub: ",
+        #         resp_sub,
+        #         "resp: ",
+        #         resp,
+        #         "baselineResp: ",
+        #         baselineResp,
+        #     )
+
+        # if treatmentID == 5 or treatmentID == 1 or treatmentID == 3:
+        #     print(treatmentID, respPriming)
 
         if Plotting:  # save data for Plotting
             outtreatment.append(treatment)
