@@ -144,7 +144,7 @@ if mode_ == "Normal":
     final_results_df.to_csv(
         "./output/data/Normal.csv",
         index=False,
-        float_format="%.2f",
+        float_format="%.5f",
     )
 
     if Plotting:
@@ -209,7 +209,7 @@ if mode_ == "Jilkova2022":
     final_results_df.to_csv(
         "./output/data/Normal2022.csv",
         index=False,
-        float_format="%.2f",
+        float_format="%.5f",
     )
 
     if Plotting:
@@ -376,13 +376,13 @@ if mode_ == "Sensitivity":
     final_results_df.to_csv(
         ".\output\data\Sensitivity.csv",
         index=False,
-        float_format="%.2f",
+        float_format="%.5f",
     )
 
     run_info_df.to_csv(
         ".\output\data\Sensitivity_runs.csv",
         index=False,
-        float_format="%.2f",
+        float_format="%.5f",
     )
 
     t2 = time.perf_counter()
