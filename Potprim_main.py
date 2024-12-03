@@ -39,6 +39,10 @@ assert mode_ in options, f'"{mode_}" is not in "{options}"'
 # if the Normal or Jilkova2022 mode was chosen, you can decide to turn on the Plotting
 Plotting = True
 
+#safety condition / do not allow plotting with Sensitivity or Bayesian mode
+if mode_ == "Sensitivity" or mode_== "Bayesian":
+    Plotting = False
+    
 
 ############## Creating the Respiration Plot #########
 def drawRespPlot(
