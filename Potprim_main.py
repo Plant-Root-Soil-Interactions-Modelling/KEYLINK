@@ -700,7 +700,7 @@ if mode_ == "Bayesian":
     loop over number ot tries
     """
     for c in range(0, NumberOfTries):  # For each trial parameter set
-        # print("c", c)
+        print(c)
         # 7) find new parameter values to try
 
         candidateparameters, candidateValue, AllParam = (
@@ -785,6 +785,8 @@ if mode_ == "Bayesian":
             log_likelihood_sim1 = likelihood_simulated / len(data_Simulated)
             # print (DiffMeasureSimulated)
 
+            print("finished 11)")
+
             """
             12) compare the likelihood of this try to the previous and accept into posterior or not
             form the ratio of this step to previous and accept/reject from this (log a/b = log a-log b)
@@ -803,6 +805,8 @@ if mode_ == "Bayesian":
             BayesianFunctionsPotprim.save_result(
                 [[data_Simulated]], results_path, "SimdataAll"
             )
+
+            print("random:", random, "alpha:", alpha)
 
             if random < alpha:
                 CalibratedParametersValues = candidateValue
@@ -839,6 +843,9 @@ if mode_ == "Bayesian":
                     [[[log_likelihood_sim0]]], results_path, "logLikelihood   "
                 )
 
+                print(log_likelihood_sim0)
+                print(CalibratedParametersValues)
+
                 BayesianFunctionsPotprim.save_json(
                     [[CalibratedParametersValues]],
                     keys,
@@ -846,6 +853,8 @@ if mode_ == "Bayesian":
                     results_path,
                     "BestFitParams",
                 )
+
+                print("It should have written into the BestFitParams.")
 
                 """
                 14) test if we have enough runs: avg and stdev are table for each column of posterior

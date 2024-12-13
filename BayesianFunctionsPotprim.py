@@ -157,9 +157,7 @@ def save_result(result, path, filename="Output", Bayesian=True):
 
 def save_json(parameters, keys, likelihood, path, filename):
     # Create a dictionary from the ndarray
-    json_object = {
-        likelihood: {keys[i]: parameters[i].tolist() for i in range(len(keys))}
-    }
+    json_object = {likelihood: {keys[i]: parameters[i] for i in range(len(keys))}}
     file_path = os.path.join(path, filename + ".json")
 
     # Check if the file exists
