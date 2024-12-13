@@ -444,6 +444,21 @@ if mode_ == "Bayesian":
     # if __name__ != '__main__':
     #     exit(0)
 
+    # clear the csv files so it won't append after the existing values from the run before
+    csv_files = [
+        "calibratedParameters.csv",
+        "logLikelihood   .csv",
+        "SimdataAll.csv",
+        "SimdataBestFit.csv",
+        "BestFitParams.csv",
+    ]
+
+    for file in csv_files:
+        file_path = os.path.join(results_path, file)
+        if os.path.exists(file_path):
+            with open(file_path, "w") as file:
+                file.write("")  # Clear the contents of the file
+
     # Initialize parser
     parser = argparse.ArgumentParser(description="Run Bayesian optimization")
     parser.add_argument(
@@ -829,7 +844,7 @@ if mode_ == "Bayesian":
                     keys,
                     [[log_likelihood_sim0]],
                     results_path,
-                    "BestFitParam",
+                    "BestFitParams",
                 )
 
                 """
