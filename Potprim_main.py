@@ -32,17 +32,17 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Jilkova2022"]
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Normal"  #'Jilkova2022'
+mode_ = "Bayesian"  #'Jilkova2022'
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
 # if the Normal or Jilkova2022 mode was chosen, you can decide to turn on the Plotting
 Plotting = True
 
-#safety condition / do not allow plotting with Sensitivity or Bayesian mode
-if mode_ == "Sensitivity" or mode_== "Bayesian":
+# safety condition / do not allow plotting with Sensitivity or Bayesian mode
+if mode_ == "Sensitivity" or mode_ == "Bayesian":
     Plotting = False
-    
+
 
 ############## Creating the Respiration Plot #########
 def drawRespPlot(
@@ -822,6 +822,14 @@ if mode_ == "Bayesian":
                 )
                 BayesianFunctionsPotprim.save_result(
                     [[[log_likelihood_sim0]]], results_path, "logLikelihood   "
+                )
+
+                BayesianFunctionsPotprim.save_json(
+                    [[CalibratedParametersValues]],
+                    keys,
+                    [[log_likelihood_sim0]],
+                    results_path,
+                    "BestFitParam",
                 )
 
                 """
