@@ -478,7 +478,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=10000,
+        default=200,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -797,7 +797,12 @@ if mode_ == "Bayesian":
             alpha = (
                 log_likelihood_sim1 / log_likelihood_sim0
             )  # if new is better this is bigger than 1
+
+            """
+            #this should be used in the finished model, I am just setting the random smaller, so it is easier to debug the json function
             random = ra.random()  # choose random value between 0 and 1
+            """
+            random = 0
             logLseries.append(log_likelihood_sim1)
 
             # print('random value', lograndom)
@@ -840,33 +845,33 @@ if mode_ == "Bayesian":
                     [[CalibratedParametersValues]], results_path, "calibratedParameters"
                 )
                 BayesianFunctionsPotprim.save_result(
-                    [[[log_likelihood_sim0]]], results_path, "logLikelihood   "
+                    [[[log_likelihood_sim0]]], results_path, "logLikelihood"
                 )
 
                 print(log_likelihood_sim0)
                 print(CalibratedParametersValues)
 
-                BayesianFunctionsPotprim.save_json(
-                    [[CalibratedParametersValues]],
-                    keys,
-                    [[log_likelihood_sim0]],
-                    results_path,
-                    "BestFitParams",
-                )
-
-                print("It should have written into the BestFitParams.")
-
                 """
                 14) test if we have enough runs: avg and stdev are table for each column of posterior
                 """
-
                 parameters = pd.read_csv(
                     os.path.join(results_path, "calibratedParameters.csv")
                 )
+
                 if BayesianFunctionsPotprim.check_dataframe_significant_change(
                     parameters, alpha=0.5, num_identical_results=50
                 ):
                     print("Hurraaayyy!!! converged")
+
+                    # save Best Fit Parameters as json
+                    BayesianFunctionsPotprim.save_json(
+                        "calibratedParameters.csv",
+                        "logLikelihood.csv",
+                        keys,
+                        results_path,
+                        "BestFitParams",
+                    )
+
                     break
 
         # the prior chain saves all tries, also the ones that are not 'saved' in the posterior chain

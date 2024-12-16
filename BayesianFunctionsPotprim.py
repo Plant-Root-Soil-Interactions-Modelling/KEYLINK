@@ -13,6 +13,7 @@ import numpy as np
 from numpy import random as ra
 from scipy import stats
 import re
+import pandas as pd
 
 
 def block_print():
@@ -155,25 +156,23 @@ def save_result(result, path, filename="Output", Bayesian=True):
             writer.writerows(treatment)
 
 
-def save_json(parameters, keys, likelihood, path, filename):
-    # Create a dictionary from the ndarray
-    json_object = {likelihood: {keys[i]: parameters[i] for i in range(len(keys))}}
-    file_path = os.path.join(path, filename + ".json")
+def save_json(parameters, likelihoods, keys, path, filename):
+    parameters = pd.read_csv(os.path.join(path, parameters))
+    likelihoods = pd.read_csv(os.path.join(path, likelihoods))
 
-    # Check if the file exists
-    if os.path.exists(file_path):
-        # If the file exists, read the existing data
-        with open(file_path, "r") as json_file:
-            existing_data = json.load(json_file)
-    else:
-        existing_data = {}
+    result_json = {}
 
-    # Append the new JSON object
-    existing_data.update(json_object)
+    for index, row in parameters.iterrows():
+        likelihood = likelihoods.iloc[index].values[0]
+        result_json[likelihood] = {}
+        print(likelihood)
 
-    # Save the updated data back to the JSON file
-    with open(file_path, "w") as json_file:
-        json.dump(existing_data, json_file, indent=4)
+        for i, column_value in enumerate(row):
+            key = keys[i]
+            result_json[likelihood][key] = column_value
+
+    with open(os.path.join(path, filename + ".json"), "w") as json_file:
+        json.dump(result_json, json_file, indent=4)
 
 
 def check_significant_change(values, num_identical_results, alpha=0.05):
@@ -219,7 +218,8 @@ def check_significant_change(values, num_identical_results, alpha=0.05):
 def check_dataframe_significant_change(df, alpha, num_identical_results):
     for column in df.columns:
         if df[column].dtype == "object" or df[column].dtype.name == "category":
-            raise ValueError(f"Column {column} is not numeric.")
+            df[column].astype(str).astype(int)  # can we do that?
+            # raise ValueError(f"Column {column} is not numeric.")
         # values bevat de waarde van 1 parameter over alle runs
         values = df[column].dropna().values
         # as long as 1 column does not converge (gives significant difference) run continues
