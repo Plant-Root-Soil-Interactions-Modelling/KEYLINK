@@ -459,6 +459,9 @@ if mode_ == "Bayesian":
             with open(file_path, "w") as file:
                 file.write("")  # Clear the contents of the file
 
+    with open(os.path.join(results_path, "BestFitParams.json"), "w") as file:
+        file.write("")
+
     # Initialize parser
     parser = argparse.ArgumentParser(description="Run Bayesian optimization")
     parser.add_argument(
