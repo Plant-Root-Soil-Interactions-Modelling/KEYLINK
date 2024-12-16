@@ -157,8 +157,11 @@ def save_result(result, path, filename="Output", Bayesian=True):
 
 
 def save_json(parameters, likelihoods, keys, path, filename):
-    parameters = pd.read_csv(os.path.join(path, parameters))
-    likelihoods = pd.read_csv(os.path.join(path, likelihoods))
+    parameters = pd.read_csv(os.path.join(path, parameters), header=None)
+    likelihoods = pd.read_csv(os.path.join(path, likelihoods), header=None)
+
+    parameters.reset_index(drop=True)
+    likelihoods.reset_index(drop=True)
 
     result_json = {}
 
