@@ -926,6 +926,10 @@ if mode_ == "Validation":
     likelihood = list(calibParam.keys())[-1]
     setCalibParam = calibParam[likelihood]
 
+    # Save the set of parameters that will be used
+    with open(os.path.join(results_path, "setParamValidation.json"), "w") as json_file:
+        json.dump(setCalibParam, json_file, indent=4)
+
     # Merge calibrated parameters with the fixed ones – this should happen inside the for loop in the future
     with open("fixedParameters.json", "r") as f2:
         fixedParam = json.load(
