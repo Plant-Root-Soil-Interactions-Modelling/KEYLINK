@@ -28,11 +28,11 @@ results_path = ".\output"
 
 ############## Modes #################################
 # set allowed values for mode
-modes = Literal["Normal", "Sensitivity", "Bayesian", "Jilkova2022"]
+modes = Literal["Normal", "Sensitivity", "Bayesian", "Jilkova2022", "Validation"]
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Bayesian"  #'Jilkova2022'
+mode_ = "Validation"  #'Jilkova2022'
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
@@ -447,7 +447,7 @@ if mode_ == "Bayesian":
     # clear the csv files so it won't append after the existing values from the run before
     csv_files = [
         "calibratedParameters.csv",
-        "logLikelihood   .csv",
+        "logLikelihood.csv",
         "SimdataAll.csv",
         "SimdataBestFit.csv",
         "BestFitParams.csv",
@@ -891,3 +891,91 @@ if mode_ == "Bayesian":
     df = pd.DataFrame(priorChain, columns=list(CalibratedParameters.keys()))
 
     # bayesian_plots(df=df, path=file_name, columns=5, save_to_file=True)
+
+
+############## Validation run ###########################
+if mode_ == "Validation":
+    # Treatments – needs to be changed for the simulated values
+    inputRun = pd.read_csv("Normal_run_input.csv", header=0, skiprows=0)
+    numTreatments = len(inputRun)
+
+    # Calibrated Parameters
+    with open("./output/BestFitParams.json", "r") as f1:
+        calibParam = json.load(
+            f1
+        )  # only the parameters that were calibrated, all of them
+
+    # Select a set of calibrated parameters
+    """ 
+    For now, I implemented two ways to select a set of calibrated parameters
+    1) the last one (just why not?)
+    2) the one with highest likelihood
+
+    If you want to choose the last set (no matter the likelihood), just comment the line:
+        calibParam = {k: calibParam[k] for k in sorted(calibParam)} 
+
+    Later on, we will use more sets of parameters, we will probably save e.g. 10 best sets
+    into 10 separate dictionaries, using for loop    
+    """
+    # Select the set of parameters
+    calibParam = {k: calibParam[k] for k in sorted(calibParam)}
+    likelihood = list(calibParam.keys())[-1]
+    setCalibParam = calibParam[likelihood]
+
+    # Merge calibrated parameters with the fixed ones – this should happen inside the for loop in the future
+    with open("fixedParameters.json", "r") as f2:
+        fixedParam = json.load(
+            f2
+        )  # only the parameters that are fixed, ie not calibrated
+
+    AllParam = {**setCalibParam, **fixedParam}
+
+    # create lists for respiration plot
+    respSoil_mean_model = []
+    respSubstrate_mean_model = []
+    respSoil_mean_measure = []
+    respSubstrate_mean_measure = []
+    labels = []
+
+    for treatment in range(numTreatments):
+        treatmentVar = inputRun.iloc[treatment, 0:17]
+
+        results_df = run_model(
+            AllParam, treatmentVar, mode_="Normal", Plotting=Plotting, numDays=161
+        )
+        df_list.append(results_df)
+
+        # storing values for respiration plot
+        if Plotting:
+            labels.append(results_df["treatment"][1])
+            respSoil_mean_model.append((results_df["respSoil"].mean()) / 0.8 * 24)
+            respSubstrate_mean_model.append(
+                (results_df["respSubstrate"].mean()) / 0.8 * 24
+            )
+            respSoil_mean_measure.append((inputRun.iloc[treatment, 17:37]).mean())
+            respSubstrate_mean_measure.append((inputRun.iloc[treatment, 37:48]).mean())
+
+    final_results_df = pd.concat(
+        df_list, ignore_index=True
+    )  # add all the rows to the results_df
+
+    try:
+        os.makedirs("./output/data")
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    final_results_df.to_csv(
+        "./output/data/Validation.csv",
+        index=False,
+        float_format="%.5f",
+    )
+
+    if Plotting:
+        drawRespPlot(
+            labels,
+            respSoil_mean_model,
+            respSoil_mean_measure,
+            respSubstrate_mean_model,
+            respSubstrate_mean_measure,
+        )

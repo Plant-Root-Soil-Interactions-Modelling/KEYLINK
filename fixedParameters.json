@@ -1,0 +1,22 @@
+{
+    "GMAX":1.24, 
+    "GMAXfungi":0.6,  
+    "mRecBact":0.5,  
+    "mRecFungi":0.5, 
+    "resp":0.03, 
+    "rRESPfungi":0.03, 
+    "DEATH":0.05, 
+    "DEATHfungi":0.01, 
+    "pCN":0.8, 
+    "recMAOM":0.9, 
+    "T_OPTbact": 25,
+    "T_MINbact": 0,
+    "T_MAXbact": 40,
+    "T_OPTfungi": 25,
+    "T_MINfungi": 0,
+    "T_MAXfungi": 40,
+    "RESPfungi":0.03,
+    "Q10fungi":2.5,
+    "RESPbact":0.03,
+    "Q10bact":2.5
+}
