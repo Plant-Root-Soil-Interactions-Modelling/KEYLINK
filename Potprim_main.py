@@ -52,6 +52,7 @@ def drawRespPlot(
     respSoil_mean_measure,
     respSubstrate_mean_model,
     respSubstrate_mean_measure,
+    name,
 ):
     # create plot
     plt.figure(figsize=(10, 12))
@@ -87,7 +88,7 @@ def drawRespPlot(
 
     plt.tight_layout()
 
-    plt.savefig("./output/figures/respPlot.png")
+    plt.savefig(os.path.join("./output/figures/", name))
     plt.close()
 
 
@@ -159,6 +160,7 @@ if mode_ == "Normal":
             respSoil_mean_measure,
             respSubstrate_mean_model,
             respSubstrate_mean_measure,
+            "respPlot_Normal.png",
         )
 
 ############## Jilkova2022 run ###########################
@@ -224,6 +226,7 @@ if mode_ == "Jilkova2022":
             respSoil_mean_measure,
             respSubstrate_mean_model,
             respSubstrate_mean_measure,
+            "respPlot_Jilkova2022.png",
         )
 
 ############## Sensitivity ###########################
@@ -979,6 +982,7 @@ if mode_ == "Validation":
             respSoil_mean_measure,
             respSubstrate_mean_model,
             respSubstrate_mean_measure,
+            "respPlot_Validation.png",
         )
 
     ######## Calculate RMSE ########################
