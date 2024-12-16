@@ -478,7 +478,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=200,
+        default=10000,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -798,11 +798,7 @@ if mode_ == "Bayesian":
                 log_likelihood_sim1 / log_likelihood_sim0
             )  # if new is better this is bigger than 1
 
-            """
-            #this should be used in the finished model, I am just setting the random smaller, so it is easier to debug the json function
             random = ra.random()  # choose random value between 0 and 1
-            """
-            random = 0
             logLseries.append(log_likelihood_sim1)
 
             # print('random value', lograndom)
