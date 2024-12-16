@@ -14,6 +14,7 @@ from numpy import random as ra
 from scipy import stats
 import BayesianFunctionsPotprim
 import sys
+import csv
 
 # needed by all modes / normal, sensitivity and bayesian mode
 from potPrimingMAOMfunction import *
@@ -979,3 +980,129 @@ if mode_ == "Validation":
             respSubstrate_mean_model,
             respSubstrate_mean_measure,
         )
+
+    ######## Calculate RMSE ########################
+
+    # Derive respiration from simulated values (modelled in Validation mode)
+    respSoil_sim = {}
+    respSub_sim = {}
+    obs_days_soil = [
+        0,
+        2,
+        6,
+        13,
+        21,
+        23,
+        27,
+        34,
+        49,
+        51,
+        55,
+        62,
+        91,
+        93,
+        97,
+        104,
+        147,
+        149,
+        153,
+        160,
+    ]  # list of days in which the respiration was measured for soil; note that it is 1 smaller than in the input file as in the output file, it starts with 0
+    obs_days_sub = [
+        0,
+        2,
+        6,
+        13,
+        49,
+        51,
+        55,
+        62,
+        147,
+        149,
+        153,
+        160,
+    ]  # list of days in which the respiration was measured for substrate; also starts with 0
+
+    # Iterate over the DataFrame rows
+    for index, row in final_results_df.iterrows():
+        treatment = row["treatment"]
+
+        # Append respSoil values
+        if treatment not in respSoil_sim:
+            respSoil_sim[treatment] = (
+                []
+            )  # Create a new list if the treatment is not in the dictionary
+        if row["day"] in obs_days_soil:
+            respSoil_sim[treatment].append(row["respSoil"])
+
+        # Append respSubstrate values
+        if treatment not in respSub_sim:
+            respSub_sim[treatment] = (
+                []
+            )  # Create a new list if the treatment is not in the dictionary
+        if row["day"] in obs_days_sub:
+            respSub_sim[treatment].append(row["respSubstrate"])
+
+    # Derive respiration from observed values
+    respSoil_obs = {}
+    respSub_obs = {}
+
+    for index, row in inputRun.iterrows():
+        treatment = row["treatment"]
+
+        if treatment not in respSoil_obs:
+            respSoil_obs[treatment] = []
+
+        if treatment not in respSub_obs:
+            respSub_obs[treatment] = []
+
+        for column_name, column_value in row.items():
+            if column_name.startswith("resp") and "error" not in column_name:
+                if "sub" in column_name:
+                    # Append to respSub_obs
+                    respSub_obs[treatment].append(column_value)
+                else:
+                    # Append to respSoil_obs
+                    respSoil_obs[treatment].append(column_value)
+
+    # Now we will actually calculate the RMSE, yaaay!
+    rmse_soil = {}
+    rmse_sub = {}
+
+    for (key1, value1), (key2, value2) in zip(
+        respSoil_obs.items(), respSoil_sim.items()
+    ):
+        if key1 == key2:  # Ensure the keys match
+            actual = np.array(value1)
+            predicted = np.array(value2)
+
+            rmse_soil[key1] = np.sqrt(((predicted - actual) ** 2).mean())
+
+    for (key1, value1), (key2, value2) in zip(respSub_obs.items(), respSub_sim.items()):
+        if key1 == key2:  # Ensure the keys match
+            actual = np.array(value1)
+            predicted = np.array(value2)
+
+            rmse_sub[key1] = np.sqrt(((predicted - actual) ** 2).mean())
+
+    # save as a one csv file
+    try:
+        os.makedirs("./output/data")
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    with open(
+        os.path.join("./output/data", "rmse.csv"), mode="w", newline=""
+    ) as csvfile:
+        csv_writer = csv.writer(csvfile)
+
+        # Write the header
+        csv_writer.writerow(["Treatment", "respSoil", "respSub"])
+
+        # Iterate over the keys in the dictionaries
+        for key in rmse_soil.keys():
+            value1 = rmse_soil[key]
+            value2 = rmse_sub[key]
+            # Write the key and values to the CSV file
+            csv_writer.writerow([key, value1, value2])
