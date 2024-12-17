@@ -209,8 +209,8 @@ def check_significant_change(values, num_identical_results, alpha=0.05):
     )
 
     # Check if there is a significant change
-    significant_change = (p_val_avg > alpha) or (
-        p_val_std > alpha
+    significant_change = (p_val_avg < alpha) or (
+        p_val_std < alpha
     )  # may change to 'and' here
     # print('last_results_avg=', last_results_avg,'prev_results_avg', prev_results_avg)
     # print('t_stat_avg=', t_stat_avg,'p_val_avg=', p_val_avg)
