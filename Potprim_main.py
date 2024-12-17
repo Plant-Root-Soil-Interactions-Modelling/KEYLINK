@@ -33,7 +33,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Jilkova2022", "Validation"
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Validation"  #'Jilkova2022'
+mode_ = "Bayesian"  #'Jilkova2022'
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
@@ -862,11 +862,11 @@ if mode_ == "Bayesian":
                 )
 
                 if BayesianFunctionsPotprim.check_dataframe_significant_change(
-                    parameters, alpha=0.5, num_identical_results=50
+                    parameters, alpha=0.5, num_identical_results=500
                 ):
                     print("Hurraaayyy!!! converged")
 
-                    # save Best Fit Parameters as json
+                    # save all accepted parameters set as json
                     BayesianFunctionsPotprim.save_json(
                         "calibratedParameters.csv",
                         "logLikelihood.csv",
@@ -895,6 +895,46 @@ if mode_ == "Bayesian":
     df = pd.DataFrame(priorChain, columns=list(CalibratedParameters.keys()))
 
     # bayesian_plots(df=df, path=file_name, columns=5, save_to_file=True)
+
+    ################## Histograms of accepted parameters
+    # Load the CSV file into a DataFrame
+    df = pd.read_csv("./output/calibratedParameters.csv", header=None)
+
+    df.columns = keys
+
+    # Iterate through each column in the DataFrame
+    for i, column in enumerate(df.columns):
+        # Create a figure for the histograms
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+        # Get the values of the column
+        values = df[column].dropna()  # Drop NaN values if any
+        n = len(values)
+
+        # Plot histogram for all values
+        axes[0].hist(values, bins=30, color="blue", alpha=0.7)
+        axes[0].axvline(MinimalOption[i], color="black", linestyle="--", label="max")
+        axes[0].axvline(MaximumOption[i], color="black", linestyle="--", label="min")
+        axes[0].set_title(f"All Values - {column}")
+
+        # Plot histogram for the first half of the values
+        first_half = values[: n // 2]
+        axes[1].hist(first_half, bins=30, color="green", alpha=0.7)
+        axes[1].axvline(MinimalOption[i], color="black", linestyle="--", label="max")
+        axes[1].axvline(MaximumOption[i], color="black", linestyle="--", label="min")
+        axes[1].set_title(f"First Half - {column}")
+
+        # Plot histogram for the second half of the values
+        second_half = values[n // 2 :]
+        axes[2].hist(second_half, bins=30, color="red", alpha=0.7)
+        axes[2].axvline(MinimalOption[i], color="black", linestyle="--", label="max")
+        axes[2].axvline(MaximumOption[i], color="black", linestyle="--", label="min")
+        axes[2].set_title(f"Second Half - {column}")
+
+        plt.tight_layout()
+
+        plt.savefig(os.path.join("./output/figures/", "hist_" + column + ".png"))
+        plt.close()
 
 
 ############## Validation run ###########################

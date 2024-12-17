@@ -168,7 +168,6 @@ def save_json(parameters, likelihoods, keys, path, filename):
     for index, row in parameters.iterrows():
         likelihood = likelihoods.iloc[index].values[0]
         result_json[likelihood] = {}
-        print(likelihood)
 
         for i, column_value in enumerate(row):
             key = keys[i]
