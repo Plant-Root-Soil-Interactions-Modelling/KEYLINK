@@ -505,7 +505,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=10000,
+        default=2000,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -685,9 +685,9 @@ if mode_ == "Bayesian":
                 "overall likelihood",
                 data_Simulated[treatment]["sim likelihood"],
             )
-            if treatment == 3:
-                break
-                # sys.exit('safety stop to run only for first 2 treatments')
+            # if treatment == 3:
+            #     break
+            # sys.exit('safety stop to run only for first 2 treatments')
 
         # old version only for one variable resp1
         # likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
@@ -881,7 +881,7 @@ if mode_ == "Bayesian":
                 )
 
                 if BayesianFunctionsPotprim.check_dataframe_significant_change(
-                    parameters, alpha=0.5, num_identical_results=500
+                    parameters, alpha=0.5, num_identical_results=200
                 ):
                     print("Hurraaayyy!!! converged")
 
