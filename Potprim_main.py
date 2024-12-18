@@ -97,7 +97,18 @@ def drawRespPlot(
 
     plt.tight_layout()
 
-    plt.savefig(os.path.join("./output/figures/", name))
+    if name == "respPlot_Validation.png":
+        try:
+            os.makedirs("./output_Bayesian/figures")
+        except FileExistsError:
+            # directory already exists
+            pass
+
+        plt.savefig(os.path.join("./output_Bayesian/figures/", name))
+
+    else:
+        plt.savefig(os.path.join("./output/figures/", name))
+
     plt.close()
 
 
@@ -962,7 +973,14 @@ if mode_ == "Bayesian":
 
         plt.tight_layout()
 
-        plt.savefig(os.path.join("./output/figures/", "hist_" + column + ".png"))
+        try:
+            os.makedirs("./output_Bayesian/figures")
+        except FileExistsError:
+            # directory already exists
+            pass
+        plt.savefig(
+            os.path.join("./output_Bayesian/figures/", "hist_" + column + ".png")
+        )
         plt.close()
 
 
