@@ -42,7 +42,7 @@ modes = Literal[
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Bayesian"  #'Jilkova2022'
+mode_ = "Validation"
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
@@ -505,7 +505,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=2000,
+        default=10000,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -881,7 +881,7 @@ if mode_ == "Bayesian":
                 )
 
                 if BayesianFunctionsPotprim.check_dataframe_significant_change(
-                    parameters, alpha=0.5, num_identical_results=100
+                    parameters, alpha=0.5, num_identical_results=500
                 ):
                     print("Hurraaayyy!!! converged")
 
