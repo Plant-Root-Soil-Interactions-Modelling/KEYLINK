@@ -877,7 +877,7 @@ if mode_ == "Bayesian":
                 14) test if we have enough runs: avg and stdev are table for each column of posterior
                 """
                 parameters = pd.read_csv(
-                    os.path.join(results_path, "calibratedParameters.csv")
+                    os.path.join(sharable_path, "calibratedParameters.csv")
                 )
 
                 if BayesianFunctionsPotprim.check_dataframe_significant_change(
@@ -918,7 +918,7 @@ if mode_ == "Bayesian":
     ################## Histograms of accepted parameters
     # if mode_ == "Histogram":
     # Load the CSV file into a DataFrame
-    df = pd.read_csv("./output/calibratedParameters.csv", header=None)
+    df = pd.read_csv("./output_Bayesian/calibratedParameters.csv", header=None)
 
     # inputCalibrationParamfile = open("datalistCalibrationParam.json")
     # (

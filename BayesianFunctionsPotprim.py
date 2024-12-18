@@ -174,7 +174,7 @@ def save_json(parameters, likelihoods, keys, path, filename):
             result_json[likelihood][key] = column_value
 
     with open(os.path.join(path, filename + ".json"), "w") as json_file:
-        json.dump(result_json, json_file, indent=4)
+        json.dump(path, json_file, indent=4)
 
 
 def check_significant_change(values, num_identical_results, alpha=0.05):
