@@ -220,7 +220,7 @@ def check_significant_change(values, num_identical_results, alpha=0.05):
 def check_dataframe_significant_change(df, alpha, num_identical_results):
     for column in df.columns:
         if df[column].dtype == "object" or df[column].dtype.name == "category":
-            df[column].astype(str).astype(int)  # can we do that?
+            df[column].astype(str).astype(float)  # can we do that?
             # raise ValueError(f"Column {column} is not numeric.")
         # values bevat de waarde van 1 parameter over alle runs
         values = df[column].dropna().values

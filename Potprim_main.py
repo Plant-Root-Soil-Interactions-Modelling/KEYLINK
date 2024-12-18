@@ -42,7 +42,7 @@ modes = Literal[
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Validation"  #'Jilkova2022'
+mode_ = "Bayesian"  #'Jilkova2022'
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
@@ -505,7 +505,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=30000,
+        default=2000,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -654,9 +654,9 @@ if mode_ == "Bayesian":
         # print("datasim resp1 treatment 1", data_Simulated[treatment]["resp1"])
         # print("datameasured", data_measured["resp1"][treatment])
 
-        if treatment == 3:
-            print("line 447 safety break ")
-            break  # safety for now
+        # if treatment == 3:
+        #     print("line 447 safety break ")
+        #     break  # safety for now
 
         for e in range(len(data_measured_colnames)):
 
@@ -881,7 +881,7 @@ if mode_ == "Bayesian":
                 )
 
                 if BayesianFunctionsPotprim.check_dataframe_significant_change(
-                    parameters, alpha=0.5, num_identical_results=500
+                    parameters, alpha=0.5, num_identical_results=100
                 ):
                     print("Hurraaayyy!!! converged")
 
