@@ -35,7 +35,7 @@ modes = Literal[
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Histogram"  #'Jilkova2022'
+mode_ = "Validation"  #'Jilkova2022'
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
@@ -487,7 +487,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=10000,
+        default=30000,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -868,15 +868,6 @@ if mode_ == "Bayesian":
                 ):
                     print("Hurraaayyy!!! converged")
 
-                    # save all accepted parameters set as json
-                    BayesianFunctionsPotprim.save_json(
-                        "calibratedParameters.csv",
-                        "logLikelihood.csv",
-                        keys,
-                        results_path,
-                        "BestFitParams",
-                    )
-
                     break
 
         # the prior chain saves all tries, also the ones that are not 'saved' in the posterior chain
@@ -897,6 +888,15 @@ if mode_ == "Bayesian":
     df = pd.DataFrame(priorChain, columns=list(CalibratedParameters.keys()))
 
     # bayesian_plots(df=df, path=file_name, columns=5, save_to_file=True)
+
+    # save all accepted parameters set as json
+    BayesianFunctionsPotprim.save_json(
+        "calibratedParameters.csv",
+        "logLikelihood.csv",
+        keys,
+        results_path,
+        "BestFitParams",
+    )
 
     ################## Histograms of accepted parameters
     # if mode_ == "Histogram":
@@ -932,27 +932,27 @@ if mode_ == "Bayesian":
         axes[0].axvline(
             CalParameterValues[i], color="red", linestyle="--", label="initial"
         )
-        axes[0].set_title(f"All Values - {column}")
+        axes[0].set_title(f"All Values – {column}")
 
-        # Plot histogram for the first half of the values
-        first_half = values[: n // 2]
-        axes[1].hist(first_half, bins=30, color="blue", alpha=0.7)
+        # Plot histogram for the last 500 values
+        last500 = values[-500:]
+        axes[1].hist(last500, bins=30, color="blue", alpha=0.7)
         axes[1].axvline(MinimalOption[i], color="black", linestyle="--", label="max")
         axes[1].axvline(MaximumOption[i], color="black", linestyle="--", label="min")
         axes[1].axvline(
             CalParameterValues[i], color="red", linestyle="--", label="initial"
         )
-        axes[1].set_title(f"First Half - {column}")
+        axes[1].set_title(f"Last 500 values – {column}")
 
-        # Plot histogram for the second half of the values
-        second_half = values[n // 2 :]
-        axes[2].hist(second_half, bins=30, color="blue", alpha=0.7)
+        # Plot histogram for the previous 500 values
+        previous500 = values[-1000:-500]
+        axes[2].hist(previous500, bins=30, color="blue", alpha=0.7)
         axes[2].axvline(MinimalOption[i], color="black", linestyle="--", label="max")
         axes[2].axvline(MaximumOption[i], color="black", linestyle="--", label="min")
         axes[2].axvline(
             CalParameterValues[i], color="red", linestyle="--", label="initial"
         )
-        axes[2].set_title(f"Second Half - {column}")
+        axes[2].set_title(f"Previous 500 values – {column}")
 
         plt.tight_layout()
 
