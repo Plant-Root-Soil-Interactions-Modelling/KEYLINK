@@ -26,6 +26,13 @@ import copy
 
 the_current_path = os.path.abspath(os.getcwd())
 results_path = ".\output"
+sharable_path = ".\output_Bayesian"
+
+try:
+    os.makedirs(".\output_Bayesian")
+except FileExistsError:
+    # directory already exists
+    pass
 
 ############## Modes #################################
 # set allowed values for mode
@@ -847,14 +854,13 @@ if mode_ == "Bayesian":
                     [[data_Simulated]], results_path, "SimdataBestFit"
                 )
                 BayesianFunctionsPotprim.save_result(
-                    [[CalibratedParametersValues]], results_path, "calibratedParameters"
+                    [[CalibratedParametersValues]],
+                    sharable_path,
+                    "calibratedParameters",
                 )
                 BayesianFunctionsPotprim.save_result(
-                    [[[log_likelihood_sim0]]], results_path, "logLikelihood"
+                    [[[log_likelihood_sim0]]], sharable_path, "logLikelihood"
                 )
-
-                print(log_likelihood_sim0)
-                print(CalibratedParametersValues)
 
                 """
                 14) test if we have enough runs: avg and stdev are table for each column of posterior
@@ -894,7 +900,7 @@ if mode_ == "Bayesian":
         "calibratedParameters.csv",
         "logLikelihood.csv",
         keys,
-        results_path,
+        sharable_path,
         "BestFitParams",
     )
 
@@ -967,7 +973,7 @@ if mode_ == "Validation":
     numTreatments = len(inputRun)
 
     # Calibrated Parameters
-    with open("./output/BestFitParams.json", "r") as f1:
+    with open("./output_Bayesian/BestFitParams.json", "r") as f1:
         calibParam = json.load(
             f1
         )  # only the parameters that were calibrated, all of them
@@ -990,7 +996,7 @@ if mode_ == "Validation":
     setCalibParam = calibParam[likelihood]
 
     # Save the set of parameters that will be used
-    with open(os.path.join(results_path, "setParamValidation.json"), "w") as json_file:
+    with open(os.path.join(sharable_path, "setParamValidation.json"), "w") as json_file:
         json.dump(setCalibParam, json_file, indent=4)
 
     # Merge calibrated parameters with the fixed ones – this should happen inside the for loop in the future
@@ -1158,14 +1164,12 @@ if mode_ == "Validation":
 
     # save as a one csv file
     try:
-        os.makedirs("./output/data")
+        os.makedirs("./output_Bayesian")
     except FileExistsError:
         # directory already exists
         pass
 
-    with open(
-        os.path.join("./output/data", "rmse.csv"), mode="w", newline=""
-    ) as csvfile:
+    with open(os.path.join(sharable_path, "rmse.csv"), mode="w", newline="") as csvfile:
         csv_writer = csv.writer(csvfile)
 
         # Write the header
