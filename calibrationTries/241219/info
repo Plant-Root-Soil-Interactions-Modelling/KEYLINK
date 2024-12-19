@@ -1,0 +1,5 @@
+tries: 10000
+number identical: 500
+converged:
+time:
+RMSE:

@@ -1,0 +1,46 @@
+Dear Gaby,
+
+thanks to your intervention yesterday, we managed to find a few problems in the Bayesian mode and we found out why it only accepted 101 sets every time (and therefore not very good results). It had two reasons:
+When calling the function to check significant change, the parameter for a number of identical sets was set to 50. We simply overlooked it previously. However, even after setting it to 500, it always ended after 1001 accepted sets. This brings us to the second reason…
+In the end of every try (every iteration), we call function check_dataframe_significant_change (this is the one I mentioned in the previous point). This function drops NA values in the data frame of parameter sets. Then it calls the function check_significant_change. This function (it is the same as the one you sent us yesterday) actually checks the change.
+- if there is fewer accepted sets than 2*"desired_number_of_identical_sets", it returns True
+- else, it computes p-values in t-test and F-test, and compares the p-values with alpha. Here we found the mistake. There was this piece of code:
+ significant_change = (p_val_avg > alpha) or (p_val_std > alpha)
+If the condition is True, the function returns True. If it is False, it returns False.
+However, the two portions of the sets are significantly different if the p-value is smaller, not larger than alpha. This means, it always stopped after meeting the first condition (the number of accepted sets), as it ended completely when the second condition was met, ie. when there was a significant difference. However, we want it to run further if there is still a significant difference between the last and the previous 500 sets, and stop just when there is no significance difference. Therefore, we changed it to:
+ significant_change = (p_val_avg < alpha) or (p_val_std < alpha)
+(Additionally, we find the two functions a bit confusing, as the outer function always reverts the boolean value from the inner function and returns it to the main code. We are thinking of merging these two into one. Is there any particular reason why there are two?)
+
+After these changes, it didn't stop after meeting the length requirement (1001, previously 101). However, it still didn't converge. I ran it for the default 10,000 tries. Then, I tried 30,000 tries and still nothing. Maybe it's the problem of the min and max bounds? We created the histograms and there are a few parameters that are inclined to one of the bounds. I am attaching all the histograms so you can have a look.
+
+Even though it didn't converge, I tried to run the model with the set with the highest likelihood (we don't have the Latin Hypercube yet). I attached the respiration plot as well.
+It was run with the following set of parameters:
+{
+    "bact_DOM_rel": 0.2595769129128784,
+    "DOM_EC": 0.5756372077750357,
+    "kpriming": 0.001100374186808,
+    "KS": 62.90607452703519,
+    "KSfungi": 10265.098994709611,
+    "KSbact": 43085.71626902313,
+    "kPOM_MAOM": 1.6243734345064316,
+    "kMAOMs_MAOMp": 13.800742738168529,
+    "MAOMpmaxrate": 0.1774334254820919,
+    "MAOMsmaxrate": 0.1122463920956106,
+    "MAOMmaxrate": 0.2704291993860773,
+    "MAOMratioSP": 2.9150777273859734,
+    "maxEffectBactMAOM": 0.8861118287219149,
+    "maxEffectSA_MAOM": 0.8629963235511282,
+    "maxEffectN_MAOM": 0.9648229614118556,
+    "MM_N_MAOM": 1.102692954023185,
+    "MM_Bact_MAOM": 1.0362950101432873,
+    "MM_SA_MAOM": 0.0017182763021271,
+    "MM_DOM_MAOM": 0.0439116617677193,
+    "Priming_max": 0.5313704814426388
+}
+
+What do you think should be our next steps?
+
+Another thing I wanted to mention is that in the check_dataframe_significant_change function, we check if any value's type is object or category (line 222 in BayesianFunctionsPotprim.py). If yes, it raises a ValueError. It once happened to me and I printed the value and it was float as any other value, so I provisionally just convert the potential object or category to float. Can I leave it like that? Or should we handle it differently?
+
+Best regards,
+Tereza
