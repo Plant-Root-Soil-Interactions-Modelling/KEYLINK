@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from numpy import random as ra
 from scipy import stats
+from scipy.stats import qmc
 import BayesianFunctionsPotprim
 import sys
 import csv
@@ -97,7 +98,7 @@ def drawRespPlot(
 
     plt.tight_layout()
 
-    if name == "respPlot_Validation.png":
+    if "Validation" in name:
         try:
             os.makedirs("./output_Bayesian/figures")
         except FileExistsError:
@@ -155,7 +156,7 @@ if mode_ == "Normal":
                 (results_df["respSubstrate"].mean()) / 0.8 * 24
             )
             respSoil_mean_measure.append((inputRun.iloc[treatment, 17:37]).mean())
-            respSubstrate_mean_measure.append((inputRun.iloc[treatment, 37:48]).mean())
+            respSubstrate_mean_measure.append((inputRun.iloc[treatment, 50:61]).mean())
 
     final_results_df = pd.concat(
         df_list, ignore_index=True
@@ -986,9 +987,15 @@ if mode_ == "Bayesian":
 
 ############## Validation run ###########################
 if mode_ == "Validation":
-    # Treatments – needs to be changed for the simulated values
+    # Input values
     inputRun = pd.read_csv("Validation_run_input.csv", header=0, skiprows=0)
     numTreatments = len(inputRun)
+
+    # Clear file with mean respirations if it already exists
+    file_path = os.path.join(results_path, "selectedSets_MeanRespiration.csv")
+    if os.path.exists(file_path):
+        with open(file_path, "w") as file:
+            file.write("")  # Clear the contents of the file
 
     # Calibrated Parameters
     with open("./output_Bayesian/BestFitParams.json", "r") as f1:
@@ -996,34 +1003,45 @@ if mode_ == "Validation":
             f1
         )  # only the parameters that were accepted, all of them
 
-    # Select a set of calibrated parameters
-    """ 
-    For now, I implemented two ways to select a set of calibrated parameters
-    1) the last one (just why not?)
-    2) the one with highest likelihood
+    ##### Latin Hypercube ############
+    # Extract likelihoods (keys) and parameters sets (values) from uploaded json
+    likelihoods = []
+    parameter_sets = []
 
-    If you want to choose the last set (no matter the likelihood), just comment the line:
-        calibParam = {k: calibParam[k] for k in sorted(calibParam)} 
+    for likelihood, parameters in calibParam.items():
+        likelihoods.append(float(likelihood))
+        parameter_sets.append(parameters)
 
-    Later on, we will use more sets of parameters, we will probably save e.g. 10 best sets
-    into 10 separate dictionaries, using for loop    
-    """
-    # Select the set of parameters
-    calibParam = {k: calibParam[k] for k in sorted(calibParam)}
-    likelihood = list(calibParam.keys())[-1]
-    setCalibParam = calibParam[likelihood]
+    # Calculate weights of the likelihoods
+    total_likelihood = sum(likelihoods)
+    weights = [likelihood / total_likelihood for likelihood in likelihoods]
+
+    # Actual Latin Hypercube
+    n_samples = 10  # Adjust based on your needs
+    sampler = qmc.LatinHypercube(d=len(parameter_sets))
+    sample = sampler.random(n=n_samples)
+
+    selected_sets = []
+    for i in range(n_samples):
+        index = np.random.choice(len(parameter_sets), p=weights)
+        selected_sets.append(parameter_sets[index])
 
     # Save the set of parameters that will be used
     with open(os.path.join(sharable_path, "setParamValidation.json"), "w") as json_file:
-        json.dump(setCalibParam, json_file, indent=4)
+        json.dump(selected_sets, json_file, indent=4)
+
+    ############# That's all for Latin Hypercube ########################
+
+    # # Select 1 set of parameters with the highest likelihood
+    # calibParam = {k: calibParam[k] for k in sorted(calibParam)}
+    # likelihood = list(calibParam.keys())[-1]
+    # setCalibParam = calibParam[likelihood]
 
     # Merge calibrated parameters with the fixed ones – this should happen inside the for loop in the future
     with open("fixedParameters.json", "r") as f2:
         fixedParam = json.load(
             f2
         )  # only the parameters that are fixed, ie not calibrated
-
-    AllParam = {**setCalibParam, **fixedParam}
 
     # create lists for respiration plot
     respSoil_mean_model = []
@@ -1032,51 +1050,97 @@ if mode_ == "Validation":
     respSubstrate_mean_measure = []
     labels = []
 
-    for treatment in range(numTreatments):
-        treatmentVar = inputRun.iloc[treatment, 0:17]
+    for index, set in enumerate(selected_sets):
+        # Combine the calibrated parameters and the fixed parameters into one variable
+        AllParam = {**set, **fixedParam}
 
-        results_df = run_model(
-            AllParam, treatmentVar, mode_="Normal", Plotting=Plotting, numDays=161
-        )
-        df_list.append(results_df)
+        # Empty these variables so every plot shows only the values of the specific set
+        # However, it won't be here later on, when we rewrite the Plotting for the mean of the results over sets
+        # This is only provisional
+        respSoil_mean_model = []
+        respSubstrate_mean_model = []
+        respSoil_mean_measure = []
+        respSubstrate_mean_measure = []
+        labels = []
 
-        # storing values for respiration plot
-        if Plotting:
-            labels.append(results_df["treatment"][1])
+        final_results_df = pd.DataFrame()  # empty, so every set has its own file
+        df_list = []
+
+        for treatment in range(numTreatments):
+            treatmentVar = inputRun.iloc[treatment, 0:17]
+
+            results_df = run_model(
+                AllParam, treatmentVar, mode_="Normal", Plotting=Plotting, numDays=161
+            )
+            df_list.append(results_df)
+
+            # storing values for respiration plot
+            if Plotting:
+                respSoil_mean_measure.append((inputRun.iloc[treatment, 17:37]).mean())
+                respSubstrate_mean_measure.append(
+                    (inputRun.iloc[treatment, 50:61]).mean()
+                )
+
+            # This is now needed for the mean respiration output with all the treatments and sets
             respSoil_mean_model.append((results_df["respSoil"].mean()) / 0.8 * 24)
             respSubstrate_mean_model.append(
                 (results_df["respSubstrate"].mean()) / 0.8 * 24
             )
-            respSoil_mean_measure.append((inputRun.iloc[treatment, 17:37]).mean())
-            respSubstrate_mean_measure.append((inputRun.iloc[treatment, 37:48]).mean())
+            labels.append(results_df["treatment"][1])
 
-    final_results_df = pd.concat(
-        df_list, ignore_index=True
-    )  # add all the rows to the results_df
+        final_results_df = pd.concat(
+            df_list, ignore_index=True
+        )  # add all the rows to the results_df
 
-    try:
-        os.makedirs("./output/data")
-    except FileExistsError:
-        # directory already exists
-        pass
+        try:
+            os.makedirs("./output/data")
+        except FileExistsError:
+            # directory already exists
+            pass
 
-    final_results_df.to_csv(
-        "./output/data/Validation.csv",
-        index=False,
-        float_format="%.5f",
-    )
-
-    if Plotting:
-        drawRespPlot(
-            labels,
-            respSoil_mean_model,
-            respSoil_mean_measure,
-            respSubstrate_mean_model,
-            respSubstrate_mean_measure,
-            "respPlot_Validation.png",
+        final_results_df.to_csv(
+            os.path.join("./output/data", "Validation_" + str(index + 1) + ".csv"),
+            index=False,
+            float_format="%.5f",
         )
 
+        # Save mean respiration in treatments, sets under each other
+        file_path = os.path.join(results_path, "selectedSets_MeanRespiration.csv")
+        file_exists = os.path.isfile(file_path)
+        file_is_empty = file_exists and os.path.getsize(file_path) == 0
+
+        with open(
+            file_path,
+            mode="a",
+            newline="",
+        ) as csvfile:
+            csv_writer = csv.writer(csvfile)
+
+            # Write the header
+            if not file_exists or file_is_empty:
+                csv_writer.writerow(["Set", "Treatment", "respSoil", "respSubstrate"])
+
+            for label, value1, value2 in zip(
+                labels, respSoil_mean_model, respSubstrate_mean_model
+            ):
+                # Write the key and values to the CSV file
+                csv_writer.writerow([index + 1, label, value1, value2])
+
+        ###### Plotting is now inside the for loop over selected sets
+        # Later, we should put the Plotting outside the loop and draw it using mean respirations over sets
+        if Plotting:
+            name = "respPlot_Validation_" + str(index + 1) + ".png"
+            drawRespPlot(
+                labels,
+                respSoil_mean_model,
+                respSoil_mean_measure,
+                respSubstrate_mean_model,
+                respSubstrate_mean_measure,
+                name,
+            )
+
     ######## Calculate RMSE ########################
+    # It's now calculated from the last set, needs to be changed for the mean of everything !!!!!!!!!!!
 
     # Derive respiration from simulated values (modelled in Validation mode)
     obs_days_soil = [
