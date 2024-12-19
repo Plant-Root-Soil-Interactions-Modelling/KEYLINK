@@ -991,6 +991,12 @@ if mode_ == "Validation":
     inputRun = pd.read_csv("Validation_run_input.csv", header=0, skiprows=0)
     numTreatments = len(inputRun)
 
+    # Clear file with mean respirations if it already exists
+    file_path = os.path.join(results_path, "selectedSets_MeanRespiration.csv")
+    if os.path.exists(file_path):
+        with open(file_path, "w") as file:
+            file.write("")  # Clear the contents of the file
+
     # Calibrated Parameters
     with open("./output_Bayesian/BestFitParams.json", "r") as f1:
         calibParam = json.load(
@@ -1070,15 +1076,17 @@ if mode_ == "Validation":
 
             # storing values for respiration plot
             if Plotting:
-                labels.append(results_df["treatment"][1])
-                respSoil_mean_model.append((results_df["respSoil"].mean()) / 0.8 * 24)
-                respSubstrate_mean_model.append(
-                    (results_df["respSubstrate"].mean()) / 0.8 * 24
-                )
                 respSoil_mean_measure.append((inputRun.iloc[treatment, 17:37]).mean())
                 respSubstrate_mean_measure.append(
                     (inputRun.iloc[treatment, 50:61]).mean()
                 )
+
+            # This is now needed for the mean respiration output with all the treatments and sets
+            respSoil_mean_model.append((results_df["respSoil"].mean()) / 0.8 * 24)
+            respSubstrate_mean_model.append(
+                (results_df["respSubstrate"].mean()) / 0.8 * 24
+            )
+            labels.append(results_df["treatment"][1])
 
         final_results_df = pd.concat(
             df_list, ignore_index=True
@@ -1096,6 +1104,28 @@ if mode_ == "Validation":
             float_format="%.5f",
         )
 
+        # Save mean respiration in treatments, sets under each other
+        file_path = os.path.join(results_path, "selectedSets_MeanRespiration.csv")
+        file_exists = os.path.isfile(file_path)
+        file_is_empty = file_exists and os.path.getsize(file_path) == 0
+
+        with open(
+            file_path,
+            mode="a",
+            newline="",
+        ) as csvfile:
+            csv_writer = csv.writer(csvfile)
+
+            # Write the header
+            if not file_exists or file_is_empty:
+                csv_writer.writerow(["Set", "Treatment", "respSoil", "respSubstrate"])
+
+            for label, value1, value2 in zip(
+                labels, respSoil_mean_model, respSubstrate_mean_model
+            ):
+                # Write the key and values to the CSV file
+                csv_writer.writerow([index + 1, label, value1, value2])
+
         ###### Plotting is now inside the for loop over selected sets
         # Later, we should put the Plotting outside the loop and draw it using mean respirations over sets
         if Plotting:
@@ -1110,6 +1140,7 @@ if mode_ == "Validation":
             )
 
     ######## Calculate RMSE ########################
+    # It's now calculated from the last set, needs to be changed for the mean of everything !!!!!!!!!!!
 
     # Derive respiration from simulated values (modelled in Validation mode)
     obs_days_soil = [
