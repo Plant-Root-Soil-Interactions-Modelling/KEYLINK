@@ -42,7 +42,7 @@ modes = Literal[
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Validation"
+mode_ = "Bayesian"
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
@@ -505,7 +505,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=2000,
+        default=10000,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -881,7 +881,7 @@ if mode_ == "Bayesian":
                 )
 
                 if BayesianFunctionsPotprim.check_dataframe_significant_change(
-                    parameters, alpha=0.5, num_identical_results=200
+                    parameters, alpha=0.5, num_identical_results=500
                 ):
                     print("Hurraaayyy!!! converged")
 
@@ -987,7 +987,7 @@ if mode_ == "Bayesian":
 ############## Validation run ###########################
 if mode_ == "Validation":
     # Treatments – needs to be changed for the simulated values
-    inputRun = pd.read_csv("Normal_run_input.csv", header=0, skiprows=0)
+    inputRun = pd.read_csv("Validation_run_input.csv", header=0, skiprows=0)
     numTreatments = len(inputRun)
 
     # Calibrated Parameters
@@ -1079,8 +1079,6 @@ if mode_ == "Validation":
     ######## Calculate RMSE ########################
 
     # Derive respiration from simulated values (modelled in Validation mode)
-    respSoil_sim = {}
-    respSub_sim = {}
     obs_days_soil = [
         0,
         2,
@@ -1117,68 +1115,40 @@ if mode_ == "Validation":
         153,
         160,
     ]  # list of days in which the respiration was measured for substrate; also starts with 0
+    respSoil_sim = []
+    respSub_sim = []
 
     # Iterate over the DataFrame rows
     for index, row in final_results_df.iterrows():
-        treatment = row["treatment"]
-
-        # Append respSoil values
-        if treatment not in respSoil_sim:
-            respSoil_sim[treatment] = (
-                []
-            )  # Create a new list if the treatment is not in the dictionary
         if row["day"] in obs_days_soil:
-            respSoil_sim[treatment].append(row["respSoil"])
+            respSoil_sim.append(row["respSoil"])
 
-        # Append respSubstrate values
-        if treatment not in respSub_sim:
-            respSub_sim[treatment] = (
-                []
-            )  # Create a new list if the treatment is not in the dictionary
         if row["day"] in obs_days_sub:
-            respSub_sim[treatment].append(row["respSubstrate"])
+            respSub_sim.append(row["respSubstrate"])
 
     # Derive respiration from observed values
-    respSoil_obs = {}
-    respSub_obs = {}
+    respSoil_obs = []
+    respSub_obs = []
 
     for index, row in inputRun.iterrows():
-        treatment = row["treatment"]
-
-        if treatment not in respSoil_obs:
-            respSoil_obs[treatment] = []
-
-        if treatment not in respSub_obs:
-            respSub_obs[treatment] = []
-
         for column_name, column_value in row.items():
-            if column_name.startswith("resp") and "error" not in column_name:
-                if "sub" in column_name:
+            if (
+                column_name.startswith("resp")
+                and "sub" not in column_name
+                and "error" not in column_name
+            ):
+                if "obs" in column_name:
                     # Append to respSub_obs
-                    respSub_obs[treatment].append(column_value)
+                    respSub_obs.append(column_value)
                 else:
                     # Append to respSoil_obs
-                    respSoil_obs[treatment].append(column_value)
+                    respSoil_obs.append(column_value)
 
     # Now we will actually calculate the RMSE, yaaay!
-    rmse_soil = {}
-    rmse_sub = {}
+    actual = np.array(respSoil_obs + respSub_obs)
+    predicted = np.array(respSoil_sim + respSub_obs)
 
-    for (key1, value1), (key2, value2) in zip(
-        respSoil_obs.items(), respSoil_sim.items()
-    ):
-        if key1 == key2:  # Ensure the keys match
-            actual = np.array(value1)
-            predicted = np.array(value2)
-
-            rmse_soil[key1] = np.sqrt(((predicted - actual) ** 2).mean())
-
-    for (key1, value1), (key2, value2) in zip(respSub_obs.items(), respSub_sim.items()):
-        if key1 == key2:  # Ensure the keys match
-            actual = np.array(value1)
-            predicted = np.array(value2)
-
-            rmse_sub[key1] = np.sqrt(((predicted - actual) ** 2).mean())
+    rmse = np.sqrt(((predicted - actual) ** 2).mean())
 
     # save as a one csv file
     try:
@@ -1187,15 +1157,128 @@ if mode_ == "Validation":
         # directory already exists
         pass
 
-    with open(os.path.join(sharable_path, "rmse.csv"), mode="w", newline="") as csvfile:
-        csv_writer = csv.writer(csvfile)
+    with open(os.path.join(sharable_path, "rmse.txt"), mode="w") as file:
+        file.write(rmse)
 
-        # Write the header
-        csv_writer.writerow(["Treatment", "respSoil", "respSub"])
+    ################ In case we ever need to calculate RMSE for each treatment separately ######################
+    # # Derive respiration from simulated values (modelled in Validation mode)
+    # respSoil_sim = {}
+    # respSub_sim = {}
+    # obs_days_soil = [
+    #     0,
+    #     2,
+    #     6,
+    #     13,
+    #     21,
+    #     23,
+    #     27,
+    #     34,
+    #     49,
+    #     51,
+    #     55,
+    #     62,
+    #     91,
+    #     93,
+    #     97,
+    #     104,
+    #     147,
+    #     149,
+    #     153,
+    #     160,
+    # ]  # list of days in which the respiration was measured for soil; note that it is 1 smaller than in the input file as in the output file, it starts with 0
+    # obs_days_sub = [
+    #     0,
+    #     2,
+    #     6,
+    #     13,
+    #     49,
+    #     51,
+    #     55,
+    #     62,
+    #     147,
+    #     149,
+    #     153,
+    #     160,
+    # ]  # list of days in which the respiration was measured for substrate; also starts with 0
 
-        # Iterate over the keys in the dictionaries
-        for key in rmse_soil.keys():
-            value1 = rmse_soil[key]
-            value2 = rmse_sub[key]
-            # Write the key and values to the CSV file
-            csv_writer.writerow([key, value1, value2])
+    # # Iterate over the DataFrame rows
+    # for index, row in final_results_df.iterrows():
+    #     treatment = row["treatment"]
+
+    #     # Append respSoil values
+    #     if treatment not in respSoil_sim:
+    #         respSoil_sim[treatment] = (
+    #             []
+    #         )  # Create a new list if the treatment is not in the dictionary
+    #     if row["day"] in obs_days_soil:
+    #         respSoil_sim[treatment].append(row["respSoil"])
+
+    #     # Append respSubstrate values
+    #     if treatment not in respSub_sim:
+    #         respSub_sim[treatment] = (
+    #             []
+    #         )  # Create a new list if the treatment is not in the dictionary
+    #     if row["day"] in obs_days_sub:
+    #         respSub_sim[treatment].append(row["respSubstrate"])
+
+    # # Derive respiration from observed values
+    # respSoil_obs = {}
+    # respSub_obs = {}
+
+    # for index, row in inputRun.iterrows():
+    #     treatment = row["treatment"]
+
+    #     if treatment not in respSoil_obs:
+    #         respSoil_obs[treatment] = []
+
+    #     if treatment not in respSub_obs:
+    #         respSub_obs[treatment] = []
+
+    #     for column_name, column_value in row.items():
+    #         if column_name.startswith("resp") and "error" not in column_name:
+    #             if "sub" in column_name:
+    #                 # Append to respSub_obs
+    #                 respSub_obs[treatment].append(column_value)
+    #             else:
+    #                 # Append to respSoil_obs
+    #                 respSoil_obs[treatment].append(column_value)
+
+    # # Now we will actually calculate the RMSE, yaaay!
+    # rmse_soil = {}
+    # rmse_sub = {}
+
+    # for (key1, value1), (key2, value2) in zip(
+    #     respSoil_obs.items(), respSoil_sim.items()
+    # ):
+    #     if key1 == key2:  # Ensure the keys match
+    #         actual = np.array(value1)
+    #         predicted = np.array(value2)
+
+    #         rmse_soil[key1] = np.sqrt(((predicted - actual) ** 2).mean())
+
+    # for (key1, value1), (key2, value2) in zip(respSub_obs.items(), respSub_sim.items()):
+    #     if key1 == key2:  # Ensure the keys match
+    #         actual = np.array(value1)
+    #         predicted = np.array(value2)
+
+    #         rmse_sub[key1] = np.sqrt(((predicted - actual) ** 2).mean())
+
+    # # save as a one csv file
+    # try:
+    #     os.makedirs("./output_Bayesian")
+    # except FileExistsError:
+    #     # directory already exists
+    #     pass
+
+    # with open(os.path.join(sharable_path, "rmse.csv"), mode="w", newline="") as csvfile:
+    #     csv_writer = csv.writer(csvfile)
+
+    #     # Write the header
+    #     csv_writer.writerow(["Treatment", "respSoil", "respSub"])
+
+    #     # Iterate over the keys in the dictionaries
+    #     for key in rmse_soil.keys():
+    #         value1 = rmse_soil[key]
+    #         value2 = rmse_sub[key]
+    #         # Write the key and values to the CSV file
+    #         csv_writer.writerow([key, value1, value2])
