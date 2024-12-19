@@ -42,7 +42,7 @@ modes = Literal[
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Bayesian"
+mode_ = "Validation"
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
@@ -994,7 +994,7 @@ if mode_ == "Validation":
     with open("./output_Bayesian/BestFitParams.json", "r") as f1:
         calibParam = json.load(
             f1
-        )  # only the parameters that were calibrated, all of them
+        )  # only the parameters that were accepted, all of them
 
     # Select a set of calibrated parameters
     """ 
@@ -1158,7 +1158,7 @@ if mode_ == "Validation":
         pass
 
     with open(os.path.join(sharable_path, "rmse.txt"), mode="w") as file:
-        file.write(rmse)
+        file.write(str(rmse))
 
     ################ In case we ever need to calculate RMSE for each treatment separately ######################
     # # Derive respiration from simulated values (modelled in Validation mode)
