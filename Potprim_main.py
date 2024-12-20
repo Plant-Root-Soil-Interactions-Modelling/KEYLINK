@@ -1047,6 +1047,19 @@ if mode_ == "Bayesian":
 
 ############## Validation run ###########################
 if mode_ == "Validation":
+    # Clear files
+    csv_files = [
+        "selectedLikelihoods.csv",
+        "rmse.csv",
+        "ef.csv",
+    ]
+
+    for file in csv_files:
+        file_path = os.path.join(sharable_path, file)
+        if os.path.exists(file_path):
+            with open(file_path, "w") as file:
+                file.write("")  # Clear the contents of the file
+
     # Input values
     inputRun = pd.read_csv("Validation_run_input.csv", header=0, skiprows=0)
     numTreatments = len(inputRun)
@@ -1082,13 +1095,34 @@ if mode_ == "Validation":
     sample = sampler.random(n=n_samples)
 
     selected_sets = []
+    selected_likelihoods = []
     for i in range(n_samples):
         index = np.random.choice(len(parameter_sets), p=weights)
         selected_sets.append(parameter_sets[index])
+        selected_likelihoods.append(index)
 
     # Save the set of parameters that will be used
     with open(os.path.join(sharable_path, "setParamValidation.json"), "w") as json_file:
         json.dump(selected_sets, json_file, indent=4)
+
+    # Save the likelihoods
+    file_exists = os.path.isfile(os.path.join(sharable_path, "selectedLikelihoods.csv"))
+    file_is_empty = (
+        file_exists
+        and os.path.getsize(os.path.join(sharable_path, "selectedLikelihoods.csv")) == 0
+    )
+    with open(
+        os.path.join(sharable_path, "selectedLikelihoods.csv"), "w", newline=""
+    ) as file:
+        csv_writer = csv.writer(file)
+
+        # Write the header
+        if not file_exists or file_is_empty:
+            csv_writer.writerow(["Set", "Variable"])
+
+        for index, likelihood in enumerate(selected_likelihoods):
+            # Write the key and values to the CSV file
+            csv_writer.writerow([index + 1, likelihood])
 
     ############# That's all for Latin Hypercube ########################
 
