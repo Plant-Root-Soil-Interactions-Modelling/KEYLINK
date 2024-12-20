@@ -21,15 +21,15 @@ def block_print():
 
 
 def calc_sim_likelyhood(measurement, simulation, error):
-    if measurement == 0:
+    if pd.isna(measurement):# if there is missing measured value
         sim_likelihood = 0
 
     else:
-        if error == 0:  # assumption for missing error values
-            error = measurement / 5
+        if pd.isna(error):  # assumption for missing error values
+            error = measurement / 5 #estimate error value by dividing by five
         sim_likelihood = -0.5 * ((measurement - simulation) / error) ** 2 - np.log(
             error
-        )
+        ) #calculates loglikelihood without a constant term − 0.5log(2π). This term is often omitted (when maximizing likelihood) 
 
     return sim_likelihood
 
