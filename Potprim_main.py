@@ -37,13 +37,11 @@ except FileExistsError:
 
 ############## Modes #################################
 # set allowed values for mode
-modes = Literal[
-    "Normal", "Sensitivity", "Bayesian", "Jilkova2022", "Validation", "Histogram"
-]
+modes = Literal["Normal", "Sensitivity", "Bayesian", "Jilkova2022", "Validation"]
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Bayesian"
+mode_ = "Validation"
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
@@ -111,6 +109,68 @@ def drawRespPlot(
         plt.savefig(os.path.join("./output/figures/", name))
 
     plt.close()
+
+
+############## RMSE ##################################
+def calculateRMSE(actual, predicted, variable, filepath):
+    actual = np.array(actual)
+    predicted = np.array(predicted)
+
+    rmse = np.sqrt(((predicted - actual) ** 2).mean())
+
+    # save as a one csv file
+    try:
+        os.makedirs(filepath)
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    file_exists = os.path.isfile(os.path.join(filepath, "rmse.csv"))
+    file_is_empty = (
+        file_exists and os.path.getsize(os.path.join(filepath, "rmse.csv")) == 0
+    )
+
+    with open(os.path.join(filepath, "rmse.csv"), newline="", mode="a") as file:
+        csv_writer = csv.writer(file)
+
+        # Write the header
+        if not file_exists or file_is_empty:
+            csv_writer.writerow(["Variable", "RMSE"])
+
+        # Write the key and values to the CSV file
+        csv_writer.writerow([variable, rmse])
+
+
+############## EF (Nash-Sutcliffe Efficiency) ########
+def calculateEF(actual, predicted, variable, filepath):
+    actual = np.array(actual)
+    predicted = np.array(predicted)
+
+    ef = 1 - (
+        np.sum((actual - predicted) ** 2) / np.sum((actual - np.mean(actual)) ** 2)
+    )
+
+    # save as a one csv file
+    try:
+        os.makedirs(filepath)
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    file_exists = os.path.isfile(os.path.join(filepath, "ef.csv"))
+    file_is_empty = (
+        file_exists and os.path.getsize(os.path.join(filepath, "ef.csv")) == 0
+    )
+
+    with open(os.path.join(filepath, "ef.csv"), newline="", mode="a") as file:
+        csv_writer = csv.writer(file)
+
+        # Write the header
+        if not file_exists or file_is_empty:
+            csv_writer.writerow(["Variable", "EF"])
+
+        # Write the key and values to the CSV file
+        csv_writer.writerow([variable, ef])
 
 
 ############## Read data #############################
@@ -601,7 +661,7 @@ if mode_ == "Bayesian":
     """
     actual start of calibration
     """
-    
+
     """
     1) calculate the variance of the parameter space
     """
@@ -649,25 +709,28 @@ if mode_ == "Bayesian":
                 data_measured_days[d] - 1, data_measured_names[d]
             ]
 
-
         # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
 
         # if treatment == 3:
         #     print("line 447 safety break ")
         #     break  # safety for now
-        
+
         """
         4) calculate the likelihood of each parameter set for each treatment and store in sim likelihood from the differences between measured and simulated and error
         """
-        for e in range(len(data_measured_colnames)): #for each measured variable calculate loglikelihood
+        for e in range(
+            len(data_measured_colnames)
+        ):  # for each measured variable calculate loglikelihood
 
             likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
                 data_Simulated[treatment][data_measured_colnames[e]],
                 data_measured.iat[treatment, e],
                 data_measured_errors.iat[treatment, e],
             )
-            data_Simulated[treatment]["sim likelihood"] += likelyhood #and add it up for all measured variables for the given treatment
-            
+            data_Simulated[treatment][
+                "sim likelihood"
+            ] += likelyhood  # and add it up for all measured variables for the given treatment
+
             print(
                 "treatment",
                 treatment,
@@ -693,7 +756,7 @@ if mode_ == "Bayesian":
     """
     5) calculate the likelihood of the entire run over all treatments in log_likelihood_sim0
     """
-    #first add up likelihoods across all treatments
+    # first add up likelihoods across all treatments
     likelihood_simulated = 0
     for treatment in range(numTreatments):  # add up likelihood across treatment
         likelihood_simulated += data_Simulated[treatment]["sim likelihood"]
@@ -701,7 +764,9 @@ if mode_ == "Bayesian":
         data_Simulated[treatment]["sim likelihood"] = 0
 
     # then use this sum to calculate average likelihood of this parameter set over all treatments and save in log_likelihood_sim0
-    log_likelihood_sim0 = likelihood_simulated / len(data_measured) #divide by number of treatments
+    log_likelihood_sim0 = likelihood_simulated / len(
+        data_measured
+    )  # divide by number of treatments
     logLseries.append(log_likelihood_sim0)
     """
     6) save best fit, "BestFitParam" is the parameter set giving the highest likelihood (best fit = maximum probability)
@@ -802,7 +867,6 @@ if mode_ == "Bayesian":
                 likelihood_simulated += data_Simulated[treatment]["sim likelihood"]
                 # empty likelihood for next parameter set tries
                 data_Simulated[treatment]["sim likelihood"] = 0
-               
 
             # log_likelihood_sim1 = sum(DiffMeasureSimulated) / len(data_Simulated)
             # divide by number of treatments to obtain average
@@ -1013,7 +1077,7 @@ if mode_ == "Validation":
     weights = [likelihood / total_likelihood for likelihood in likelihoods]
 
     # Actual Latin Hypercube
-    n_samples = 10  # Adjust based on your needs
+    n_samples = 3  # Adjust based on your needs
     sampler = qmc.LatinHypercube(d=len(parameter_sets))
     sample = sampler.random(n=n_samples)
 
@@ -1205,20 +1269,12 @@ if mode_ == "Validation":
                     respSoil_obs.append(column_value)
 
     # Now we will actually calculate the RMSE, yaaay!
-    actual = np.array(respSoil_obs + respSub_obs)
-    predicted = np.array(respSoil_sim + respSub_obs)
+    calculateRMSE(respSoil_obs, respSoil_sim, "respSoil", sharable_path)
+    calculateRMSE(respSub_obs, respSub_sim, "respSubstrate", sharable_path)
 
-    rmse = np.sqrt(((predicted - actual) ** 2).mean())
-
-    # save as a one csv file
-    try:
-        os.makedirs("./output_Bayesian")
-    except FileExistsError:
-        # directory already exists
-        pass
-
-    with open(os.path.join(sharable_path, "rmse.txt"), mode="w") as file:
-        file.write(str(rmse))
+    ######## Calculate EF (Nash-Sutcliffe Efficiency) ########################
+    calculateEF(respSoil_obs, respSoil_sim, "respSoil", sharable_path)
+    calculateEF(respSub_obs, respSub_sim, "respSubstrate", sharable_path)
 
     ################ In case we ever need to calculate RMSE for each treatment separately ######################
     # # Derive respiration from simulated values (modelled in Validation mode)
