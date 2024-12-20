@@ -43,7 +43,7 @@ modes = Literal[
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Validation"
+mode_ = "Bayesian"
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
@@ -599,21 +599,26 @@ if mode_ == "Bayesian":
     ]
 
     """
-     actual start of calibration
+    actual start of calibration
     """
-
-    # 1) calculate the variance of the parameter space
+    
+    """
+    1) calculate the variance of the parameter space
+    """
     # variance of the parameter space, is needed to define the step size for each parameter
     VarianceParameterSpace = np.diag(((0.005 * (MaximumOption - MinimalOption)) ** 2))
 
-    # 2) calculate the likelihood of the parameters chosen (for a flat distribution this will always be constant or 0)
+    """2) calculate the likelihood of the parameters chosen (for a flat distribution this will always be constant or 0)
+    """
     # pdf=probability density function, the likelihood of the parameter set
     loglikelihood_param = np.sum(
         np.log(
             stats.uniform.pdf(CalibratedParametersValues, MinimalOption, MaximumOption)
         )
     )
+    """
     # 3) Simulated Data in a similar frame as the measured values, 1 run is over all treatments
+    """
     treatmentVar = ()
     results_df = pd.DataFrame()
 
@@ -632,11 +637,8 @@ if mode_ == "Bayesian":
         # )
 
         results_df = run_model(
-            AllParam, treatmentVar, mode_="Bayesian", Plotting=Plotting, numDays=161
+            AllParam, treatmentVar, mode_="Bayesian", Plotting=False, numDays=161
         )
-        # df_list.append(
-        #     temp_df_list
-        # )  # append doesn't work for dataframes, so the lists have to be appended to later use concat
 
         # we need to couple the output of the right day to the measured output
         # this gets the whole list of variables uploaded as input measured data
@@ -647,27 +649,25 @@ if mode_ == "Bayesian":
                 data_measured_days[d] - 1, data_measured_names[d]
             ]
 
-            # old version
-            # data_Simulated[treatment]["resp1"] = results_df.at[0,'resp']
-            # data_Simulated[treatment]["resp_sub1"] = results_df.at[0, 'resp_sub']
-        # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
 
-        # print("datasim resp1 treatment 1", data_Simulated[treatment]["resp1"])
-        # print("datameasured", data_measured["resp1"][treatment])
+        # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
 
         # if treatment == 3:
         #     print("line 447 safety break ")
         #     break  # safety for now
-
-        for e in range(len(data_measured_colnames)):
+        
+        """
+        4) calculate the likelihood of each parameter set for each treatment and store in sim likelihood from the differences between measured and simulated and error
+        """
+        for e in range(len(data_measured_colnames)): #for each measured variable calculate loglikelihood
 
             likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
                 data_Simulated[treatment][data_measured_colnames[e]],
                 data_measured.iat[treatment, e],
                 data_measured_errors.iat[treatment, e],
             )
-            data_Simulated[treatment]["sim likelihood"] += likelyhood
-
+            data_Simulated[treatment]["sim likelihood"] += likelyhood #and add it up for all measured variables for the given treatment
+            
             print(
                 "treatment",
                 treatment,
@@ -690,27 +690,22 @@ if mode_ == "Bayesian":
             #     break
             # sys.exit('safety stop to run only for first 2 treatments')
 
-        # old version only for one variable resp1
-        # likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
-        #     data_Simulated[treatment]["resp1"],
-        #     data_measured["resp1"][treatment],
-        #     data_measured_errors["resp1_error"][treatment],
-        # )
-        # data_Simulated[treatment]["sim likelihood"] += likelyhood
-
-    # 4) calculate the likelihood of each run for each treatment from the differences between measured and simulated and error
-    # create empty list(logLi) and store all the differences between measured and simulated per day
+    """
+    5) calculate the likelihood of the entire run over all treatments in log_likelihood_sim0
+    """
+    #first add up likelihoods across all treatments
     likelihood_simulated = 0
     for treatment in range(numTreatments):  # add up likelihood across treatment
         likelihood_simulated += data_Simulated[treatment]["sim likelihood"]
         # and reset it to zero for the following parameter set trials
         data_Simulated[treatment]["sim likelihood"] = 0
 
-    # 5) calculate average total likelihood of this parameter set over all treatments (Log0)
-    log_likelihood_sim0 = likelihood_simulated / len(data_measured)
+    # then use this sum to calculate average likelihood of this parameter set over all treatments and save in log_likelihood_sim0
+    log_likelihood_sim0 = likelihood_simulated / len(data_measured) #divide by number of treatments
     logLseries.append(log_likelihood_sim0)
-
-    #  6) save best fit, "BestFitParam" is the parameter set giving the highest likelihood (best fit = maximum probability)
+    """
+    6) save best fit, "BestFitParam" is the parameter set giving the highest likelihood (best fit = maximum probability)
+    """
     BestFitParam = CalibratedParametersValues  # the initial values of parameters are my best try at first step
     # psetMAP is max fit point, save parameter and likelihood of best run
     log_likelihood_best_fit_param = loglikelihood_param + log_likelihood_sim0
@@ -774,9 +769,9 @@ if mode_ == "Bayesian":
 
                 # 10) calculate the likelihood of each treatment run for given parameter set
                 # we need to add for the treatment the likelyhood of all measurements added
-                if treatment == 2:
-                    print("line 552 safety break ")
-                    break  # safety for now
+                # if treatment == 2:
+                #     print("line 552 safety break ")
+                #     break  # safety for now
 
                 for e in range(len(data_measured_colnames)):
 
@@ -807,6 +802,7 @@ if mode_ == "Bayesian":
                 likelihood_simulated += data_Simulated[treatment]["sim likelihood"]
                 # empty likelihood for next parameter set tries
                 data_Simulated[treatment]["sim likelihood"] = 0
+               
 
             # log_likelihood_sim1 = sum(DiffMeasureSimulated) / len(data_Simulated)
             # divide by number of treatments to obtain average

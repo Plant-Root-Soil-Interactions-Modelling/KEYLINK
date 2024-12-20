@@ -20,37 +20,40 @@ def block_print():
     sys.stdout = open(os.devnull, "w")
 
 
-def calc_sim_likelyhood(measurement, simulation, error):
-    if pd.isna(measurement):# if there is missing measured value
-        sim_likelihood = 0
+def calc_sim_likelyhood(measurement, simulation, error):#calculates loglikelihood 
+    if pd.isna(measurement):# if there is missing measured value, there needs to be a way implemented on how to standardiye the likelihood, because assigning loglikelihood zero will influence the results
+        raise ValueError("Measurement used in calibration cannot be NA.") #safety break if this ever happens
+    
+    if error == 0: #if the error is zero (because of 100% certainty) 
+        error =  1e-6 #assign some very small error, this will influence the result in the way that the loglikelihood will become positive but this should be fine
+       
+    if pd.isna(error):  # if only error is missing
+        error = abs(measurement / 5) #estimate error value by dividing by five
+        
+    sim_loglikelihood = -0.5 * ((measurement - simulation) / error) ** 2 - np.log(
+        error
+    ) #calculates loglikelihood (without a constant term − 0.5log(2π_ This term is often omitted (when maximizing likelihood) 
 
-    else:
-        if pd.isna(error):  # assumption for missing error values
-            error = measurement / 5 #estimate error value by dividing by five
-        sim_likelihood = -0.5 * ((measurement - simulation) / error) ** 2 - np.log(
-            error
-        ) #calculates loglikelihood without a constant term − 0.5log(2π). This term is often omitted (when maximizing likelihood) 
-
-    return sim_likelihood
-
-
-def read_measured_data(num_treatments, inputData, measurementdays):
-
-    data_measured = [{} for treatment in range(num_treatments)]
-    RespList = inputData["resp"].to_list()
-    for treatment in range(num_treatments):
-        # read the measured values of yield from json, assume stndard deviation on yield is 30%
-        for day in list(measurementdays):
-            data_measured[treatment]["Resp"][day] = inputData["Resp"][day]
-            data_measured[treatment]["Resp_sub"][day] = inputData["Resp_sub"][day]
-
-    return data_measured  # TODO dataframe 'outbayesian' for all  simulated data + likelyhood?
+    return sim_loglikelihood
 
 
-def read_treatmenInput(Inputlist_df, treatment):
-    run_input = Inputlist_df["Treatments"][treatment]
+# def read_measured_data(num_treatments, inputData, measurementdays):
 
-    return run_input
+#     data_measured = [{} for treatment in range(num_treatments)]
+#     RespList = inputData["resp"].to_list()
+#     for treatment in range(num_treatments):
+#         # read the measured values of yield from json, assume stndard deviation on yield is 30%
+#         for day in list(measurementdays):
+#             data_measured[treatment]["Resp"][day] = inputData["Resp"][day]
+#             data_measured[treatment]["Resp_sub"][day] = inputData["Resp_sub"][day]
+
+#     return data_measured  # TODO dataframe 'outbayesian' for all  simulated data + likelyhood?
+
+
+# def read_treatmenInput(Inputlist_df, treatment):
+#     run_input = Inputlist_df["Treatments"][treatment]
+
+#     return run_input
 
 
 def read_parameter_data(inputCalibParamfile):
