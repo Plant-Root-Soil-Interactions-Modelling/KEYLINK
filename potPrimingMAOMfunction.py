@@ -22,7 +22,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
     # the ones we want to calibrate
     # bact_DOM_rel = 0.2 #proportion of bacteria that have access to feeding on DOM (e.g. that are present in rhizophere)
     # DOM_EC = 2 # DOM energetic quality = energy stored per one gram of DOM [J/g] was 5
-    # kpriming=0.001 #decay rate of negative exponential decay curve of decay price, 
+    # kpriming=0.001 #decay rate of negative exponential decay curve of decay price,
     # KS=5  # C content required to get half the maximal growth of bacteria when decaying DOM [gC/m3]
     # KSfungi= 200 # C content required to get half the maximal growth of fungi when decaying SOM [gC/m3] was 20000
     # KSbact=380 # C content required to get half the maximal growth of bacteria when decaying SOM [gC/m3]

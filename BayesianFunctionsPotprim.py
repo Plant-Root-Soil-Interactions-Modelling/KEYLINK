@@ -20,19 +20,23 @@ def block_print():
     sys.stdout = open(os.devnull, "w")
 
 
-def calc_sim_likelyhood(measurement, simulation, error):#calculates loglikelihood 
-    if pd.isna(measurement):# if there is missing measured value, there needs to be a way implemented on how to standardiye the likelihood, because assigning loglikelihood zero will influence the results
-        raise ValueError("Measurement used in calibration cannot be NA.") #safety break if this ever happens
-    
-    if error == 0: #if the error is zero (because of 100% certainty) 
-        error =  1e-6 #assign some very small error, this will influence the result in the way that the loglikelihood will become positive but this should be fine
-       
+def calc_sim_likelyhood(measurement, simulation, error):  # calculates loglikelihood
+    if pd.isna(
+        measurement
+    ):  # if there is missing measured value, there needs to be a way implemented on how to standardiye the likelihood, because assigning loglikelihood zero will influence the results
+        raise ValueError(
+            "Measurement used in calibration cannot be NA."
+        )  # safety break if this ever happens
+
+    if error == 0:  # if the error is zero (because of 100% certainty)
+        error = 1e-6  # assign some very small error, this will influence the result in the way that the loglikelihood will become positive but this should be fine
+
     if pd.isna(error):  # if only error is missing
-        error = abs(measurement / 5) #estimate error value by dividing by five
-        
+        error = abs(measurement / 5)  # estimate error value by dividing by five
+
     sim_loglikelihood = -0.5 * ((measurement - simulation) / error) ** 2 - np.log(
         error
-    ) #calculates loglikelihood (without a constant term − 0.5log(2π_ This term is often omitted (when maximizing likelihood) 
+    )  # calculates loglikelihood (without a constant term − 0.5log(2π_ This term is often omitted (when maximizing likelihood)
 
     return sim_loglikelihood
 
