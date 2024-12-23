@@ -1,0 +1,9 @@
+I wanted to try how good the model is without Bayesian.
+
+EF: 
+respSoil	    -2.027781094
+respSubstrate	-0.203796295
+
+RMSE:
+respSoil	    0.14886082
+respSubstrate	0.009546759
