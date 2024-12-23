@@ -26,11 +26,11 @@ import copy
 
 
 the_current_path = os.path.abspath(os.getcwd())
-results_path = ".\output"
-sharable_path = ".\output_Bayesian"
+results_path = "./output"
+sharable_path = "./output_Bayesian"
 
 try:
-    os.makedirs(".\output_Bayesian")
+    os.makedirs("./output_Bayesian")
 except FileExistsError:
     # directory already exists
     pass
@@ -463,13 +463,13 @@ if mode_ == "Sensitivity":
         pass
 
     final_results_df.to_csv(
-        ".\output\data\Sensitivity.csv",
+        "./output/data/Sensitivity.csv",
         index=False,
         float_format="%.5f",
     )
 
     run_info_df.to_csv(
-        ".\output\data\Sensitivity_runs.csv",
+        "./output/data/Sensitivity_runs.csv",
         index=False,
         float_format="%.5f",
     )

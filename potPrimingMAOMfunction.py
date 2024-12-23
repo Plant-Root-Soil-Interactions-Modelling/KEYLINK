@@ -843,7 +843,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
                 loc="upper left", bbox_to_anchor=(0, -0.15), shadow=True
             )  # loc='bottom right',
 
-            plt.savefig(".\output\\figures\Dailyplot1_" + treatment + ".png")
+            plt.savefig("./output/figures/Dailyplot1_" + treatment + ".png")
             plt.close()
 
         # plot substrate-derived proportions
@@ -897,7 +897,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
             )  # loc='bottom right',
 
             plt.savefig(
-                ".\output\\figures\Dailyplot2_" + treatment + ".png",
+                "./output/figures/Dailyplot2_" + treatment + ".png",
                 bbox_inches="tight",
             )
             plt.close()
