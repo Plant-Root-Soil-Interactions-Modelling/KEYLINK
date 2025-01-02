@@ -1,0 +1,14 @@
+tries: 100000
+number identical: 500
+converged: no
+time: several days (run on Raspberry Pi)
+
+weird thing is, all the parameter sets were accepted
+
+EF: 
+respSoil	    
+respSubstrate	
+
+RMSE:
+respSoil	   
+respSubstrate	
