@@ -6,9 +6,9 @@ time: several days (run on Raspberry Pi)
 weird thing is, all the parameter sets were accepted
 
 EF: 
-respSoil	    
-respSubstrate	
+respSoil	    -2.115712841
+respSubstrate	-0.236844302
 
 RMSE:
-respSoil	   
-respSubstrate	
+respSoil	    0.151006932
+respSubstrate   0.009676916

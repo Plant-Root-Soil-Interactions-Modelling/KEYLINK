@@ -10,7 +10,7 @@ import time
 
 import numpy as np
 import pandas as pd
-from numpy import random as ra
+from numpy import random as raf
 from scipy import stats
 from scipy.stats import qmc
 import BayesianFunctionsPotprim
@@ -617,6 +617,7 @@ if mode_ == "Bayesian":
 
     data_measured = inputBayesianRun.iloc[:, 17:49]
     data_measured_errors = inputBayesianRun.iloc[:, 49:81]
+
     # data_measured_errors.columns
     # inputBayesianRun({"sample"})
     # obtain nonnumeric and numeric part of variable name separately
@@ -749,6 +750,9 @@ if mode_ == "Bayesian":
                 "overall likelihood",
                 data_Simulated[treatment]["sim likelihood"],
             )
+
+            # if treatment == 3:
+            #     sys.exit()
             # if treatment == 3:
             #     break
             # sys.exit('safety stop to run only for first 2 treatments')
@@ -882,6 +886,10 @@ if mode_ == "Bayesian":
             if it is worse it is sometimes accepted depending on the random
             """
             print("log_likelihood_sim1", log_likelihood_sim1)
+            print("log_likelihood_sim0", log_likelihood_sim0)
+
+            # if treatment == 2:
+            #     sys.exit()
             alpha = (
                 log_likelihood_sim1 / log_likelihood_sim0
             )  # if new is better this is bigger than 1
@@ -1076,30 +1084,39 @@ if mode_ == "Validation":
             f1
         )  # only the parameters that were accepted, all of them
 
-    ##### Latin Hypercube ############
-    # Extract likelihoods (keys) and parameters sets (values) from uploaded json
-    likelihoods = []
-    parameter_sets = []
-
-    for likelihood, parameters in calibParam.items():
-        likelihoods.append(float(likelihood))
-        parameter_sets.append(parameters)
-
-    # Calculate weights of the likelihoods
-    total_likelihood = sum(likelihoods)
-    weights = [likelihood / total_likelihood for likelihood in likelihoods]
-
-    # Actual Latin Hypercube
-    n_samples = 3  # Adjust based on your needs
-    sampler = qmc.LatinHypercube(d=len(parameter_sets))
-    sample = sampler.random(n=n_samples)
-
+    # Select parameter sets
     selected_sets = []
     selected_likelihoods = []
-    for i in range(n_samples):
-        index = np.random.choice(len(parameter_sets), p=weights)
-        selected_sets.append(parameter_sets[index])
-        selected_likelihoods.append(index)
+
+    ##### Latin Hypercube ############
+    # # Extract likelihoods (keys) and parameters sets (values) from uploaded json
+    # likelihoods = []
+    # parameter_sets = []
+
+    # for likelihood, parameters in calibParam.items():
+    #     likelihoods.append(float(likelihood))
+    #     parameter_sets.append(parameters)
+
+    # # Calculate weights of the likelihoods
+    # total_likelihood = sum(likelihoods)
+    # weights = [likelihood / total_likelihood for likelihood in likelihoods]
+
+    # # Actual Latin Hypercube
+    # n_samples = 3  # Adjust based on your needs
+    # sampler = qmc.LatinHypercube(d=len(parameter_sets))
+    # sample = sampler.random(n=n_samples)
+
+    # for i in range(n_samples):
+    #     index = np.random.choice(len(parameter_sets), p=weights)
+    #     selected_sets.append(parameter_sets[index])
+    #     selected_likelihoods.append(index)
+
+    # Select 1 set of parameters with the highest likelihood
+    # calibParam = {key: value for key, value in calibParam.items() if float(key) <= -1000}
+    calibParam = {k: calibParam[k] for k in sorted(calibParam)}
+    likelihood = list(calibParam.keys())[-1]
+    selected_sets.append(calibParam[likelihood])
+    selected_likelihoods.append(likelihood)
 
     # Save the set of parameters that will be used
     with open(os.path.join(sharable_path, "setParamValidation.json"), "w") as json_file:
@@ -1118,18 +1135,11 @@ if mode_ == "Validation":
 
         # Write the header
         if not file_exists or file_is_empty:
-            csv_writer.writerow(["Set", "Variable"])
+            csv_writer.writerow(["Set", "Likelihood"])
 
         for index, likelihood in enumerate(selected_likelihoods):
             # Write the key and values to the CSV file
             csv_writer.writerow([index + 1, likelihood])
-
-    ############# That's all for Latin Hypercube ########################
-
-    # # Select 1 set of parameters with the highest likelihood
-    # calibParam = {k: calibParam[k] for k in sorted(calibParam)}
-    # likelihood = list(calibParam.keys())[-1]
-    # setCalibParam = calibParam[likelihood]
 
     # Merge calibrated parameters with the fixed ones – this should happen inside the for loop in the future
     with open("fixedParameters.json", "r") as f2:
