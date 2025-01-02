@@ -10,7 +10,7 @@ import time
 
 import numpy as np
 import pandas as pd
-from numpy import random as raf
+from numpy import random as ra
 from scipy import stats
 from scipy.stats import qmc
 import BayesianFunctionsPotprim
@@ -544,8 +544,9 @@ if mode_ == "Bayesian":
             with open(file_path, "w") as file:
                 file.write("")  # Clear the contents of the file
 
-    with open(os.path.join(results_path, "BestFitParams.json"), "w") as file:
-        file.write("")
+    if os.path.exists(os.path.join(sharable_path, "BestFitParams.json")):
+        with open(os.path.join(sharable_path, "BestFitParams.json"), "w") as file:
+            file.write("")
 
     # Initialize parser
     parser = argparse.ArgumentParser(description="Run Bayesian optimization")

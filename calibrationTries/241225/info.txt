@@ -1,4 +1,4 @@
-tries: 100000
+tries: 100,000
 number identical: 500
 converged: no
 time: several days (run on Raspberry Pi)
