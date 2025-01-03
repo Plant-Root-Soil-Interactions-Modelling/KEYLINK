@@ -1113,9 +1113,11 @@ if mode_ == "Validation":
     #     selected_likelihoods.append(index)
 
     # Select 1 set of parameters with the highest likelihood
-    # calibParam = {key: value for key, value in calibParam.items() if float(key) <= -1000}
+    # calibParam = {
+    #     key: value for key, value in calibParam.items() if float(key) <= -1000
+    # }
     calibParam = {k: calibParam[k] for k in sorted(calibParam)}
-    likelihood = list(calibParam.keys())[-1]
+    likelihood = list(calibParam.keys())[1]
     selected_sets.append(calibParam[likelihood])
     selected_likelihoods.append(likelihood)
 

@@ -1,0 +1,11 @@
+The previous calibration (241225) was by mistake run with the lowest likelihood (-17 millions), so this one is run with the highest likelihood (-16 millions) on the same calibration run (the 100,000 tries over Christmas).
+
+And the result is even worse!
+
+EF: 
+respSoil	    -948.1687664
+respSubstrate	-0.199768559
+
+RMSE:
+respSoil	    2.635663061
+respSubstrate   0.009530775
