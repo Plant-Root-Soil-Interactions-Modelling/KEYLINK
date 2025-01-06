@@ -16,6 +16,7 @@ from scipy.stats import qmc
 import BayesianFunctionsPotprim
 import sys
 import csv
+from datetime import datetime
 
 # needed by all modes / normal, sensitivity and bayesian mode
 from potPrimingMAOMfunction import *
@@ -23,17 +24,6 @@ from typing import Literal, get_args
 
 # needed for sensitivity and bayesian
 import copy
-
-
-the_current_path = os.path.abspath(os.getcwd())
-results_path = "./output"
-sharable_path = "./output_Bayesian"
-
-try:
-    os.makedirs("./output_Bayesian")
-except FileExistsError:
-    # directory already exists
-    pass
 
 ############## Modes #################################
 # set allowed values for mode
@@ -52,6 +42,40 @@ Plotting = True
 if mode_ == "Sensitivity" or mode_ == "Bayesian":
     Plotting = False
 
+########### Folders setup ############################
+the_current_path = os.path.abspath(os.getcwd())
+results_path = "./output"
+sharable_path = "./output_Bayesian"
+
+try:
+    os.makedirs("./output_Bayesian")
+except FileExistsError:
+    # directory already exists
+    pass
+
+
+# setup the logs folder
+def create_log_folder(mode_):
+    logs_path = "./logs"
+    date_folder = datetime.now().strftime("%y%m%d")
+
+    # Base folder name
+    base_folder_name = f"{date_folder}_{mode_}"
+    logs_path2 = os.path.join(logs_path, base_folder_name)
+    counter = 1
+
+    try:
+        os.makedirs(logs_path2)
+        return logs_path2
+    except FileExistsError:
+        # Directory already exists, so we need to find a new name
+        while os.path.exists(logs_path2):
+            # Change the naming format to "xy_2" instead of "xy_1_2"
+            logs_path2 = os.path.join(logs_path, f"{base_folder_name}_{counter}")
+            counter += 1
+        os.makedirs(logs_path2)
+        return logs_path2
+
 
 ############## Creating the Respiration Plot #########
 def drawRespPlot(
@@ -61,6 +85,7 @@ def drawRespPlot(
     respSubstrate_mean_model,
     respSubstrate_mean_measure,
     name,
+    logs_path2,
 ):
     # create plot
     plt.figure(figsize=(10, 12))
@@ -98,12 +123,12 @@ def drawRespPlot(
 
     if "Validation" in name:
         try:
-            os.makedirs("./output_Bayesian/figures")
+            os.makedirs(os.path.join(logs_path2))
         except FileExistsError:
             # directory already exists
             pass
 
-        plt.savefig(os.path.join("./output_Bayesian/figures/", name))
+        plt.savefig(os.path.join(os.path.join(logs_path2, name)))
 
     else:
         plt.savefig(os.path.join("./output/figures/", name))
@@ -242,6 +267,7 @@ if mode_ == "Normal":
             respSubstrate_mean_model,
             respSubstrate_mean_measure,
             "respPlot_Normal.png",
+            None,
         )
 
 ############## Jilkova2022 run ###########################
@@ -308,6 +334,7 @@ if mode_ == "Jilkova2022":
             respSubstrate_mean_model,
             respSubstrate_mean_measure,
             "respPlot_Jilkova2022.png",
+            None,
         )
 
 ############## Sensitivity ###########################
@@ -529,6 +556,8 @@ if mode_ == "Bayesian":
     # if __name__ != '__main__':
     #     exit(0)
 
+    converged = False
+
     # clear the csv files so it won't append after the existing values from the run before
     csv_files = [
         "calibratedParameters.csv",
@@ -547,6 +576,9 @@ if mode_ == "Bayesian":
     if os.path.exists(os.path.join(sharable_path, "BestFitParams.json")):
         with open(os.path.join(sharable_path, "BestFitParams.json"), "w") as file:
             file.write("")
+
+    # Set a folder for logs
+    logs_path2 = create_log_folder(mode_)
 
     # Initialize parser
     parser = argparse.ArgumentParser(description="Run Bayesian optimization")
@@ -567,7 +599,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=100000,
+        default=50,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -601,6 +633,15 @@ if mode_ == "Bayesian":
         MinimalOption,
         keys,
     ) = BayesianFunctionsPotprim.read_parameter_data(inputCalibrationParamfile)
+
+    # Save initial parameters to logs
+    with open("datalistCalibrationParam.json", "r") as inputCalibrationParamfile:
+        data = json.load(inputCalibrationParamfile)
+
+    with open(
+        os.path.join(logs_path2, "datalistCalibrationParam.json"), "w"
+    ) as output_file:
+        json.dump(data, output_file, indent=4)
 
     # put the initial parametervalues in the correct list so overwrite some parameters
     # you can start your 'walk' from another point then the old parameter value
@@ -951,9 +992,11 @@ if mode_ == "Bayesian":
                 )
 
                 if BayesianFunctionsPotprim.check_dataframe_significant_change(
-                    parameters, alpha=0.5, num_identical_results=500
+                    parameters, alpha=0.5, num_identical_results=50
                 ):
                     print("Hurraaayyy!!! converged")
+
+                    converged = True
 
                     break
 
@@ -976,17 +1019,35 @@ if mode_ == "Bayesian":
 
     # bayesian_plots(df=df, path=file_name, columns=5, save_to_file=True)
 
-    # save all accepted parameters set as json
+    # save all accepted parameters set as json >> this is used for Validation
     BayesianFunctionsPotprim.save_json(
         "calibratedParameters.csv",
         "logLikelihood.csv",
         keys,
         sharable_path,
+        sharable_path,
         "BestFitParams",
     )
 
+    # save all accepted parameter sets to logs folder
+    BayesianFunctionsPotprim.save_json(
+        "calibratedParameters.csv",
+        "logLikelihood.csv",
+        keys,
+        sharable_path,
+        logs_path2,
+        "BestFitParams",
+    )
+
+    # save metadata of the calibration
+    content = f"tries = {NumberOfTries}\nconverged = {converged}\ntime = {time.strftime('%H:%M:%S', time.gmtime(t2 - t1))}"
+
+    with open(os.path.join(logs_path2, "info.txt"), "w") as output_file:
+        output_file.write(content)
+
     ################## Histograms of accepted parameters
     # if mode_ == "Histogram":
+
     # Load the CSV file into a DataFrame
     df = pd.read_csv("./output_Bayesian/calibratedParameters.csv", header=None)
 
@@ -1043,14 +1104,7 @@ if mode_ == "Bayesian":
 
         plt.tight_layout()
 
-        try:
-            os.makedirs("./output_Bayesian/figures")
-        except FileExistsError:
-            # directory already exists
-            pass
-        plt.savefig(
-            os.path.join("./output_Bayesian/figures/", "hist_" + column + ".png")
-        )
+        plt.savefig(os.path.join(logs_path2, "hist_" + column + ".png"))
         plt.close()
 
 
@@ -1069,6 +1123,8 @@ if mode_ == "Validation":
             with open(file_path, "w") as file:
                 file.write("")  # Clear the contents of the file
 
+    logs_path2 = create_log_folder(mode_)
+
     # Input values
     inputRun = pd.read_csv("Validation_run_input.csv", header=0, skiprows=0)
     numTreatments = len(inputRun)
@@ -1084,6 +1140,10 @@ if mode_ == "Validation":
         calibParam = json.load(
             f1
         )  # only the parameters that were accepted, all of them
+
+    # save input BestFitParams to logs
+    with open(os.path.join(logs_path2, "BestFitParams_input.json"), "w") as output_file:
+        json.dump(calibParam, output_file, indent=4)
 
     # Select parameter sets
     selected_sets = []
@@ -1122,17 +1182,17 @@ if mode_ == "Validation":
     selected_likelihoods.append(likelihood)
 
     # Save the set of parameters that will be used
-    with open(os.path.join(sharable_path, "setParamValidation.json"), "w") as json_file:
+    with open(os.path.join(logs_path2, "setParamValidation.json"), "w") as json_file:
         json.dump(selected_sets, json_file, indent=4)
 
     # Save the likelihoods
-    file_exists = os.path.isfile(os.path.join(sharable_path, "selectedLikelihoods.csv"))
+    file_exists = os.path.isfile(os.path.join(logs_path2, "selectedLikelihoods.csv"))
     file_is_empty = (
         file_exists
-        and os.path.getsize(os.path.join(sharable_path, "selectedLikelihoods.csv")) == 0
+        and os.path.getsize(os.path.join(logs_path2, "selectedLikelihoods.csv")) == 0
     )
     with open(
-        os.path.join(sharable_path, "selectedLikelihoods.csv"), "w", newline=""
+        os.path.join(logs_path2, "selectedLikelihoods.csv"), "w", newline=""
     ) as file:
         csv_writer = csv.writer(file)
 
@@ -1244,6 +1304,7 @@ if mode_ == "Validation":
                 respSubstrate_mean_model,
                 respSubstrate_mean_measure,
                 name,
+                logs_path2,
             )
 
     ######## Calculate RMSE ########################
@@ -1316,12 +1377,12 @@ if mode_ == "Validation":
                     respSoil_obs.append(column_value)
 
     # Now we will actually calculate the RMSE, yaaay!
-    calculateRMSE(respSoil_obs, respSoil_sim, "respSoil", sharable_path)
-    calculateRMSE(respSub_obs, respSub_sim, "respSubstrate", sharable_path)
+    calculateRMSE(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
+    calculateRMSE(respSub_obs, respSub_sim, "respSubstrate", logs_path2)
 
     ######## Calculate EF (Nash-Sutcliffe Efficiency) ########################
-    calculateEF(respSoil_obs, respSoil_sim, "respSoil", sharable_path)
-    calculateEF(respSub_obs, respSub_sim, "respSubstrate", sharable_path)
+    calculateEF(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
+    calculateEF(respSub_obs, respSub_sim, "respSubstrate", logs_path2)
 
     ################ In case we ever need to calculate RMSE for each treatment separately ######################
     # # Derive respiration from simulated values (modelled in Validation mode)

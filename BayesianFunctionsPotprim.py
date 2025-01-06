@@ -176,9 +176,9 @@ def save_result(result, path, filename="Output", Bayesian=True):
             writer.writerows(treatment)
 
 
-def save_json(parameters, likelihoods, keys, path, filename):
-    parameters = pd.read_csv(os.path.join(path, parameters), header=None)
-    likelihoods = pd.read_csv(os.path.join(path, likelihoods), header=None)
+def save_json(parameters, likelihoods, keys, input_path, path, filename):
+    parameters = pd.read_csv(os.path.join(input_path, parameters), header=None)
+    likelihoods = pd.read_csv(os.path.join(input_path, likelihoods), header=None)
 
     parameters.reset_index(drop=True)
     likelihoods.reset_index(drop=True)
