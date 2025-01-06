@@ -198,6 +198,36 @@ def calculateEF(actual, predicted, variable, filepath):
         csv_writer.writerow([variable, ef])
 
 
+############## Bias ##################################
+def calculateBias(actual, predicted, variable, filepath):
+    actual = np.array(actual)
+    predicted = np.array(predicted)
+
+    bias = np.mean(actual - predicted)
+
+    # save as a one csv file
+    try:
+        os.makedirs(filepath)
+    except FileExistsError:
+        # directory already exists
+        pass
+
+    file_exists = os.path.isfile(os.path.join(filepath, "bias.csv"))
+    file_is_empty = (
+        file_exists and os.path.getsize(os.path.join(filepath, "bias.csv")) == 0
+    )
+
+    with open(os.path.join(filepath, "bias.csv"), newline="", mode="a") as file:
+        csv_writer = csv.writer(file)
+
+        # Write the header
+        if not file_exists or file_is_empty:
+            csv_writer.writerow(["Variable", "Bias"])
+
+        # Write the key and values to the CSV file
+        csv_writer.writerow([variable, bias])
+
+
 ############## Read data #############################
 # read the fixed parameter list
 inputfileParam = open(
@@ -1376,13 +1406,17 @@ if mode_ == "Validation":
                     # Append to respSoil_obs
                     respSoil_obs.append(column_value)
 
-    # Now we will actually calculate the RMSE, yaaay!
+    ######## Calculate RMSE ##################################################
     calculateRMSE(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
     calculateRMSE(respSub_obs, respSub_sim, "respSubstrate", logs_path2)
 
     ######## Calculate EF (Nash-Sutcliffe Efficiency) ########################
     calculateEF(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
     calculateEF(respSub_obs, respSub_sim, "respSubstrate", logs_path2)
+
+    ######## Calculate Bias ##################################################
+    calculateBias(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
+    calculateBias(respSub_obs, respSub_sim, "respSubstrate", logs_path2)
 
     ################ In case we ever need to calculate RMSE for each treatment separately ######################
     # # Derive respiration from simulated values (modelled in Validation mode)
