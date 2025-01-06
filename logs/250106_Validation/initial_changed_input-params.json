@@ -1,0 +1,24 @@
+{
+    "1": {
+        "bact_DOM_rel": 0.2,
+        "DOM_EC": 0.2,
+        "kpriming": 0.001,
+        "KS": 20,
+        "KSfungi": 11000,
+        "KSbact": 38000,
+        "kPOM_MAOM": 8,
+        "kMAOMs_MAOMp": 8,
+        "MAOMpmaxrate": 0.1,
+        "MAOMsmaxrate": 0.1,
+        "MAOMmaxrate": 0.3,
+        "MAOMratioSP": 2,
+        "maxEffectBactMAOM": 0.9,
+        "maxEffectSA_MAOM": 0.9,
+        "maxEffectN_MAOM": 0.7,
+        "MM_N_MAOM": 1,
+        "MM_Bact_MAOM": 1.1,
+        "MM_SA_MAOM": 0.001,
+        "MM_DOM_MAOM": 0.04,
+        "Priming_max": 0.5
+    }
+}

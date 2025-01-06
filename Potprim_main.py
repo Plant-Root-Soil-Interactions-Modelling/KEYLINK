@@ -790,9 +790,9 @@ if mode_ == "Bayesian":
 
         # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
 
-        # if treatment == 3:
-        #     print("line 447 safety break ")
-        #     break  # safety for now
+        if treatment == 3:
+            print("line 447 safety break ")
+            break  # safety for now
 
         """
         4) calculate the likelihood of each parameter set for each treatment and store in sim likelihood from the differences between measured and simulated and error
@@ -916,7 +916,7 @@ if mode_ == "Bayesian":
 
                 # 10) calculate the likelihood of each treatment run for given parameter set
                 # we need to add for the treatment the likelyhood of all measurements added
-                if treatment == 2:
+                if treatment == 3:
                     print("line 552 safety break ")
                     break  # safety for now
 
@@ -1209,11 +1209,8 @@ if mode_ == "Validation":
     #     selected_likelihoods.append(index)
 
     # Select 1 set of parameters with the highest likelihood
-    # calibParam = {
-    #     key: value for key, value in calibParam.items() if float(key) <= -1000
-    # }
     calibParam = {k: calibParam[k] for k in sorted(calibParam)}
-    likelihood = list(calibParam.keys())[1]
+    likelihood = list(calibParam.keys())[0]
     selected_sets.append(calibParam[likelihood])
     selected_likelihoods.append(likelihood)
 
