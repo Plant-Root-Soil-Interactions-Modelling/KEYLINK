@@ -592,13 +592,19 @@ if mode_ == "Bayesian":
     csv_files = [
         "calibratedParameters.csv",
         "logLikelihood.csv",
-        "SimdataAll.csv",
-        "SimdataBestFit.csv",
         "BestFitParams.csv",
     ]
 
+    csv_files2 = ["SimdataAll.csv", "SimdataBestFit.csv"]
+
     for file in csv_files:
         file_path = os.path.join(sharable_path, file)
+        if os.path.exists(file_path):
+            with open(file_path, "w") as file:
+                file.write("")  # Clear the contents of the file
+
+    for file in csv_files2:
+        file_path = os.path.join(results_path, file)
         if os.path.exists(file_path):
             with open(file_path, "w") as file:
                 file.write("")  # Clear the contents of the file
