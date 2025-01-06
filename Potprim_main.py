@@ -31,7 +31,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Jilkova2022", "Validation"
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Validation"
+mode_ = "Bayesian"
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
@@ -598,7 +598,7 @@ if mode_ == "Bayesian":
     ]
 
     for file in csv_files:
-        file_path = os.path.join(results_path, file)
+        file_path = os.path.join(sharable_path, file)
         if os.path.exists(file_path):
             with open(file_path, "w") as file:
                 file.write("")  # Clear the contents of the file
@@ -629,7 +629,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=50,
+        default=10000,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -910,9 +910,9 @@ if mode_ == "Bayesian":
 
                 # 10) calculate the likelihood of each treatment run for given parameter set
                 # we need to add for the treatment the likelyhood of all measurements added
-                # if treatment == 2:
-                #     print("line 552 safety break ")
-                #     break  # safety for now
+                if treatment == 2:
+                    print("line 552 safety break ")
+                    break  # safety for now
 
                 for e in range(len(data_measured_colnames)):
 
@@ -1022,7 +1022,7 @@ if mode_ == "Bayesian":
                 )
 
                 if BayesianFunctionsPotprim.check_dataframe_significant_change(
-                    parameters, alpha=0.5, num_identical_results=50
+                    parameters, alpha=0.5, num_identical_results=500
                 ):
                     print("Hurraaayyy!!! converged")
 
