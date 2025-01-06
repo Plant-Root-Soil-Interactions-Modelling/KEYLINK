@@ -968,8 +968,10 @@ if mode_ == "Bayesian":
 
             # if treatment == 2:
             #     sys.exit()
-            alpha = (
-                log_likelihood_sim1 / log_likelihood_sim0
+            log_likelihood_diff = log_likelihood_sim1 - log_likelihood_sim0
+
+            alpha = np.exp(
+                log_likelihood_diff
             )  # if new is better this is bigger than 1
 
             random = ra.random()  # choose random value between 0 and 1
