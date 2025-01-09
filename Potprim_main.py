@@ -17,6 +17,7 @@ import BayesianFunctionsPotprim
 import sys
 import csv
 from datetime import datetime
+import glob
 
 # needed by all modes / normal, sensitivity and bayesian mode
 from potPrimingMAOMfunction import *
@@ -66,15 +67,16 @@ def create_log_folder(mode_):
 
     try:
         os.makedirs(logs_path2)
-        return logs_path2
+        return logs_path2, base_folder_name
     except FileExistsError:
         # Directory already exists, so we need to find a new name
         while os.path.exists(logs_path2):
             # Change the naming format to "xy_2" instead of "xy_1_2"
             logs_path2 = os.path.join(logs_path, f"{base_folder_name}_{counter}")
+            base_folder_name2 = f"{base_folder_name}_{counter}"
             counter += 1
         os.makedirs(logs_path2)
-        return logs_path2
+        return logs_path2, base_folder_name2
 
 
 ############## Creating the Respiration Plot #########
@@ -165,6 +167,8 @@ def calculateRMSE(actual, predicted, variable, filepath):
         # Write the key and values to the CSV file
         csv_writer.writerow([variable, rmse])
 
+    return rmse
+
 
 ############## EF (Nash-Sutcliffe Efficiency) ########
 def calculateEF(actual, predicted, variable, filepath):
@@ -197,6 +201,8 @@ def calculateEF(actual, predicted, variable, filepath):
         # Write the key and values to the CSV file
         csv_writer.writerow([variable, ef])
 
+    return ef
+
 
 ############## Bias ##################################
 def calculateBias(actual, predicted, variable, filepath):
@@ -226,6 +232,8 @@ def calculateBias(actual, predicted, variable, filepath):
 
         # Write the key and values to the CSV file
         csv_writer.writerow([variable, bias])
+
+    return bias
 
 
 ############## Read data #############################
@@ -259,7 +267,12 @@ if mode_ == "Normal":
         treatmentVar = inputRun.iloc[treatment, 0:17]
 
         results_df = run_model(
-            AllParam, treatmentVar, mode_="Normal", Plotting=Plotting, numDays=161
+            AllParam,
+            treatmentVar,
+            mode_="Normal",
+            Plotting=Plotting,
+            numDays=161,
+            path=results_path,
         )
         df_list.append(results_df)
 
@@ -318,8 +331,14 @@ if mode_ == "Jilkova2022":
         treatmentVar = inputRun.iloc[treatment, 0:17]
 
         results_df = run_model(
-            AllParam, treatmentVar, mode_="Normal", Plotting=Plotting, numDays=155
+            AllParam,
+            treatmentVar,
+            mode_="Normal",
+            Plotting=Plotting,
+            numDays=155,
+            path=results_path,
         )
+
         df_list.append(results_df)
 
         # storing values for respiration plot
@@ -475,6 +494,7 @@ if mode_ == "Sensitivity":
                     mode_="Sensitivity",
                     Plotting=Plotting,
                     numDays=161,
+                    path=None,
                 )
                 # add to the simulated values information about the parameter, its change and value
                 # temp_df_list = [param, paramChange, value] + temp_df_list
@@ -592,7 +612,6 @@ if mode_ == "Bayesian":
     csv_files = [
         "calibratedParameters.csv",
         "logLikelihood.csv",
-        "BestFitParams.csv",
     ]
 
     csv_files2 = ["SimdataAll.csv", "SimdataBestFit.csv"]
@@ -609,12 +628,22 @@ if mode_ == "Bayesian":
             with open(file_path, "w") as file:
                 file.write("")  # Clear the contents of the file
 
-    if os.path.exists(os.path.join(sharable_path, "BestFitParams.json")):
-        with open(os.path.join(sharable_path, "BestFitParams.json"), "w") as file:
-            file.write("")
+    # if os.path.exists(os.path.join(sharable_path, "BestFitParams.json")):
+    #     with open(os.path.join(sharable_path, "BestFitParams.json"), "w") as file:
+    #         file.write("")
+
+    # Delete previous BestFitParams file in output_Bayesian folder
+    pattern = os.path.join(sharable_path, "BestFitParams_*")
+    matching_files = glob.glob(pattern)
+
+    # Check if any matching files were found
+    try:
+        os.remove(matching_files[0])
+    except:
+        pass
 
     # Set a folder for logs
-    logs_path2 = create_log_folder(mode_)
+    logs_path2, run_name = create_log_folder(mode_)
 
     # Initialize parser
     parser = argparse.ArgumentParser(description="Run Bayesian optimization")
@@ -635,7 +664,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=10000,
+        default=1000,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -776,7 +805,12 @@ if mode_ == "Bayesian":
         # )
 
         results_df = run_model(
-            AllParam, treatmentVar, mode_="Bayesian", Plotting=False, numDays=161
+            AllParam,
+            treatmentVar,
+            mode_="Bayesian",
+            Plotting=False,
+            numDays=161,
+            path=None,
         )
 
         # we need to couple the output of the right day to the measured output
@@ -790,7 +824,7 @@ if mode_ == "Bayesian":
 
         # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
 
-        if treatment == 3:
+        if treatment == 2:
             print("line 447 safety break ")
             break  # safety for now
 
@@ -907,7 +941,7 @@ if mode_ == "Bayesian":
                     treatment, 0:17
                 ]  # to be moved & use iloc
                 results_df = run_model(
-                    AllParam, treatmentVar, mode_, False, numDays=161
+                    AllParam, treatmentVar, mode_, False, numDays=161, path=None
                 )
                 # print(results_df)
                 # we need to couple the output of the right day to the measured output
@@ -916,7 +950,7 @@ if mode_ == "Bayesian":
 
                 # 10) calculate the likelihood of each treatment run for given parameter set
                 # we need to add for the treatment the likelyhood of all measurements added
-                if treatment == 3:
+                if treatment == 2:
                     print("line 552 safety break ")
                     break  # safety for now
 
@@ -1021,6 +1055,9 @@ if mode_ == "Bayesian":
                 BayesianFunctionsPotprim.save_result(
                     [[[log_likelihood_sim0]]], sharable_path, "logLikelihood"
                 )
+                BayesianFunctionsPotprim.save_result(
+                    [[[log_likelihood_sim0]]], logs_path2, "logLikelihood"
+                )
 
                 """
                 14) test if we have enough runs: avg and stdev are table for each column of posterior
@@ -1056,15 +1093,20 @@ if mode_ == "Bayesian":
     df = pd.DataFrame(priorChain, columns=list(CalibratedParameters.keys()))
 
     # bayesian_plots(df=df, path=file_name, columns=5, save_to_file=True)
+    try:
+        os.remove(os.path.join(sharable_path, "BestFitParams_*"))
+    except Exception as e:
+        pass
 
     # save all accepted parameters set as json >> this is used for Validation
+    BestFitParamsJsonName = "BestFitParams_" + run_name
     BayesianFunctionsPotprim.save_json(
         "calibratedParameters.csv",
         "logLikelihood.csv",
         keys,
         sharable_path,
         sharable_path,
-        "BestFitParams",
+        BestFitParamsJsonName,
     )
 
     # save all accepted parameter sets to logs folder
@@ -1082,6 +1124,43 @@ if mode_ == "Bayesian":
 
     with open(os.path.join(logs_path2, "info.txt"), "w") as output_file:
         output_file.write(content)
+
+    # save metadata in one csv file
+    file_exists = os.path.isfile("./logs/logs_Bayesian.csv")
+    file_is_empty = file_exists and os.path.getsize("./logs/logs_Bayesian.csv") == 0
+
+    log_likelihood_csv = pd.read_csv(
+        os.path.join(logs_path2, "logLikelihood.csv"), header=None
+    )
+    bestLikelihood = log_likelihood_csv[0].max()
+    numberAccepted = log_likelihood_csv.shape[0]
+
+    with open("./logs/logs_Bayesian.csv", "a", newline="") as f:
+        writer = csv.writer(f)
+
+        # Write the header
+        if not file_exists or file_is_empty:
+            writer.writerow(
+                [
+                    "Run",
+                    "Tries",
+                    "Converged",
+                    "Best likelihood",
+                    "Number of accepted",
+                    "Date",
+                ]
+            )
+
+        writer.writerow(
+            [
+                run_name,
+                NumberOfTries,
+                converged,
+                bestLikelihood,
+                numberAccepted,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            ]
+        )
 
     ################## Histograms of accepted parameters
     # if mode_ == "Histogram":
@@ -1161,7 +1240,14 @@ if mode_ == "Validation":
             with open(file_path, "w") as file:
                 file.write("")  # Clear the contents of the file
 
-    logs_path2 = create_log_folder(mode_)
+    logs_path2, run_name = create_log_folder(mode_)
+    logs_figures = os.path.join(logs_path2, "figures")
+
+    try:
+        os.makedirs(logs_figures)
+    except FileExistsError:
+        # directory already exists
+        pass
 
     # Input values
     inputRun = pd.read_csv("Validation_run_input.csv", header=0, skiprows=0)
@@ -1173,11 +1259,25 @@ if mode_ == "Validation":
         with open(file_path, "w") as file:
             file.write("")  # Clear the contents of the file
 
-    # Calibrated Parameters
-    with open("./output_Bayesian/BestFitParams.json", "r") as f1:
-        calibParam = json.load(
-            f1
-        )  # only the parameters that were accepted, all of them
+    # Load BestFitParams
+    pattern = os.path.join(sharable_path, "BestFitParams_*")
+    matching_files = glob.glob(pattern)
+
+    # Check if any matching files were found
+    if matching_files:
+        # Open the first matching file (or handle multiple files as needed)
+        with open(matching_files[0], "r") as f1:
+            calibParam = json.load(f1)  # Load the JSON data from the file
+
+        # Extract the filename without the path
+        filename = os.path.basename(matching_files[0])
+
+        # Extract the part after "BestFitParams_"
+        Bayesian_version = "_".join(filename.split("_")[1:])
+
+    else:
+        print("No BestFitParams file found.")
+        sys.exit()
 
     # save input BestFitParams to logs
     with open(os.path.join(logs_path2, "BestFitParams_input.json"), "w") as output_file:
@@ -1272,7 +1372,12 @@ if mode_ == "Validation":
             treatmentVar = inputRun.iloc[treatment, 0:17]
 
             results_df = run_model(
-                AllParam, treatmentVar, mode_="Normal", Plotting=Plotting, numDays=161
+                AllParam,
+                treatmentVar,
+                mode_="Normal",
+                Plotting=Plotting,
+                numDays=161,
+                path=logs_figures,
             )
             df_list.append(results_df)
 
@@ -1339,7 +1444,7 @@ if mode_ == "Validation":
                 respSubstrate_mean_model,
                 respSubstrate_mean_measure,
                 name,
-                logs_path2,
+                logs_figures,
             )
 
     ######## Calculate RMSE ########################
@@ -1412,16 +1517,58 @@ if mode_ == "Validation":
                     respSoil_obs.append(column_value)
 
     ######## Calculate RMSE ##################################################
-    calculateRMSE(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
-    calculateRMSE(respSub_obs, respSub_sim, "respSubstrate", logs_path2)
+    RMSE_Soil = calculateRMSE(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
+    RMSE_Substrate = calculateRMSE(
+        respSub_obs, respSub_sim, "respSubstrate", logs_path2
+    )
 
     ######## Calculate EF (Nash-Sutcliffe Efficiency) ########################
-    calculateEF(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
-    calculateEF(respSub_obs, respSub_sim, "respSubstrate", logs_path2)
+    EF_Soil = calculateEF(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
+    EF_Substrate = calculateEF(respSub_obs, respSub_sim, "respSubstrate", logs_path2)
 
     ######## Calculate Bias ##################################################
-    calculateBias(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
-    calculateBias(respSub_obs, respSub_sim, "respSubstrate", logs_path2)
+    Bias_Soil = calculateBias(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
+    Bias_Substrate = calculateBias(
+        respSub_obs, respSub_sim, "respSubstrate", logs_path2
+    )
+
+    # save metadata in one csv file
+    file_exists = os.path.isfile("./logs/logs_Validation.csv")
+    file_is_empty = file_exists and os.path.getsize("./logs/logs_Validation.csv") == 0
+
+    # Save overall log file
+    with open("./logs/logs_Validation.csv", "a", newline="") as f:
+        writer = csv.writer(f)
+
+        # Write the header
+        if not file_exists or file_is_empty:
+            writer.writerow(
+                [
+                    "Run",
+                    "RMSE_Soil",
+                    "EF_Soil",
+                    "Bias_Soil",
+                    "RMSE_Substrate",
+                    "EF_Substrate",
+                    "Bias_Substrate",
+                    "Bayesian version",
+                    "Date",
+                ]
+            )
+
+        writer.writerow(
+            [
+                run_name,
+                RMSE_Soil,
+                EF_Soil,
+                Bias_Soil,
+                RMSE_Substrate,
+                EF_Substrate,
+                Bias_Substrate,
+                Bayesian_version,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            ]
+        )
 
     ################ In case we ever need to calculate RMSE for each treatment separately ######################
     # # Derive respiration from simulated values (modelled in Validation mode)

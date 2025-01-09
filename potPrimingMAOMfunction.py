@@ -12,7 +12,7 @@ import pandas as pd
 import os
 
 
-def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
+def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # output dataframe list
     outDataframes = []
     # devide 'input' into: parametersToCalibrate, ParametersCalibrated, Inputvariables (run-specific)
@@ -782,6 +782,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
             outMAOMp,
             outMAOMs,
             treatment,
+            path,
         ):  # plot in original KEYLINK units
 
             fig, ((p1, p2, p3), (p4, p5, p6)) = plt.subplots(
@@ -843,7 +844,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
                 loc="upper left", bbox_to_anchor=(0, -0.15), shadow=True
             )  # loc='bottom right',
 
-            plt.savefig("./output/figures/Dailyplot1_" + treatment + ".png")
+            plt.savefig(os.path.join(path, "Dailyplot1_" + treatment + ".png"))
             plt.close()
 
         # plot substrate-derived proportions
@@ -856,6 +857,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
             outMAOMs_sub,
             outMAOMp_sub,
             treatment,
+            path,
         ):
             fig, (p1, p2, p3, p4) = plt.subplots(
                 nrows=4, ncols=1, figsize=(5, 14)
@@ -897,17 +899,17 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
             )  # loc='bottom right',
 
             plt.savefig(
-                "./output/figures/Dailyplot2_" + treatment + ".png",
+                os.path.join(path, "Dailyplot2_" + treatment + ".png"),
                 bbox_inches="tight",
             )
             plt.close()
 
-        # check if there is a "figures" folder; if not, create one
-        try:
-            os.makedirs("./output/figures")
-        except FileExistsError:
-            # directory already exists
-            pass
+        # # check if there is a "figures" folder; if not, create one
+        # try:
+        #     os.makedirs("./output/figures")
+        # except FileExistsError:
+        #     # directory already exists
+        #     pass
 
         # after each run, make a plot
         Dailyplot1(
@@ -923,6 +925,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
             outMAOMp,
             outMAOMs,
             treatment,
+            path,
         )
 
         Dailyplot2(
@@ -934,6 +937,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays):
             outMAOMs_sub,
             outMAOMp_sub,
             treatment,
+            path,
         )
 
     ############# end of Plotting   #############
