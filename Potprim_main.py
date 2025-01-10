@@ -664,7 +664,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=1000,
+        default=10000,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -824,9 +824,9 @@ if mode_ == "Bayesian":
 
         # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
 
-        if treatment == 2:
-            print("line 447 safety break ")
-            break  # safety for now
+        # if treatment == 2:
+        #     print("line 447 safety break ")
+        #     break  # safety for now
 
         """
         4) calculate the likelihood of each parameter set for each treatment and store in sim likelihood from the differences between measured and simulated and error
@@ -950,9 +950,9 @@ if mode_ == "Bayesian":
 
                 # 10) calculate the likelihood of each treatment run for given parameter set
                 # we need to add for the treatment the likelyhood of all measurements added
-                if treatment == 2:
-                    print("line 552 safety break ")
-                    break  # safety for now
+                # if treatment == 2:
+                #     print("line 552 safety break ")
+                #     break  # safety for now
 
                 for e in range(len(data_measured_colnames)):
 
