@@ -503,21 +503,62 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
 
         # if CN_MAOMs <= 0:
         #     print("CN_MAOMs: ", CN_MAOMs)
-
+        
+        #first calculate maximum growth on DOM if it was unlimited, both for fungi a
+        if DOM > 0:
+            gmaxbDOM = (
+             mf.calcgmaxmod(CN_bact, CN_DOM, pCN, 0.0, 0, pH, 1) * GMAX
+             ) # gmax for bact on DOM
+            gmaxfDOM = (
+                mf.calcgmaxmod(CN_fungi, CN_DOM, pCN, 0.0, 0, pH, 2) * GMAXfungi
+            )  # gmax for fungi on DOM
+        
+            #calculate realized growth on DOM
+            bactDOMgrowth = modtBact * mf.calcgrowth(
+                bact, DOM, availability[0], gmaxbDOM, KSbact * bact
+            )
+            fungiDOMgrowth = modtFungi * mf.calcgrowth(
+                fungi, DOM, availability[1], gmaxfDOM, KSfungi * fungi
+            )
+        else:
+            bactDOMgrowth = 0
+            fungiDOMgrowth = 0
+            
+        #then to ensure that the sum f gmaxes from different substrates does not exceed GMAX, reduce GMAX accordingly by what growth was already realized from previous substrates
         gmaxbPOM = (
-            mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1) * GMAX
+            mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1) * (GMAX - bactDOMgrowth)
         )  # gmax for bact on POM
         gmaxfPOM = (
-            mf.calcgmaxmod(CN_fungi, CN_POM, pCN, 0.0, 0, pH, 2) * GMAXfungi
+            mf.calcgmaxmod(CN_fungi, CN_POM, pCN, 0.0, 0, pH, 2) * (GMAXfungi - fungiDOMgrowth)
         )  # gmax for fungi on POM
+        
+        #calculate realized growth on POM
+        bactPOMgrowth = modtBact * mf.calcgrowth(
+            bact, POM, availability[0], gmaxbPOM, KSbact * bact
+        )
+        fungiPOMgrowth = modtFungi * mf.calcgrowth(
+            fungi, POM, availability[1], gmaxfPOM, KSfungi * fungi
+        )
+        
+        
         # we assume MAOMp can only be lost through priming, so normal growth uses MAOMs
+        #also reduce gmax by what was already grown on DOM and POM
         gmaxbMAOM = (
-            mf.calcgmaxmod(CN_bact, CN_MAOMs, pCN, recMAOM, mRecBact, pH, 1) * GMAX
+            mf.calcgmaxmod(CN_bact, CN_MAOMs, pCN, recMAOM, mRecBact, pH, 1) * (GMAX - bactDOMgrowth - bactPOMgrowth)
         )  # gmax for bact on MAOM
         gmaxfMAOM = (
             mf.calcgmaxmod(CN_fungi, CN_MAOMs, pCN, recMAOM, mRecFungi, pH, 2)
-            * GMAXfungi
+            * (GMAXfungi - fungiDOMgrowth - fungiPOMgrowth) 
         )  # gmax for fungi on MAOM
+        
+        #calculate realized growth on MAOM
+        bactMAOMgrowth = modtBact * mf.calcgrowth(
+            bact, MAOMs, availability[0], gmaxbMAOM, KSbact * bact
+        )
+        fungiMAOMgrowth = modtFungi * mf.calcgrowth(
+            fungi, MAOMs, availability[1], gmaxfMAOM, KSfungi * fungi
+        )
+        
         # calculate substrate derived C in bact and fungi
         DOM_sub_abs = DOM * DOM_sub  # recalculate because changesin calc.Rhizosphere
         POM_sub_abs = POM * POM_sub  # recalculate because changes in calc.Rhizosphere
@@ -532,32 +573,18 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         )  # absolute substrate derived C in fungi [gC/m3]
         #               if (bact<0):
         #                  print('mainLine290 DOM, bact, fungi', DOM,bact, fungi)
-        # growth equations (dB/dt) for each functional group and for variations in C and N pools
-        # only feed on secondary MAOM
-        bactPOMgrowth = modtBact * mf.calcgrowth(
-            bact, POM, availability[0], gmaxbPOM, KSbact * bact
-        )
-        bactMAOMgrowth = modtBact * mf.calcgrowth(
-            bact, MAOMs, availability[0], gmaxbMAOM, KSbact * bact
-        )
-        dbact = bactPOMgrowth + bactMAOMgrowth - DEATH * bact - rRESPbact * bact
+        
 
-        fungiPOMgrowth = modtFungi * mf.calcgrowth(
-            fungi, POM, availability[1], gmaxfPOM, KSfungi * fungi
-        )
-        fungiMAOMgrowth = modtFungi * mf.calcgrowth(
-            fungi, MAOMs, availability[1], gmaxfMAOM, KSfungi * fungi
-        )
-        dfungi = (
-            fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi * fungi - rRESPfungi * fungi
-        )
+        dbact = bactDOMgrowth + bactPOMgrowth + bactMAOMgrowth - DEATH * bact - rRESPbact * bact     
+        dfungi = fungiDOMgrowth + fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi * fungi - rRESPfungi * fungi
 
-        DOM += DEATH * bact + DEATHfungi * fungi  # add dead bacteria and fungi to DOM
+
+        DOM += - bactDOMgrowth - fungiDOMgrowth + DEATH * bact + DEATHfungi * fungi  # add dead bacteria and fungi to DOM
         POM += -bactPOMgrowth - fungiPOMgrowth  # subtract what has been eaten from POM
         MAOMs += -bactMAOMgrowth - fungiMAOMgrowth  # and MAOMs
 
         # update CN DOM
-        DOM_N += DEATH * bact / CN_bact + DEATHfungi * fungi / CN_fungi
+        DOM_N += - bactDOMgrowth / CN_bact - fungiDOMgrowth / CN_fungi + DEATH * bact / CN_bact + DEATHfungi * fungi / CN_fungi
         CN_DOM = DOM / DOM_N  # recalculate CN DOM
 
         # if treatmentID == 5:
@@ -567,18 +594,20 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         #        print('mainLine307  bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact', bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact)
 
         DOM_sub_abs += (
-            DEATH * bact * bact_sub + DEATHfungi * fungi * fungi_sub
+            - bactDOMgrowth * DOM_sub - fungiDOMgrowth * DOM_sub + DEATH * bact * bact_sub + DEATHfungi * fungi * fungi_sub
         )  # add corresponding part of substrate derived C to DOM
         POM_sub_abs -= (bactPOMgrowth + fungiPOMgrowth) * POM_sub
         MAOMs_sub_abs -= (bactMAOMgrowth + fungiMAOMgrowth) * MAOMs_sub
         fungi_sub_abs += (
-            fungiMAOMgrowth * MAOMs_sub
+             fungiDOMgrowth * DOM_sub
+            + fungiMAOMgrowth * MAOMs_sub
             + fungiPOMgrowth * POM_sub
             - DEATHfungi * fungi * fungi_sub
             - rRESPfungi * fungi * fungi_sub
         )  # add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
         bact_sub_abs += (
-            bactMAOMgrowth * MAOMs_sub
+            bactDOMgrowth * DOM_sub
+            + bactMAOMgrowth * MAOMs_sub
             + bactPOMgrowth * POM_sub
             - DEATH * bact * bact_sub
             - rRESPbact * bact * bact_sub

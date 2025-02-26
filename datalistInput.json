@@ -3,7 +3,7 @@
 "GMAXfungi":0.6,  
 "mRecBact":0.5,  
 "mRecFungi":0.5, 
-"DEATH":0.05, 
+"DEATH":0.09, 
 "DEATHfungi":0.01, 
 "pCN":0.8, 
 "recMAOM":0.9, 
@@ -20,13 +20,13 @@
 "bact_DOM_rel":0.2 ,
 "DOM_EC": 200 ,
 "kpriming":0.001 ,
-"KS":40,
-"KSfungi":20000  ,
+"KS":400,
+"KSfungi":40000  ,
 "KSbact":38000 ,
 "kPOM_MAOM":8, 
 "kMAOMs_MAOMp":8 ,
-"MAOMpmaxrate":0.1 ,
-"MAOMsmaxrate":0.1 ,
+"MAOMpmaxrate":0.5 ,
+"MAOMsmaxrate":0.5 ,
 "MAOMmaxrate":0.2 ,
 "MAOMratioSP":2 ,
 "maxEffectBactMAOM":0.9 ,
@@ -35,7 +35,7 @@
 "MM_N_MAOM":1,
 "MM_Bact_MAOM":1.10,
 "MM_SA_MAOM":0.001,
-"MM_DOM_MAOM":0.025 ,
-"Priming_max":0.00000005
+"MM_DOM_MAOM":0.025,
+"Priming_max":0.000005
 
 }
