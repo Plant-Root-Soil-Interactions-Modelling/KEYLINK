@@ -786,7 +786,7 @@ def calcRhizosphere(
         # print('priming active')
         # POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp
 
-        POM, MAOMs, MAOMp, respPriming, respPriming_sub, PrimingGrowth = calcPriming(
+        POM, MAOMs, MAOMp, respPriming, respPriming_sub, PrimingGrowth, DOMusedforPriming = calcPriming(
             POM,
             POM_sub,
             CN_POM,
@@ -810,6 +810,7 @@ def calcRhizosphere(
         respPriming_sub = 0
         PrimingGrowth = 0
         ExtraGrowth = 0
+        DOMusedforPriming=0
 
     BactTurnover = DEATH * bact_DOM  # death of bacteria before adding today's growth
     respDOM = (
@@ -828,10 +829,10 @@ def calcRhizosphere(
     )  # add the corresponding part of growth on DOM as substrate derived C, subtract correspodning part of death and respiration
 
     # change DOM / what was eaten and what was added from dying bacteria
-    DOM += -growth - ExtraGrowth + BactTurnover
+    DOM += -growth - DOMusedforPriming + BactTurnover
     # substrate-derived amounts
     DOM_sub_abs += (
-        -growth * DOM_sub - ExtraGrowth * DOM_sub + BactTurnover * bact_DOM_sub
+        -growth * DOM_sub - DOMusedforPriming * DOM_sub + BactTurnover * bact_DOM_sub
     )  # subtract what has been eaten and add corresponding part of substrate derived C from dead bacteria to DOM
     DOM_sub = DOM_sub_abs / DOM  # recalculate relative substrate derived C in DOM
     # if DOM_sub > 1 :
@@ -840,7 +841,7 @@ def calcRhizosphere(
         bact_DOM_sub_abs / bact_DOM
     )  # recalculate relative substrate derived C in bacteria
     DOM_N = (
-        DOM_Nini - (growth + ExtraGrowth) / CN_DOM + BactTurnover / CN_bact
+        DOM_Nini - (growth + DOMusedforPriming) / CN_DOM + BactTurnover / CN_bact
     )  # hopefully it's correct that when burning ExtraGrowth C, some N was lost as well
     # if DOM < 0:
     #     print ('line 520 calcRhizophere DOM=', DOM, 'bactDOM=', bact_DOM, 'modtBact=', modtBact)
@@ -892,11 +893,17 @@ def calcPriming(
     # what can be primed
     SOMprimable = POM + MAOMs + MAOMp  # MAOMp is primed, decision 13/8/2024
 
-    # SOMprimed = [gC] how much gC in POM or MAOM can be decayed with energy in DOM (DOM_E)
-    SOMprimed = Priming_max * SOMprimable * (1 - math.exp(-kpriming * DOM_E))
+    # old version SOMprimed = [gC] how much gC in POM or MAOM can be decayed with energy in DOM (DOM_E)
+    #SOMprimed = Priming_max * SOMprimable * (1 - math.exp(-kpriming * DOM_E))
 
-    # print('SOMprimed', SOMprimed, 'primable SOM', SOMprimable)
-
+    # old function, overruled by thi new one
+    SOMprimed = min(Priming_max * SOMprimable, ExtraGrowth * DOM_EC)
+    
+    #either SOM or DOM was limiting,if SOM was limiting calculate used DOM
+    DOMusedforPriming=SOMprimed/DOM_EC 
+    
+    print('SOMprimed', SOMprimed, 'DOMusedforPriming', DOMusedforPriming )
+    print('Priming_max * SOMprimable', Priming_max * SOMprimable)
     # how much of SOMdecayed will be from POM and how much from MAOM? Assume according to difficulty = k and relative pool size
     factor = 1 / (1 + (kPOM_MAOM * POM / (MAOMs + MAOMp)))
     # can go below 0 by ecaying too much of the favourite
@@ -930,7 +937,8 @@ def calcPriming(
     Navail = NavailPOM + NavailMAOM
     # how much bacterial biomass can be grown from this N
     PotentialPrimingGrowth = Navail * CN_bact
-    PrimingGrowth = min(PotentialPrimingGrowth, ExtraGrowth)
+    PrimingGrowth = min(PotentialPrimingGrowth, DOMusedforPriming)
+    print("PotentialPrimingGrowth, DOMusedforPriming",PotentialPrimingGrowth, DOMusedforPriming)
     respPrim = 0
 
     # if there is enough DOM C around to build new biomass thanks to priming
@@ -939,13 +947,13 @@ def calcPriming(
 
     #     # bact_DOM += PrimingGrowth #grow new microbes thanks to priming, assuming this C comes from DOM
     respPrim = (
-        SOMprimed + ExtraGrowth - PrimingGrowth
+        SOMprimed + DOMusedforPriming - PrimingGrowth
     )  # carbon from primed SOM is respired, the C used for biomass of PrimingGrowth is taken from ExtraGrowth and then the rest was burnt off for mining for nitrogen
     respPrim_SOMprimed_sub_abs = (
         POMprimed * POM_sub + MAOMsprimed * MAOMs_sub + MAOMpprimed * MAOMp_sub
     )  # substrate derived C respired from SOM pools
     respPrim_sub_abs = (
-        respPrim_SOMprimed_sub_abs + (ExtraGrowth - PrimingGrowth) * DOM_sub
+        respPrim_SOMprimed_sub_abs + (DOMusedforPriming - PrimingGrowth) * DOM_sub
     )  # total substrate derived C respired during priming (including C from burning off DOM)
     respPrim_sub = respPrim_sub_abs / respPrim
     POM -= POMprimed
@@ -972,7 +980,7 @@ def calcPriming(
 
     #     # print("priming should be active but is not", PrimingGrowth, ExtraGrowth)
 
-    return POM, MAOMs, MAOMp, respPrim, respPrim_sub, PrimingGrowth
+    return POM, MAOMs, MAOMp, respPrim, respPrim_sub, PrimingGrowth, DOMusedforPriming
 
 
 # POM, MAOMs, MAOMp, respPriming, respPriming_sub, PrimingGrowth
