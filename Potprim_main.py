@@ -32,7 +32,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Jilkova2022", "Validation"
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Normal"
+mode_ = "Bayesian"
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
@@ -664,7 +664,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=10000,
+        default=100,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000

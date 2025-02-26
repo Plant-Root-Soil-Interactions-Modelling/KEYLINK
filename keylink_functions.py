@@ -902,8 +902,8 @@ def calcPriming(
     #either SOM or DOM was limiting,if SOM was limiting calculate used DOM
     DOMusedforPriming=SOMprimed/DOM_EC 
     
-    print('SOMprimed', SOMprimed, 'DOMusedforPriming', DOMusedforPriming )
-    print('Priming_max * SOMprimable', Priming_max * SOMprimable)
+    # print('SOMprimed', SOMprimed, 'DOMusedforPriming', DOMusedforPriming )
+    # print('Priming_max * SOMprimable', Priming_max * SOMprimable)
     # how much of SOMdecayed will be from POM and how much from MAOM? Assume according to difficulty = k and relative pool size
     factor = 1 / (1 + (kPOM_MAOM * POM / (MAOMs + MAOMp)))
     # can go below 0 by ecaying too much of the favourite
@@ -938,7 +938,7 @@ def calcPriming(
     # how much bacterial biomass can be grown from this N
     PotentialPrimingGrowth = Navail * CN_bact
     PrimingGrowth = min(PotentialPrimingGrowth, DOMusedforPriming)
-    print("PotentialPrimingGrowth, DOMusedforPriming",PotentialPrimingGrowth, DOMusedforPriming)
+    # print("PotentialPrimingGrowth, DOMusedforPriming",PotentialPrimingGrowth, DOMusedforPriming)
     respPrim = 0
 
     # if there is enough DOM C around to build new biomass thanks to priming

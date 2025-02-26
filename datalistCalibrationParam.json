@@ -1,8 +1,9 @@
 {"InitParam":{
 	"bact_DOM_rel":0.2,
-	"DOM_EC": 0.2,
-	"kpriming":0.001,
-	"KS":20,
+	"DOM_EC": 20,
+	"DEATH":0.05, 
+    "DEATHfungi":0.01, 
+	"KS":40,
 	"KSfungi":11000,
 	"KSbact":38000,
 	"kPOM_MAOM":8,
@@ -18,20 +19,23 @@
 	"MM_Bact_MAOM":1.10,
 	"MM_SA_MAOM":0.001,
 	"MM_DOM_MAOM":0.04,
-	"Priming_max":0.5
+	"Priming_max":0.00005,
+	"RESPfungi":0.03,
+	"RESPbact":0.03
 	},
 "MaxParam":{
 	"bact_DOM_rel":0.9,
-	"DOM_EC": 2,
-	"kpriming":0.1,
-	"KS":80,
+	"DOM_EC": 200,
+	"DEATH":0.1, 
+    "DEATHfungi":0.05, 
+	"KS":800,
 	"KSfungi":20000,
 	"KSbact":68000,
 	"kPOM_MAOM":100,
 	"kMAOMs_MAOMp":100,
-	"MAOMpmaxrate":0.5,
-	"MAOMsmaxrate":0.5,
-	"MAOMmaxrate":0.8,
+	"MAOMpmaxrate":0.9,
+	"MAOMsmaxrate":0.9,
+	"MAOMmaxrate":0.9,
 	"MAOMratioSP":4,
 	"maxEffectBactMAOM":0.99,
 	"maxEffectSA_MAOM":0.99,
@@ -40,13 +44,16 @@
 	"MM_Bact_MAOM":2.10,
 	"MM_SA_MAOM":0.004,
 	"MM_DOM_MAOM":0.1,
-	"Priming_max":1
+	"Priming_max":0.1,
+	"RESPfungi":0.3,
+	"RESPbact":0.3
 	},
 "MinParam":{
 	"bact_DOM_rel":0.01,
-	"DOM_EC": 0.01,
-	"kpriming":0.00001,
-	"KS":1,
+	"DOM_EC": 0.5,
+	"DEATH":0.01, 
+    "DEATHfungi":0.001, 
+	"KS":10,
 	"KSfungi":3000,
 	"KSbact":18000,
 	"kPOM_MAOM":1,
@@ -62,6 +69,8 @@
 	"MM_Bact_MAOM":0.60,
 	"MM_SA_MAOM":0.00001,
 	"MM_DOM_MAOM":0.0025,
-	"Priming_max":0
+	"Priming_max":0,
+	"RESPfungi":0.005,
+	"RESPbact":0.005
 	}
 }

@@ -3,8 +3,6 @@
     "GMAXfungi":0.6,  
     "mRecBact":0.5,  
     "mRecFungi":0.5, 
-    "resp":0.003, 
-    "rRESPfungi":0.03, 
     "DEATH":0.05, 
     "DEATHfungi":0.01, 
     "pCN":0.8, 

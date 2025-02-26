@@ -1,0 +1,3 @@
+tries = 100
+converged = False
+time = 00:15:03
