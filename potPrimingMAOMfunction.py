@@ -41,7 +41,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # Priming_max=10 #maximum decay price [J/gC] was 10
     bact_DOM_rel = AllParam["bact_DOM_rel"]
     DOM_EC = AllParam["DOM_EC"]
-    kpriming = AllParam["kpriming"]
+    # kpriming = AllParam["kpriming"]
     KS = AllParam["KS"]
     KSfungi = AllParam["KSfungi"]
     KSbact = AllParam["KSbact"]
@@ -58,7 +58,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     MM_SA_MAOM = AllParam["MM_SA_MAOM"]
     MM_DOM_MAOM = AllParam["MM_DOM_MAOM"]
     Priming_max = AllParam["Priming_max"]
-
+    kpriming = 0
     # the ones we use from other calibration
     GMAX = AllParam[
         "GMAX"
