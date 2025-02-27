@@ -1,9 +1,9 @@
 {"InitParam":{
 	"bact_DOM_rel":0.2,
 	"DOM_EC": 20,
-	"DEATH":0.05, 
-    "DEATHfungi":0.01, 
-	"KS":40,
+	"DEATH":0.09, 
+    	"DEATHfungi":0.05, 
+	"KS":400,
 	"KSfungi":11000,
 	"KSbact":38000,
 	"kPOM_MAOM":8,
@@ -19,7 +19,7 @@
 	"MM_Bact_MAOM":1.10,
 	"MM_SA_MAOM":0.001,
 	"MM_DOM_MAOM":0.04,
-	"Priming_max":0.00005,
+	"Priming_max":0.000005,
 	"RESPfungi":0.03,
 	"RESPbact":0.03
 	},

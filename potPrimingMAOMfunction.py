@@ -14,84 +14,58 @@ import os
 
 def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # output dataframe list
-    outDataframes = []
-    # devide 'input' into: parametersToCalibrate, ParametersCalibrated, Inputvariables (run-specific)
-    # ********************************************************************************
-    # calibrated parameters (= that do NOT change during run but need calibration)
-
-    # the ones we want to calibrate
-    # bact_DOM_rel = 0.2 #proportion of bacteria that have access to feeding on DOM (e.g. that are present in rhizophere)
-    # DOM_EC = 2 # DOM energetic quality = energy stored per one gram of DOM [J/g] was 5
-    # kpriming=0.001 #decay rate of negative exponential decay curve of decay price,
-    # KS=5  # C content required to get half the maximal growth of bacteria when decaying DOM [gC/m3]
-    # KSfungi= 200 # C content required to get half the maximal growth of fungi when decaying SOM [gC/m3] was 20000
-    # KSbact=380 # C content required to get half the maximal growth of bacteria when decaying SOM [gC/m3]
-    # kPOM_MAOM = 8 #ratio of POM to MAOM decayed / overall SOM decay is partitioned using this fixed ratios really unavailable, is k-POM/k_MAOM in israel code
-    # kMAOMs_MAOMp = 8 #ratio of MAOMs to MAOMp decayed / overall MAOM decay is partitioned using this fixed ratios really unavailable,
-    # MAOMpmaxrate = 0.1 #maximum rate of primary MAOM formation
-    # MAOMmaxrate=0.2 # max proportion of DOM stabilized in MAOM per day [unitless]
-    # MAOMratioSP = 2 #ratio of secondary to primary MAOM
-    # maxEffectBactMAOM=0.9 #(half as slow when no bacteria, rate becomes 1-value)
-    # maxEffectSA_MAOM = 0.9
-    # maxEffectN_MAOM = 0.9
-    # MM_N_MAOM =  1
-    # MM_Bact_MAOM = 1.10  #bact amount for half speed
-    # MM_SA_MAOM = 0.001  # ratio of SA of hyphae/roots to claysiltSA where half max speed of MAOM formation is reached
-    # MM_DOM_MAOM=0.025  # DOM concentration for speed being half max speed (Michaelis Menten) [gC/m3]
-    # Priming_max=10 #maximum decay price [J/gC] was 10
-    bact_DOM_rel = AllParam["bact_DOM_rel"]
+    bact_rhiz_rel = AllParam["bact_rhiz_rel"]
+    fungi_rhiz_rel = AllParam["fungi_rhiz_rel"]
     DOM_EC = AllParam["DOM_EC"]
     # kpriming = AllParam["kpriming"]
-    KS = AllParam["KS"]
-    KSfungi = AllParam["KSfungi"]
-    KSbact = AllParam["KSbact"]
+    KSrhiz = AllParam["KSrhiz"]
+    KSbulk = AllParam["KSbulk"]
     kPOM_MAOM = AllParam["kPOM_MAOM"]
     kMAOMs_MAOMp = AllParam["kMAOMs_MAOMp"]
     MAOMpmaxrate = AllParam["MAOMpmaxrate"]
     MAOMsmaxrate = AllParam["MAOMsmaxrate"]
     MAOMratioSP = AllParam["MAOMratioSP"]
-    maxEffectBactMAOM = AllParam["maxEffectBactMAOM"]
+    maxEffectMicMAOM = AllParam["maxEffectMicMAOM"]
     maxEffectSA_MAOM = AllParam["maxEffectSA_MAOM"]
     maxEffectN_MAOM = AllParam["maxEffectN_MAOM"]
     MM_N_MAOM = AllParam["MM_N_MAOM"]
-    MM_Bact_MAOM = AllParam["MM_Bact_MAOM"]
+    MM_Mic_MAOM = AllParam["MM_Mic_MAOM"]
     MM_SA_MAOM = AllParam["MM_SA_MAOM"]
     MM_DOM_MAOM = AllParam["MM_DOM_MAOM"]
     Priming_max = AllParam["Priming_max"]
     kpriming = 0
     # the ones we use from other calibration
-    GMAX = AllParam[
-        "GMAX"
-    ]  # maximal growth rate for bacteria [gC/(gC day)], KEYLINK was 1.24
-    GMAXfungi = AllParam[
-        "GMAXfungi"
+    GMAXrhiz = AllParam[
+        "GMAXrhiz"
+    ]  # maximal growth rate for rhizeria [gC/(gC day)], KEYLINK was 1.24
+    GMAXbulk = AllParam[
+        "GMAXbulk"
     ]  # maximal growth rate for fungi [gC/(gC day)], KEYLINK
-    mRecBact = AllParam["mRecBact"]  # how sensitive bact are to recalcitrance
-    mRecFungi = AllParam["mRecFungi"]  #
-    # resp=0.01 #respiration rate for bacteria growing on DOM / ??do we really need a different one? it was set to 0 decided to ditch it and just the next one
+    mRecbulk = AllParam["mRecbulk"]  # how sensitive rhiz are to recalcitrance
+    # resp=0.01 #respiration rate for rhizeria growing on DOM / ??do we really need a different one? it was set to 0 decided to ditch it and just the next one
     # =0.05  #respiration rate resp, [gC/(gC day)], KEYLINK
-    DEATH = AllParam["DEATH"]  # death rate for bacteria [gC/(gC day)], KEYLINK
-    DEATHfungi = AllParam["DEATHfungi"]  # death rate for fungi [gC/(gC day)], KEYLINK
+    DEATH = AllParam["DEATHrhiz"]  # death rate for rhizeria [gC/(gC day)], KEYLINK
+    DEATHbulk = AllParam["DEATHbulk"]  # death rate for fungi [gC/(gC day)], KEYLINK
     pCN = AllParam[
         "pCN"
-    ]  # sensitivity to CN ratio of consumed substrate, values 0-1, taken from KEYLINK (value for bacteria)
+    ]  # sensitivity to CN ratio of consumed substrate, values 0-1, taken from KEYLINK (value for rhizeria)
     recMAOM = AllParam[
         "recMAOM"
     ]  # recalcitrance of MAOM, (recalcitrance of POM assumed 0)
-    RESPbact = AllParam[
-        "RESPbact"
-    ]  # respiration rate of bacteria, [gC/(gC day)], was 0.05 KEYLINK
-    RESPfungi = AllParam[
-        "RESPfungi"
+    RESPrhiz = AllParam[
+        "RESPrhiz"
+    ]  # respiration rate of rhizeria, [gC/(gC day)], was 0.05 KEYLINK
+    RESPbulk = AllParam[
+        "RESPbulk"
     ]  # respiration rate of fungi, [gC/(gC day)], was 0.03 KEYLINK
-    T_MAXbact = AllParam["T_MAXbact"]
-    T_MINbact = AllParam["T_MINbact"]
-    T_OPTbact = AllParam["T_OPTbact"]
-    T_MAXfungi = AllParam["T_MAXfungi"]
-    T_MINfungi = AllParam["T_MINfungi"]
-    T_OPTfungi = AllParam["T_OPTfungi"]
-    Q10bact = AllParam["Q10bact"]
-    Q10fungi = AllParam["Q10fungi"]
+    T_MAXrhiz = AllParam["T_MAXrhiz"]
+    T_MINrhiz = AllParam["T_MINrhiz"]
+    T_OPTrhiz = AllParam["T_OPTrhiz"]
+    T_MAXbulk = AllParam["T_MAXbulk"]
+    T_MINbulk = AllParam["T_MINbulk"]
+    T_OPTbulk = AllParam["T_OPTbulk"]
+    Q10rhiz = AllParam["Q10rhiz"]
+    Q10bulk = AllParam["Q10bulk"]
 
     # input parameters that do not change (=measurable) and are not calibrated, just 'start situation"
 
@@ -118,8 +92,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # those that will be the same for all 16 runs
     BD = 800  # bulk density [kg/m³]
     claySA = 800000  # surface area of clay [m²/kg] was 8000000 cm²/g
-    CN_bact = 4  # CN of bacteria, from KEYLINK, in Jílková2022 initial CN of microbial biomass is 10
-    CN_fungi = 8  # KEYLINK
+    CN_rhiz = 4  # CN of rhizeria, from KEYLINK, in Jílková2022 initial CN of microbial biomass is 10
+    CN_bulk = 8  # KEYLINK
     fClay = 0.17  # weight fraction [g/g], Jílková2022
     fSilt = 0.24  # weight fraction [g/g], Jílková2022
     maxMAOM = (
@@ -173,8 +147,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             "day",
             "DOMaddition",
             "DOM",
-            "bact_DOM",
-            "bact",
+            "rhiz_DOM",
+            "rhiz",
             "fungi",
             "resp_substrate",
             "resp_soil_baseline",
@@ -192,7 +166,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     if mode_ == "Bayesian":
 
         # variables for which we have measured data
-        # treatment, d, resp, resp_sub, POM, MAOM, bact_total, fungi, POM_sub, MAOM_sub, bact_total_sub, fungi_sub]
+        # treatment, d, resp, resp_sub, POM, MAOM, rhiz_total, fungi, POM_sub, MAOM_sub, rhiz_total_sub, fungi_sub]
         column_names = [
             "treatment",
             "day",
@@ -200,12 +174,12 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             "resp_sub",
             "POM",
             "MAOM",
-            "bact_total",
-            "fungi",
+            "rhiz_total",
+            "bulk",
             "POM_sub",
             "MAOM_sub",
-            "bact_total_sub",
-            "fungi_sub",
+            "rhiz_total_sub",
+            "bulk_sub",
         ]
 
         results_df = pd.DataFrame(columns=column_names)
@@ -217,9 +191,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             "day",
             "DOMaddition",
             "DOM",
-            "bact_DOM",
-            "bact",
-            "fungi",
+            "rhiz",
+            "bulk",
             "respSubstrate",
             "baselineResp",
             "respSoil",
@@ -240,18 +213,13 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         outPOM = []
         outDOMadded = []
         outDOM = []
-        outDOM_CN = []
-        outBact_total = []
-        outbact_DOM = []
-        outBact = []
-        outFungi = []
+        outrhiz = []
+        outbulk = []
         outRespSubstrate = []
         outRespSoil = []
         outRespSoilBaseline = []
-        outBact_DOM_sub = []
-        outBact_total_sub = []
-        outBact_sub = []
-        outFungi_sub = []
+        outrhiz_sub = []
+        outbulk_sub = []
         outDOM_sub = []
         outPOM_sub = []
         outMAOM_sub = []
@@ -265,11 +233,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # variables that will be initialized differently for different runs
     bact_total = treatmentVar[
         "bact_total"
-    ]  # total biomass of bacteria [gC/m3], was 6 final noadd average from PLFA from Jílková2022
+    ]  # total biomass of rhizeria [gC/m3], was 6 final noadd average from PLFA from Jílková2022
     CN_MAOMs = treatmentVar[
         "CN_MAOMs"
     ]  # estimated but we don't know the true value, assumed to vary with CN_DOM
-    fungi = treatmentVar[
+    fungi_total = treatmentVar[
         "fungi"
     ]  # biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
     MAOM = treatmentVar["MAOM"]  # C in MAOM [gC/m3] average noAdd Jílková2022
@@ -295,12 +263,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
 
     # same for all runs
     availability = np.zeros(3)
-    bact = bact_total * (
-        1 - bact_DOM_rel
-    )  # biomass of bacteria growing on POM and MAOM but not on DOM [gC/m3]
-    bact_sub = 0  # proportion of this bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
-    bact_DOM = bact_total * bact_DOM_rel  # biomass of bacteria growing on DOM [gC/m3]
-    bact_DOM_sub = 0  # proportion of bacterial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
+    bulk = bact_total * (1 - bact_rhiz_rel) + fungi_total * (1 - fungi_rhiz_rel)  # biomass of rhizeria growing on POM and MAOM but not on DOM [gC/m3]
+    bulk_sub = 0  # proportion of this rhizerial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
+    rhiz=bact_total * bact_rhiz_rel +  fungi_total * fungi_rhiz_rel # biomass of rhizeria growing on DOM [gC/m3]
+    rhiz_sub = 0  # proportion of rhizerial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
     CN_DOM = 0  #
     DOM = 0  # DOM [gC/m3]
     DOM_sub = 0  # relative substrate derived C in DOM /values 0 to 1/, portion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
@@ -313,7 +279,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     else:
         DOM_N = 0
 
-    fungi_sub = 0  # proportion of fungal carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
+    # fungi_sub = 0  # proportion of fungal carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
 
     # MAOMunavail = (
     #     PSA[0] / sum(PSA)
@@ -329,7 +295,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     resp = 0
     DOM_added = 0
     DOM_added_all = 0
-    # AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
+    # AllC = DOM + POM + MAOM + rhiz_total + fungi + resp - DOMadded
     # print(AllC)
 
     # function coreMAOM
@@ -377,11 +343,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         #     print("MAOMp2: ", MAOMp)
 
         # find t modifier
-        modtBact = mf.calcmodt(temp, T_OPTbact, T_MINbact, T_MAXbact)
-        modtFungi = mf.calcmodt(temp, T_OPTfungi, T_MINfungi, T_MAXfungi)
-        rRESPbact = mf.calcresp(temp, T_OPTbact, RESPbact, Q10bact)
-        rRESPfungi = mf.calcresp(temp, T_OPTfungi, RESPfungi, Q10fungi)
-        # print(rRESPbact, rRESPfungi)
+        modtrhiz = mf.calcmodt(temp, T_OPTrhiz, T_MINrhiz, T_MAXrhiz)
+        modtbulk = mf.calcmodt(temp, T_OPTbulk, T_MINbulk, T_MAXbulk)
+        rRESPrhiz = mf.calcresp(temp, T_OPTrhiz, RESPrhiz, Q10rhiz)
+        rRESPbulk = mf.calcresp(temp, T_OPTbulk, RESPbulk, Q10bulk)
+        # print(rRESPrhiz, rRESPfungi)
 
         # microbial growth on DOM and priming, only susing MAOMs
         if CN_DOM > 0:
@@ -390,8 +356,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 DOM_sub,
                 DOM_N,
                 CN_DOM,
-                bact_DOM,
-                bact_DOM_sub,
+                rhiz,
+                rhiz_sub,
                 POM,
                 MAOMs,
                 MAOMp,
@@ -411,28 +377,28 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 MAOMp_sub,
                 CN_MAOMp,
                 CN_MAOMs,
-                bact_DOM,
-                bact_DOM_sub,
-                CN_bact,
+                rhiz,
+                rhiz_sub,
+                CN_rhiz,
                 DOM,
                 DOM_sub,
                 CN_DOM,
-                GMAX,
+                GMAXrhiz,
                 DEATH,
                 pCN,
                 pH,
-                rRESPbact,
-                KS,
+                rRESPrhiz,
+                KSrhiz,
                 DOM_EC,
                 Priming_max,
                 kpriming,
                 kPOM_MAOM,
                 kMAOMs_MAOMp,
-                modtBact,
+                modtrhiz,
             )
         # print('calc.Rhizo')
         #               if (MAOMs<0):
-        #                   print('mainLine270 DOM, bact, fungi, MAOMs, MAOMp', DOM,bact, fungi, MAOMs, MAOMp)
+        #                   print('mainLine270 DOM, rhiz, fungi, MAOMs, MAOMp', DOM,rhiz, fungi, MAOMs, MAOMp)
         else:
 
             respDOM = 0
@@ -445,13 +411,13 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
 
         resp = respDOM + respPriming
         # resp_all += resp
-        bact_total = bact_DOM + bact
+        #rhiz_total = rhiz_DOM + rhiz
         MAOM = MAOMs + MAOMp
-        # AllC = DOM + POM + MAOM + bact_total + fungi + resp_all - DOM_added
+        # AllC = DOM + POM + MAOM + rhiz_total + fungi + resp_all - DOM_added
 
         # MAOM formation
         MicrobialC = (
-            bact + bact_DOM + fungi
+            rhiz + bulk
         )  # all microbes contribute to MAOM formation
         if CN_DOM > 0:
             (
@@ -480,8 +446,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 MAOMsmaxrate,
                 MAOMpmaxrate,
                 MM_DOM_MAOM,
-                maxEffectBactMAOM,
-                MM_Bact_MAOM,
+                maxEffectMicMAOM,
+                MM_Mic_MAOM,
                 maxEffectN_MAOM,
                 MM_N_MAOM,
                 maxEffectSA_MAOM,
@@ -498,162 +464,129 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         # baseline microbial growth on SOM (without substrate DOM additions)
         availability = mf.calcAvailPot(
             PV, PW
-        )  # calculates availability of SOM decomposition by bacteria and fungi, separately, from pore size distribution and soil water
-        # calculate maximal growth (gmax) for bacteria/fungi on POM/MAOM separately
+        )  # calculates availability of SOM decomposition by rhizeria and fungi, separately, from pore size distribution and soil water
+        # calculate maximal growth (gmax) for rhizeria/fungi on POM/MAOM separately
 
         # if CN_MAOMs <= 0:
         #     print("CN_MAOMs: ", CN_MAOMs)
         
-        #first calculate maximum growth on DOM if it was unlimited, both for fungi and bacteria
+        #first calculate maximum growth on DOM if it was unlimited, both for bulk microbes
         # do this only if there is some non-zero DOM, not to run into problems with dividing by zero
         if DOM > 0:
             gmaxbDOM = (
-             mf.calcgmaxmod(CN_bact, CN_DOM, pCN, 0.0, 0, pH, 1) * GMAX
-             ) # gmax for bact on DOM
-            gmaxfDOM = (
-                mf.calcgmaxmod(CN_fungi, CN_DOM, pCN, 0.0, 0, pH, 2) * GMAXfungi
-            )  # gmax for fungi on DOM
+             mf.calcgmaxmod(CN_bulk, CN_DOM, pCN, 0.0, 0, pH, 1) * GMAXbulk
+             ) # gmax for bulk on DOM
+            
         
             #calculate realized growth on DOM (this is actually assimilation, not growth)
-            bactDOMgrowth = modtBact * mf.calcgrowth(
-                bact, DOM, availability[0], gmaxbDOM, KSbact * bact
+            bulkDOMgrowth = modtbulk * mf.calcgrowth(
+                bulk, DOM, availability[0], gmaxbDOM, KSbulk * bulk
             )
-            fungiDOMgrowth = modtFungi * mf.calcgrowth(
-                fungi, DOM, availability[1], gmaxfDOM, KSfungi * fungi
-            )
+            
         else:
-            bactDOMgrowth = 0
-            fungiDOMgrowth = 0
+            bulkDOMgrowth = 0
+            
    
         #then to ensure that the sum of gmaxes from different substrates does not exceed GMAX, 
         #reduce GMAX accordingly by what growth was already realized from previous substrates
         gmaxbPOM = (
-            mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1) * (GMAX - bactDOMgrowth)
-        )  # gmax for bact on POM
-        gmaxfPOM = (
-            mf.calcgmaxmod(CN_fungi, CN_POM, pCN, 0.0, 0, pH, 2) * (GMAXfungi - fungiDOMgrowth)
-        )  # gmax for fungi on POM
+            mf.calcgmaxmod(CN_bulk, CN_POM, pCN, 0.0, 0, pH, 1) * (GMAXbulk - bulkDOMgrowth)
+        )  # gmax for rhiz on POM
         
         #calculate realized growth on POM
-        bactPOMgrowth = modtBact * mf.calcgrowth(
-            bact, POM, availability[0], gmaxbPOM, KSbact * bact
+        bulkPOMgrowth = modtbulk * mf.calcgrowth(
+            bulk, POM, availability[0], gmaxbPOM, KSbulk * bulk
         )
-        fungiPOMgrowth = modtFungi * mf.calcgrowth(
-            fungi, POM, availability[1], gmaxfPOM, KSfungi * fungi
-        )
-        
         
         # we assume MAOMp can only be lost through priming, so normal growth uses MAOMs
         #also reduce gmax by what was already grown on DOM and POM
         gmaxbMAOM = (
-            mf.calcgmaxmod(CN_bact, CN_MAOMs, pCN, recMAOM, mRecBact, pH, 1) * (GMAX - bactDOMgrowth - bactPOMgrowth)
-        )  # gmax for bact on MAOM
-        gmaxfMAOM = (
-            mf.calcgmaxmod(CN_fungi, CN_MAOMs, pCN, recMAOM, mRecFungi, pH, 2)
-            * (GMAXfungi - fungiDOMgrowth - fungiPOMgrowth) 
-        )  # gmax for fungi on MAOM
+            mf.calcgmaxmod(CN_bulk, CN_MAOMs, pCN, recMAOM, mRecbulk, pH, 1) * (GMAXbulk - bulkDOMgrowth - bulkPOMgrowth)
+        )  # gmax for rhiz on MAOM
+        
         
         #calculate realized growth on MAOM
-        bactMAOMgrowth = modtBact * mf.calcgrowth(
-            bact, MAOMs, availability[0], gmaxbMAOM, KSbact * bact
+        bulkMAOMgrowth = modtbulk * mf.calcgrowth(
+            bulk, MAOMs, availability[0], gmaxbMAOM, KSbulk * bulk
         )
-        fungiMAOMgrowth = modtFungi * mf.calcgrowth(
-            fungi, MAOMs, availability[1], gmaxfMAOM, KSfungi * fungi
-        )
+       
         # print('GMAX', GMAX,
-              # "\nbactDOMgrowth", bactDOMgrowth,
-              # "\nbactPOMgrowth", bactPOMgrowth,
-              # '\nbactMAOMgrowth', bactMAOMgrowth,      
+              # "\nrhizDOMgrowth", rhizDOMgrowth,
+              # "\nrhizPOMgrowth", rhizPOMgrowth,
+              # '\nrhizMAOMgrowth', rhizMAOMgrowth,      
               # '\nGMAXfungi', GMAXfungi,
               # "\nfungiDOMgrowth", fungiDOMgrowth, 
               # '\nfungiPOMgrowth', fungiPOMgrowth,               
               # '\nfungiMAOMgrowth', fungiMAOMgrowth) 
         
-        # calculate substrate derived C in bact and fungi
+        # calculate substrate derived C in rhiz and fungi
         DOM_sub_abs = DOM * DOM_sub  # recalculate because changesin calc.Rhizosphere
         POM_sub_abs = POM * POM_sub  # recalculate because changes in calc.Rhizosphere
         MAOMs_sub_abs = (
             MAOMs * MAOMs_sub
         )  # recalculate because changes in calc.Rhizosphere and calc.MAOM
-        bact_sub_abs = (
-            bact * bact_sub
-        )  # absolute substrate derived C in bacteria [gC/m3]
-        fungi_sub_abs = (
-            fungi * fungi_sub
-        )  # absolute substrate derived C in fungi [gC/m3]
+        bulk_sub_abs = (
+            bulk * bulk_sub
+        )  # absolute substrate derived C in bulk [gC/m3]
+       
         
-        #calculate the overall change in bact and fungal biomass
-        dbact = bactDOMgrowth + bactPOMgrowth + bactMAOMgrowth - DEATH * bact - rRESPbact * bact     
-        dfungi = fungiDOMgrowth + fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi * fungi - rRESPfungi * fungi
+        #calculate the overall change in bulk biomass
+        dbulk = bulkDOMgrowth + bulkPOMgrowth + bulkMAOMgrowth - DEATHbulk * bulk - rRESPbulk * bulk     
+        
 
         #the consequent changes in the pools being eaten
-        DOM += - bactDOMgrowth - fungiDOMgrowth + DEATH * bact + DEATHfungi * fungi  # add dead bacteria and fungi to DOM
-        POM += -bactPOMgrowth - fungiPOMgrowth  # subtract what has been eaten from POM
-        MAOMs += -bactMAOMgrowth - fungiMAOMgrowth  # and MAOMs
+        DOM += - bulkDOMgrowth + DEATHbulk * bulk   # add dead bulk to DOM
+        POM += -bulkPOMgrowth   # subtract what has been eaten from POM
+        MAOMs += -bulkMAOMgrowth   # and MAOMs
 
         # update CN DOM
-        DOM_N += - bactDOMgrowth / CN_bact - fungiDOMgrowth / CN_fungi + DEATH * bact / CN_bact + DEATHfungi * fungi / CN_fungi
+        DOM_N += - bulkDOMgrowth / CN_bulk + DEATHbulk * bulk / CN_bulk 
 
         CN_DOM = DOM / DOM_N  # recalculate CN DOM
 
         # if treatmentID == 5:
         #     print(treatmentID, "CN_DOM in the end of the day: ", CN_DOM)
 
-        #    if (-dbact>bact):
-        #        print('mainLine307  bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact', bact, bactPOMgrowth, POM, bactMAOMgrowth, DEATH*bact, rRESPbact*bact)
+        #    if (-drhiz>rhiz):
+        #        print('mainLine307  rhiz, rhizPOMgrowth, POM, rhizMAOMgrowth, DEATH*rhiz, rRESPrhiz*rhiz', rhiz, rhizPOMgrowth, POM, rhizMAOMgrowth, DEATH*rhiz, rRESPrhiz*rhiz)
 
         DOM_sub_abs += (
-            - bactDOMgrowth * DOM_sub - fungiDOMgrowth * DOM_sub + DEATH * bact * bact_sub + DEATHfungi * fungi * fungi_sub
+            - bulkDOMgrowth * DOM_sub + DEATHbulk * bulk * bulk_sub 
         )  # add corresponding part of substrate derived C to DOM
-        POM_sub_abs -= (bactPOMgrowth + fungiPOMgrowth) * POM_sub
-        MAOMs_sub_abs -= (bactMAOMgrowth + fungiMAOMgrowth) * MAOMs_sub
-        fungi_sub_abs += (
-             fungiDOMgrowth * DOM_sub
-            + fungiMAOMgrowth * MAOMs_sub
-            + fungiPOMgrowth * POM_sub
-            - DEATHfungi * fungi * fungi_sub
-            - rRESPfungi * fungi * fungi_sub
-        )  # add the corresponding part of growth on MAOM as substrate derived C, subtract death and respiration
-        bact_sub_abs += (
-            bactDOMgrowth * DOM_sub
-            + bactMAOMgrowth * MAOMs_sub
-            + bactPOMgrowth * POM_sub
-            - DEATH * bact * bact_sub
-            - rRESPbact * bact * bact_sub
+        POM_sub_abs -= bulkPOMgrowth * POM_sub
+        MAOMs_sub_abs -= bulkMAOMgrowth * MAOMs_sub
+        
+        bulk_sub_abs += (
+            bulkDOMgrowth * DOM_sub
+            + bulkMAOMgrowth * MAOMs_sub
+            + bulkPOMgrowth * POM_sub
+            - DEATHbulk * bulk * bulk_sub
+            - rRESPbulk * bulk * bulk_sub
         )  # add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
 
-        baselineRespBact = rRESPbact * bact
-        baselineRespBact_sub_abs = (
-            baselineRespBact * bact_sub
+        baselineRespbulk = rRESPbulk * bulk
+        baselineRespbulk_sub_abs = (
+            baselineRespbulk * bulk_sub
         )  # what part of this respiration is substrate derived
-        baselineRespBact_sub = baselineRespBact_sub_abs / baselineRespBact
-        bact += dbact
+        baselineRespbulk_sub = baselineRespbulk_sub_abs / baselineRespbulk
+        bulk += dbulk
 
-        baselineRespFungi = rRESPfungi * fungi
-        baselineRespFungi_sub_abs = (
-            baselineRespFungi * fungi_sub
-        )  # what part of this respiration is substrate derived
-        baselineRespFungi_sub = baselineRespFungi_sub_abs / baselineRespFungi
-        fungi += dfungi
-
+        
         # update relative substrate derived C proportions
         DOM_sub = DOM_sub_abs / DOM  # relative substrate derived C in DOM
         POM_sub = POM_sub_abs / POM  # relative substrate derived C in DOM
         MAOMs_sub = MAOMs_sub_abs / MAOMs  # relative substrate derived C in DOM
-        fungi_sub = (
-            fungi_sub_abs / fungi
-        )  # update relative substrate derived C in fungi
-        # print(' treatment, day, fungi_sub', treatment, d, fungi_sub)
-        bact_sub = (
-            bact_sub_abs / bact
-        )  # update relative substrate derived C in bacteria
+        
+        bulk_sub = (
+            bulk_sub_abs / bulk
+        )  # update relative substrate derived C in rhizeria
         # add up things
         MAOM = MAOMp + MAOMs
-        bact_total = bact + bact_DOM
+        # bact_total = rhiz*bact_rhiz_rel + bulk*bact_bulk_rel
         # baseline respiration without priming
         baselineResp = (
-            baselineRespBact + baselineRespFungi + respDOM
-        )  # of course this respDOM is higher if previous day DOM-feeding bacteria grew more because of priming
+            baselineRespbulk + respDOM
+        )  # of course this respDOM is higher if previous day DOM-feeding rhizeria grew more because of priming
         # all respiration
         resp = baselineResp + respPriming
         
@@ -662,12 +595,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         MAOM_sub = MAOMp_sub * (MAOMp / MAOM) + MAOMs_sub * (
             MAOMs / MAOM
         )  # average substrate proportion in MAOM
-        bact_total_sub = bact_DOM_sub * (bact_DOM / bact_total) + bact_sub * (
-            bact / bact_total
-        )  # average substrate proportion in bacteria
+       # rhiz_total_sub = rhiz_DOM_sub * (rhiz_DOM / rhiz_total) + rhiz_sub * (
+       #     rhiz / rhiz_total
+        #)  # average substrate proportion in bacteria
         resp_sub = (
-            baselineRespBact_sub * (baselineRespBact / resp)
-            + baselineRespFungi_sub * (baselineRespFungi / resp)
+            baselineRespbulk_sub * (baselineRespbulk / resp)
             + respDOM_sub * (respDOM / resp)
             + respPriming_sub * (respPriming / resp)
         )
@@ -676,9 +608,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         respSoil = resp - respSubstrate  # soil-derived respiration (absolute)
         
         #soil-derived respiration from all sources except respPriming     
-        #respDOM - respiration of DOM feeding bacteria without priming being activ
-        respSoilBaseline = respDOM * respDOM_sub + baselineRespBact * baselineRespBact_sub + baselineRespFungi * baselineRespFungi_sub 
-        # AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
+        #respDOM - respiration of DOM feeding rhizeria without priming being activ
+        respSoilBaseline = respDOM * (1-respDOM_sub) + baselineRespbulk * (1-baselineRespbulk_sub) 
+        # AllC = DOM + POM + MAOM + rhiz_total + fungi + resp - DOMadded
         # print('line412', treatment, d, AllC)
 
         # tady jsou ještě nějaké malinké hodnoty, ale jsou
@@ -707,10 +639,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             outMAOMs.append(MAOMs / (0.8 * 1000))  # change units from gC/m3 mgC/g soil)
             outPOM.append(POM / (0.8 * 1000))  # change units from gC/m3 mgC/g soil
             outDOM.append(DOM / 0.8)  # change units from gC/m3 µgC/g soil)
-            outBact_total.append(bact_total / 0.8)  # change units from gC/m3 µgC/g soil
-            outbact_DOM.append(bact_DOM / 0.8)  # change units from gC/m3 µgC/g soil
-            outBact.append(bact / 0.8)  # change units from gC/m3 µgC/g soil
-            outFungi.append(fungi / 0.8)  # change units from gC/m3 µgC/g soil
+            outrhiz.append(rhiz / 0.8)  # change units from gC/m3 µgC/g soil  
+            outbulk.append(bulk / 0.8)  # change units from gC/m3 µgC/g soil            
+            # outrhiz.append(rhiz / 0.8)  # change units from gC/m3 µgC/g soil
+            # outFungi.append(fungi / 0.8)  # change units from gC/m3 µgC/g soil
             outRespSubstrate.append(
                 respSubstrate / (0.8 * 24)
             )  # change units from gC/m3/day
@@ -719,10 +651,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             )  # change units from gC/m3/day
             outRespSoil.append(respSoil / (0.8 * 24))  # change units from gC/m3/day
             # substrate-derived %
-            outBact_total_sub.append(bact_total_sub)
-            outBact_DOM_sub.append(bact_DOM_sub)
-            outBact_sub.append(bact_sub)
-            outFungi_sub.append(fungi_sub)
+            outrhiz_sub.append(rhiz_sub)
+            outbulk_sub.append(bulk_sub)
             outDOM_sub.append(DOM_sub)
             outPOM_sub.append(POM_sub)
             outMAOM_sub.append(MAOM_sub)
@@ -738,9 +668,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 d,
                 DOM_added / 0.8,  # change units from gC/m3 µgC/g soil
                 DOM / 0.8,  # change units from gC/m3 µgC/g soil
-                bact_DOM / 0.8,  # change units from gC/m3 µgC/g soil
-                bact / 0.8,  # change units from gC/m3 µgC/g soil
-                fungi / 0.8,  # change units from gC/m3 µgC/g soil
+                rhiz / 0.8,  # change units from gC/m3 µgC/g soil
+                bulk / 0.8,  # change units from gC/m3 µgC/g soil
                 respSubstrate
                 / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
                 baselineResp
@@ -761,12 +690,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 resp_sub,
                 POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 MAOM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                bact_total / 0.8,  # change units from gC/m3 µgC/g soil
-                fungi / 0.8,  # change units from gC/m3 µgC/g soil
+                rhiz / 0.8,  # change units from gC/m3 µgC/g soil
+                bulk / 0.8,  # change units from gC/m3 µgC/g soil
                 POM_sub,
                 MAOM_sub,
-                bact_total,
-                fungi_sub,
             ]
 
         if mode_ == "Normal":  # for normal runs
@@ -775,9 +702,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 d,
                 DOM_added / 0.8,  # change units from gC/m3 µgC/g soil
                 DOM / 0.8,  # change units from gC/m3 µgC/g soil
-                bact_DOM / 0.8,  # change units from gC/m3 µgC/g soil
-                bact / 0.8,  # change units from gC/m3 µgC/g soil
-                fungi / 0.8,  # change units from gC/m3 µgC/g soil
+                rhiz / 0.8,  # change units from gC/m3 µgC/g soil
+                bulk / 0.8,  # change units from gC/m3 µgC/g soil
+                # fungi / 0.8,  # change units from gC/m3 µgC/g soil
                 respSubstrate
                 / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
                 baselineResp
@@ -798,9 +725,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     if Plotting:  # transform data for Plotting to adjusted units matching the data
         # change units to easily understandable for the plot
         # outDOMadded2 = np.divide(outDOMadded, 0.8) # change units from gC/m3 µgC/g soil
-        # outBact_total2 = np.divide(outBact_total, 0.8) # change units from gC/m3 µgC/g soil
-        # outbact_DOM2 = np.divide(outbact_DOM, 0.8)
-        # outBact2 = np.divide(outBact, 0.8)
+        # outrhiz_total2 = np.divide(outrhiz_total, 0.8) # change units from gC/m3 µgC/g soil
+        # outrhiz_DOM2 = np.divide(outrhiz_DOM, 0.8)
+        # outrhiz2 = np.divide(outrhiz, 0.8)
         # outFungi2 = np.divide(outFungi, 0.8)
         # outRespSubstrate2 = np.divide(outRespSubstrate, 0.8 * 24) # change units from gC/m3/day to µg CO2-C/g soil/h
         # outRespSoilBaseline2 = np.divide(outRespSoilBaseline, 0.8 * 24)
@@ -815,9 +742,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         def Dailyplot1(
             outDOMadded,
             outDOM,
-            outbact_DOM,
-            outBact,
-            outFungi,
+            outrhiz,
+            outbulk,
             outRespSubstrate,
             outRespSoil,
             outRespSoilBaseline,
@@ -861,10 +787,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 loc="upper left", bbox_to_anchor=(0, -0.15), shadow=True
             )  # loc='upper left',
 
-            p4.plot(time_d, outBact_total, label="bacteria")
-            p4.plot(time_d, outbact_DOM, label="bacteria DOM feeding")
-            p4.plot(time_d, outBact, label="bacteria only SOM feeding")
-            p4.plot(time_d, outFungi, label="fungi")
+            p4.plot(time_d, outrhiz, label="rhizosphere microbes")
+            p4.plot(time_d, outbulk, label="bulk soil microbes")
             ps[3].legend(
                 loc="upper left", bbox_to_anchor=(0, -0.15), shadow=True
             )  # loc='bottom right',
@@ -892,9 +816,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
 
         # plot substrate-derived proportions
         def Dailyplot2(
-            outBact_DOM_sub,
-            outBact_sub,
-            outFungi_sub,
+            outrhiz_sub,
+            outbulk_sub,
             outDOM_sub,
             outPOM_sub,
             outMAOMs_sub,
@@ -911,14 +834,12 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             # counter = count(0, 1)
             # columns = list(df)
             ps[0].set_title("substrate derived % of microbial pools")
-            ps[1].set_title("substrate derived % of SOM pools")
+            ps[1].set_title("substrate derived % of SOM pools")            
             ps[2].set_title("substrate derived % of respiration")
             ps[3].set_title("total respiration")
 
-            p1.plot(time_d, outBact_total_sub, label="bacteria")
-            p1.plot(time_d, outBact_DOM_sub, label="bacteria DOM feeding")
-            p1.plot(time_d, outBact_sub, label="bacteria SOM feeding")
-            p1.plot(time_d, outFungi_sub, label="fungi")
+            p1.plot(time_d, outrhiz_sub, label="rhizosphere microbes")
+            p1.plot(time_d, outbulk_sub, label="bulk soil microbes")
             ps[0].legend(
                 loc="upper left", bbox_to_anchor=(1, 1), shadow=True
             )  # loc='bottom right',
@@ -958,9 +879,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         Dailyplot1(
             outDOMadded,
             outDOM,
-            outbact_DOM,
-            outBact,
-            outFungi,
+            outrhiz,
+            outbulk,
             outRespSubstrate,
             outRespSoil,
             outRespSoilBaseline,
@@ -972,9 +892,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         )
 
         Dailyplot2(
-            outBact_DOM_sub,
-            outBact_sub,
-            outFungi_sub,
+            outrhiz_sub,
+            outbulk_sub,
             outDOM_sub,
             outPOM_sub,
             outMAOMs_sub,
