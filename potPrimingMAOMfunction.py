@@ -504,7 +504,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         # if CN_MAOMs <= 0:
         #     print("CN_MAOMs: ", CN_MAOMs)
         
-        #first calculate maximum growth on DOM if it was unlimited, both for fungi a
+        #first calculate maximum growth on DOM if it was unlimited, both for fungi and bacteria
+        # do this only if there is some non-zero DOM, not to run into problems with dividing by zero
         if DOM > 0:
             gmaxbDOM = (
              mf.calcgmaxmod(CN_bact, CN_DOM, pCN, 0.0, 0, pH, 1) * GMAX
@@ -513,7 +514,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 mf.calcgmaxmod(CN_fungi, CN_DOM, pCN, 0.0, 0, pH, 2) * GMAXfungi
             )  # gmax for fungi on DOM
         
-            #calculate realized growth on DOM
+            #calculate realized growth on DOM (this is actually assimilation, not growth)
             bactDOMgrowth = modtBact * mf.calcgrowth(
                 bact, DOM, availability[0], gmaxbDOM, KSbact * bact
             )
@@ -523,8 +524,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         else:
             bactDOMgrowth = 0
             fungiDOMgrowth = 0
-            
-        #then to ensure that the sum f gmaxes from different substrates does not exceed GMAX, reduce GMAX accordingly by what growth was already realized from previous substrates
+   
+        #then to ensure that the sum of gmaxes from different substrates does not exceed GMAX, 
+        #reduce GMAX accordingly by what growth was already realized from previous substrates
         gmaxbPOM = (
             mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1) * (GMAX - bactDOMgrowth)
         )  # gmax for bact on POM
@@ -558,6 +560,14 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         fungiMAOMgrowth = modtFungi * mf.calcgrowth(
             fungi, MAOMs, availability[1], gmaxfMAOM, KSfungi * fungi
         )
+        # print('GMAX', GMAX,
+              # "\nbactDOMgrowth", bactDOMgrowth,
+              # "\nbactPOMgrowth", bactPOMgrowth,
+              # '\nbactMAOMgrowth', bactMAOMgrowth,      
+              # '\nGMAXfungi', GMAXfungi,
+              # "\nfungiDOMgrowth", fungiDOMgrowth, 
+              # '\nfungiPOMgrowth', fungiPOMgrowth,               
+              # '\nfungiMAOMgrowth', fungiMAOMgrowth) 
         
         # calculate substrate derived C in bact and fungi
         DOM_sub_abs = DOM * DOM_sub  # recalculate because changesin calc.Rhizosphere
@@ -571,20 +581,19 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         fungi_sub_abs = (
             fungi * fungi_sub
         )  # absolute substrate derived C in fungi [gC/m3]
-        #               if (bact<0):
-        #                  print('mainLine290 DOM, bact, fungi', DOM,bact, fungi)
         
-
+        #calculate the overall change in bact and fungal biomass
         dbact = bactDOMgrowth + bactPOMgrowth + bactMAOMgrowth - DEATH * bact - rRESPbact * bact     
         dfungi = fungiDOMgrowth + fungiPOMgrowth + fungiMAOMgrowth - DEATHfungi * fungi - rRESPfungi * fungi
 
-
+        #the consequent changes in the pools being eaten
         DOM += - bactDOMgrowth - fungiDOMgrowth + DEATH * bact + DEATHfungi * fungi  # add dead bacteria and fungi to DOM
         POM += -bactPOMgrowth - fungiPOMgrowth  # subtract what has been eaten from POM
         MAOMs += -bactMAOMgrowth - fungiMAOMgrowth  # and MAOMs
 
         # update CN DOM
         DOM_N += - bactDOMgrowth / CN_bact - fungiDOMgrowth / CN_fungi + DEATH * bact / CN_bact + DEATHfungi * fungi / CN_fungi
+
         CN_DOM = DOM / DOM_N  # recalculate CN DOM
 
         # if treatmentID == 5:
@@ -647,6 +656,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         )  # of course this respDOM is higher if previous day DOM-feeding bacteria grew more because of priming
         # all respiration
         resp = baselineResp + respPriming
+        
 
         # calculate average substrate proportions
         MAOM_sub = MAOMp_sub * (MAOMp / MAOM) + MAOMs_sub * (
@@ -664,6 +674,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
 
         respSubstrate = resp_sub * resp  # substrate derived respiration (absolute)
         respSoil = resp - respSubstrate  # soil-derived respiration (absolute)
+        
+        #soil-derived respiration from all sources except respPriming     
+        #respDOM - respiration of DOM feeding bacteria without priming being activ
+        respSoilBaseline = respDOM * respDOM_sub + baselineRespBact * baselineRespBact_sub + baselineRespFungi * baselineRespFungi_sub 
         # AllC = DOM + POM + MAOM + bact_total + fungi + resp - DOMadded
         # print('line412', treatment, d, AllC)
 
@@ -701,7 +715,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 respSubstrate / (0.8 * 24)
             )  # change units from gC/m3/day
             outRespSoilBaseline.append(
-                baselineResp / (0.8 * 24)
+                respSoilBaseline / (0.8 * 24)
             )  # change units from gC/m3/day
             outRespSoil.append(respSoil / (0.8 * 24))  # change units from gC/m3/day
             # substrate-derived %
