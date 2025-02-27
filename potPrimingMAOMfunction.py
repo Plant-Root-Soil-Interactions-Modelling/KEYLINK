@@ -174,13 +174,13 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             "resp_sub",
             "POM",
             "MAOM",
-            "rhiz_total",
+            "rhiz",
             "bulk",
             "POM_sub",
-            "MAOM_sub",
-            "rhiz_total_sub",
-            "bulk_sub",
+            "MAOM_sub"
+            
         ]
+        
 
         results_df = pd.DataFrame(columns=column_names)
 
