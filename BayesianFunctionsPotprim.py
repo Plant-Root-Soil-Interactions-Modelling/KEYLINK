@@ -29,7 +29,7 @@ def calc_sim_likelyhood(simulation, measurement, error):  # calculates loglikeli
         )  # safety break if this ever happens
     # err = error
     if error == 0:  # if the error is zero (because of 100% certainty)
-        error = 1e-6  # assign some very small error, this will influence the result in the way that the loglikelihood will become positive but this should be fine
+        error = 1e-2#1e-6  # assign some very small error, this will influence the result in the way that the loglikelihood will become positive but this should be fine
 
     if pd.isna(error):  # if only error is missing
         error = abs(measurement / 5)  # estimate error value by dividing by five
