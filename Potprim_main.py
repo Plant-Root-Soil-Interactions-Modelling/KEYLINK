@@ -790,8 +790,6 @@ if mode_ == "Bayesian":
     treatmentVar = ()
     results_df = pd.DataFrame()
 
-    # data_Simulated=pd.DataFrame()
-
     for treatment in range(numTreatments):
         # use input data for the respective treatment
         treatmentVar = inputBayesianRun.iloc[treatment, 0:21]
@@ -946,8 +944,12 @@ if mode_ == "Bayesian":
                 )
                 # print(results_df)
                 # we need to couple the output of the right day to the measured output
-                data_Simulated[treatment]["resp1"] = results_df.at[0, "resp"]
-                data_Simulated[treatment]["resp_sub1"] = results_df.at[0, "resp_sub"]
+                for d in range(len(data_measured_colnames)):  # for each measured variable
+                    # print(d)
+                    # print("colname", data_measured_colnames[d], "variable", data_measured_names[d], "day", data_measured_days[d]-1)
+                    data_Simulated[treatment][data_measured_colnames[d]] = results_df.at[
+                        data_measured_days[d] - 1, data_measured_names[d]
+                    ]
 
                 # 10) calculate the likelihood of each treatment run for given parameter set
                 # we need to add for the treatment the likelyhood of all measurements added
