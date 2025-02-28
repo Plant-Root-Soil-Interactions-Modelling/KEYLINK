@@ -324,7 +324,8 @@ def calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id):
         mpH = min(1, 1 / ((pH - 8) * 10))
     else:
         mpH = 1
-
+    if(CNsource<=0):
+        CNsource=CNsource
     mCN = min(1, (CNbiomass / CNsource) ** pCN)  # effect of CN
     value = min(1, mCN * mpH * mRec)  # assuming complete additivity
 
@@ -752,7 +753,7 @@ def calcRhizosphere(
     # describes rhizosphere bacterial growth on DOM
 
     DOM_Nini = DOM / CN_DOM
-
+    
     # print ('line 511 calcRhizosphere', 'bact_DOM=', bact_DOM, 'CN_DOM', CN_DOM)
     # calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id)
     # gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1) * GMAX #gmax for bact on POM
@@ -1087,11 +1088,13 @@ def calcMAOM(
     # secondary MAOM formation
     # if dMAOMp > 0: not needed
     # MAOMp is--has high N, with constant CN ratio so changes the CN ration of the DOM
+    # but limited by N in DOM
+    if dMAOMp / CN_MAOMp>DOM_N: # if there is not enough N   
+          dMAOMp = DOM_N*0.9/CN_MAOMp
+    DOM_N -= dMAOMp / CN_MAOMp
     MAOMp = MAOMp + dMAOMp
     DOM = DOM - dMAOMp
-    DOM_N -= dMAOMp / CN_MAOMp
-    CN_DOM = DOM / DOM_N  # calculate new CN of DOM pool
-
+    CN_DOM = DOM / DOM_N    
     # substrate-derived proportion changes calculations
     # changes in absolute pools
     DOM_sub_abs -= (
@@ -1105,6 +1108,8 @@ def calcMAOM(
     MAOMp_sub = MAOMp_sub_abs / MAOMp
     # if DOM < 0:
     #     print ('line 579 calcMaom DOM=', DOM)
+    if CN_DOM<0:
+        CN_DOM=CN_DOM
     return DOM, DOM_N, CN_DOM, DOM_sub, MAOMp, MAOMp_sub, MAOMs, MAOMs_sub, CN_MAOMs
 
 

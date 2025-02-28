@@ -435,6 +435,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         MicrobialC = (
             rhiz + bulk
         )  # all microbes contribute to MAOM formation
+        
         if CN_DOM > 0:
             (
                 DOM,
@@ -475,6 +476,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         # if treatmentID == 5:
         #     print(treatmentID, "CN_DOM after calcMAOM: ", CN_DOM)
 
+        else: #CN_DOM negative
+            CN_DOM=CN_DOM  
+            
+        
         MAOM = MAOMs + MAOMp
 
         # baseline microbial growth on SOM (without substrate DOM additions)
@@ -488,6 +493,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         
         #first calculate maximum growth on DOM if it was unlimited, both for bulk microbes
         # do this only if there is some non-zero DOM, not to run into problems with dividing by zero
+   
+        
         if DOM > 0:
             gmaxbDOM = (
              mf.calcgmaxmod(CN_bulk, CN_DOM, pCN, 0.0, 0, pH, 1) * GMAXbulk
@@ -501,7 +508,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             
         else:
             bulkDOMgrowth = 0
-            
+         
    
         #then to ensure that the sum of gmaxes from different substrates does not exceed GMAX, 
         #reduce GMAX accordingly by what growth was already realized from previous substrates
