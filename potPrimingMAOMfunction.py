@@ -80,10 +80,13 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     CN_POM = treatmentVar["CN_POM"]  # 24 #CN of SOM, Jílková2022
     pH = treatmentVar["pH"]  # 4.1 #Jílková2022
     temp = treatmentVar["temp"]  # 21
-    treatment = treatmentVar["treatment"]
-    treatmentID = treatmentVar["treatmentID"]
+    treatment = treatmentVar["treatment"] #name of the treatment
+    treatmentID = treatmentVar["treatmentID"] #number of the treatment
+    fClay = treatmentVar["fClay"] #  # weight fraction [g/g], 0.17 for Jílková2022
+    fSilt = treatmentVar["fSilt"] # weight fraction [g/g], 0.24 for Jílková2022
 
-    # those different for Jílková 2022 and experiment 2024
+    # those same for Jílková 2022 and experiment 2024
+     
     d_freq = (
         14  # how often is substrate added, every x days, is 14 for Jílková2022 and 2024
     )
@@ -92,10 +95,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # those that will be the same for all 16 runs
     BD = 800  # bulk density [kg/m³]
     claySA = 800000  # surface area of clay [m²/kg] was 8000000 cm²/g
-    CN_rhiz = 4  # CN of rhizeria, from KEYLINK, in Jílková2022 initial CN of microbial biomass is 10
-    CN_bulk = 8  # KEYLINK
-    fClay = 0.17  # weight fraction [g/g], Jílková2022
-    fSilt = 0.24  # weight fraction [g/g], Jílková2022
+    CN_bact = 4  # CN of rhizosphere microbes, from KEYLINK, in Jílková2022 initial CN of microbial biomass is 10
+    CN_fungi = 8  # KEYLINK
+   
     maxMAOM = (
         0.86 * (fClay + fSilt) * 100 * BD
     )  # [gC/m3] maximum MAOM, 28208 for Jílková et al. 2022 Georgiou et al. 2022: 86 ± 9 and 48 ± 6 mg C/g silt+clay mineral for HM and LM,
@@ -104,6 +106,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     maxSurfaceArea = (
         claySA * BD * fClay + siltSA * BD * fSilt
     )  # total surface area of clay and silt in m²/m³
+    
     # PV = np.array(
     #     [45, 37, 37, 200, 6]
     # )  # pore volume for each pore size class [l/m3]
@@ -172,12 +175,19 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             "day",
             "resp",
             "resp_sub",
+            "DOM",
             "POM",
             "MAOM",
-            "rhiz",
-            "bulk",
+            "DOM_sub",
             "POM_sub",
-            "MAOM_sub"
+            "MAOM_sub",
+            "CN_DOM",
+            "CN_MAOM",
+            "bact",
+            "fungi",
+            "bact_sub", 
+            "fungi_sub",
+            
             
         ]
         
@@ -231,19 +241,21 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # initializing variables (what changes during run)
 
     # variables that will be initialized differently for different runs
-    bact_total = treatmentVar[
-        "bact_total"
+    bact = treatmentVar[
+        "bact"
     ]  # total biomass of rhizeria [gC/m3], was 6 final noadd average from PLFA from Jílková2022
     CN_MAOMs = treatmentVar[
-        "CN_MAOMs"
+        "CN_MAOMsini"
     ]  # estimated but we don't know the true value, assumed to vary with CN_DOM
-    fungi_total = treatmentVar[
+    fungi = treatmentVar[
         "fungi"
     ]  # biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
-    MAOM = treatmentVar["MAOM"]  # C in MAOM [gC/m3] average noAdd Jílková2022
+    DOM = treatmentVar["DOMini"]   # DOM [gC/m3]
+    CN_DOM = treatmentVar["CN_DOMini"] 
     POM = treatmentVar[
-        "POM"
+        "POMini"
     ]  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
+    MAOM = treatmentVar["MAOMini"]  # C in MAOM [gC/m3] average noAdd Jílková2022
     TP = None
     PV = None
 
@@ -263,27 +275,32 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
 
     # same for all runs
     availability = np.zeros(3)
-    bulk = bact_total * (1 - bact_rhiz_rel) + fungi_total * (1 - fungi_rhiz_rel)  # biomass of rhizeria growing on POM and MAOM but not on DOM [gC/m3]
-    bulk_sub = 0  # proportion of this rhizerial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
-    rhiz=bact_total * bact_rhiz_rel +  fungi_total * fungi_rhiz_rel # biomass of rhizeria growing on DOM [gC/m3]
-    rhiz_sub = 0  # proportion of rhizerial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
-    CN_DOM = 0  #
-    DOM = 0  # DOM [gC/m3]
-    DOM_sub = 0  # relative substrate derived C in DOM /values 0 to 1/, portion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
-    DOM_N = 0  # set DOM N to zero
+    # biomass of rhizosphere microbes [gC/m3]
+    bact_rhiz = bact * bact_rhiz_rel
 
-    if DOM > 0:
-        DOM_N = (
-            DOM / CN_DOM
-        )  # but if there is some initial DOM, calculate it from CN_DOM
-    else:
-        DOM_N = 0
+    fungi_rhiz = fungi * fungi_rhiz_rel 
+    rhiz = bact_rhiz +  fungi_rhiz
+    rhiz_sub = 0  # proportion of rhizerial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
+    # biomass of bulk soil microbes [gC/m3]
+    bact_bulk = bact * (1 - bact_rhiz_rel)
+    fungi_bulk = fungi * (1 - fungi_rhiz_rel)
+    bulk = bact_bulk + fungi * fungi_bulk 
+    bulk_sub = 0  # proportion of this carbon in microbes that is substrate derived in contrast to soil-derived / values 0 to 1/
+    # print('bact_rhiz', 'fungi_rhiz', 'bact_bulk', 'fungi_bulk', bact_rhiz, fungi_rhiz, bact_bulk, fungi_bulk)
+    
+    #CN ratio for rhiz and bulk based on the proportion of bacterial and fungal biomass
+    CN_rhiz = (bact_rhiz*CN_bact + fungi_rhiz*CN_fungi)/rhiz
+    CN_bulk = (bact_bulk*CN_bact + fungi_bulk*CN_fungi)/bulk
+    FB_rhiz = fungi_rhiz/bact_rhiz
+    FB_bulk = fungi_bulk/bact_bulk
+    # print('FB_rhiz', FB_rhiz,
+    #       'FB_bulk', FB_bulk)
+    DOM_sub = 0  # relative substrate derived C in DOM /values 0 to 1/, portion of DOM carbon that is substrate derived in contrast to soil-derived / values 0 to 1/ is a ratio between substrate-derived C and total C in DOM
+
+    DOM_N = DOM/CN_DOM  # calculate DOM N from initial DOM and its CN
 
     # fungi_sub = 0  # proportion of fungal carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
 
-    # MAOMunavail = (
-    #     PSA[0] / sum(PSA)
-    # ) * MAOM  # the portion of MAOM stored in the smallest pores is really unavailable
     MAOMp = MAOM / (
         MAOMratioSP + 1
     )  # primary MAOM [gC/m3] initialised at the ratio of saturation
@@ -408,7 +425,6 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
 
         # if treatmentID == 5:
         #     print(treatmentID, "CN_DOM after calcRhizosphere: ", CN_DOM)
-
         resp = respDOM + respPriming
         # resp_all += resp
         #rhiz_total = rhiz_DOM + rhiz
@@ -613,7 +629,27 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         # AllC = DOM + POM + MAOM + rhiz_total + fungi + resp - DOMadded
         # print('line412', treatment, d, AllC)
 
-        # tady jsou ještě nějaké malinké hodnoty, ale jsou
+        #calculating fungi and bacteria back, using fixed FB ratios of rhizosphere and bulk soil
+        bact_rhiz = rhiz/(FB_rhiz + 1) 
+        fungi_rhiz = bact_rhiz * FB_rhiz
+        bact_bulk = bulk/(FB_bulk + 1) 
+        fungi_bulk = bact_bulk * FB_bulk
+        bact = bact_rhiz + fungi_rhiz
+        fungi = bact_bulk + fungi_bulk
+        
+        #todo calculating substrate derived proportion in bacteria and fungi
+        bact_sub = 0
+        fungi_sub = 0
+        # bact_rhiz = rhiz/(FB_rhiz + 1) 
+        # fungi_rhiz = bact_rhiz * FB_rhiz
+        # bact_bulk = bulk/(FB_bulk + 1) 
+        # fungi_bulk = bact_bulk * FB_bulk
+        # bact = bact_rhiz + fungi_rhiz
+        # fungi = bact_bulk + fungi_bulk
+        
+        #todo check when CN_MAOM changes, calculate CN MAOM
+        CN_MAOM = (MAOMs * CN_MAOMs + MAOMp * CN_MAOMp)/MAOM
+        
         # if treatmentID == 5 or treatmentID == 1 or treatmentID == 3:
         #     print(
         #         treatmentID,
@@ -688,12 +724,19 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 d,
                 resp / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
                 resp_sub,
+                DOM / (0.8 * 1000),
                 POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 MAOM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                rhiz / 0.8,  # change units from gC/m3 µgC/g soil
-                bulk / 0.8,  # change units from gC/m3 µgC/g soil
+                DOM_sub,
                 POM_sub,
                 MAOM_sub,
+                CN_DOM,
+                CN_MAOM,
+                bact / 0.8,# change units from gC/m3 µgC/g soil
+                fungi / 0.8, # change units from gC/m3 µgC/g soil
+                bact_sub, 
+                fungi_sub,
+                
             ]
 
         if mode_ == "Normal":  # for normal runs
@@ -874,8 +917,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         # except FileExistsError:
         #     # directory already exists
         #     pass
-
+    
+# plot in normal (not KEYLINK) units
         # after each run, make a plot
+
         Dailyplot1(
             outDOMadded,
             outDOM,

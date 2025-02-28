@@ -49,7 +49,7 @@
 	"RESPrhiz":0.1
 	},
 "MinParam":{
-	"bact_rhiz_rel": 0.5,
+	"bact_rhiz_rel": 0.3,
     	"fungi_rhiz_rel": 0.01,
 	"DOM_EC": 1,
 	"DEATHrhiz": 0.01,

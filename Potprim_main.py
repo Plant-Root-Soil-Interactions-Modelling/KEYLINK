@@ -264,7 +264,7 @@ if mode_ == "Normal":
     labels = []
 
     for treatment in range(numTreatments):
-        treatmentVar = inputRun.iloc[treatment, 0:17]
+        treatmentVar = inputRun.iloc[treatment, 0:21]
 
         results_df = run_model(
             AllParam,
@@ -283,8 +283,8 @@ if mode_ == "Normal":
             respSubstrate_mean_model.append(
                 (results_df["respSubstrate"].mean()) / 0.8 * 24
             )
-            respSoil_mean_measure.append((inputRun.iloc[treatment, 17:37]).mean())
-            respSubstrate_mean_measure.append((inputRun.iloc[treatment, 50:61]).mean())
+            respSoil_mean_measure.append((inputRun.iloc[treatment, 33:53]).mean())
+            respSubstrate_mean_measure.append((inputRun.iloc[treatment, 66:77]).mean())
 
     final_results_df = pd.concat(
         df_list, ignore_index=True
@@ -328,7 +328,7 @@ if mode_ == "Jilkova2022":
     labels = []
 
     for treatment in range(numTreatments):
-        treatmentVar = inputRun.iloc[treatment, 0:17]
+        treatmentVar = inputRun.iloc[treatment, 0:21]
 
         results_df = run_model(
             AllParam,
@@ -486,7 +486,7 @@ if mode_ == "Sensitivity":
             # Priming_max = paramsToTestDict["Priming_max"]
 
             for treatment in range(numTreatments):
-                treatmentVar = inputRun.iloc[treatment, 0:17]
+                treatmentVar = inputRun.iloc[treatment, 0:21]
 
                 results_df = run_model(
                     AllParam,
@@ -722,8 +722,8 @@ if mode_ == "Bayesian":
     data_measured = pd.DataFrame()
     data_measured_errors = pd.DataFrame()
 
-    data_measured = inputBayesianRun.iloc[:, 17:49]
-    data_measured_errors = inputBayesianRun.iloc[:, 49:81]
+    data_measured = inputBayesianRun.iloc[:, 21:65]
+    data_measured_errors = inputBayesianRun.iloc[:, 65:109]
 
     # data_measured_errors.columns
     # inputBayesianRun({"sample"})
@@ -757,7 +757,7 @@ if mode_ == "Bayesian":
     data_Simulated = dict.fromkeys(
         data_measured, 0
     )  # make a dictionary from column names of measured data
-    data_Simulated.update({"sim likelihood": 0})  # add one more element with likelihood
+    data_Simulated.update({"sim likelihood": 0})  # add one more element with likelihood, first set to zero
     data_Simulated = [
         # {"resp1": 0, "resp_sub1": 0, "sim likelihood": 0}
         copy.deepcopy(
@@ -794,8 +794,8 @@ if mode_ == "Bayesian":
 
     for treatment in range(numTreatments):
         # use input data for the respective treatment
-        treatmentVar = inputBayesianRun.iloc[treatment, 0:17]
-        print("treatmentVar", treatmentVar)
+        treatmentVar = inputBayesianRun.iloc[treatment, 0:21]
+
         # to be  corrected for nr of columns needed
         # print(
         #     "treatmentID",
@@ -831,19 +831,20 @@ if mode_ == "Bayesian":
         """
         4) calculate the likelihood of each parameter set for each treatment and store in sim likelihood from the differences between measured and simulated and error
         """
-        for e in range(
-            len(data_measured_colnames)
-        ):  # for each measured variable calculate loglikelihood
-
-            likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
-                data_Simulated[treatment][data_measured_colnames[e]],
-                data_measured.iat[treatment, e],
-                data_measured_errors.iat[treatment, e],
-            )
-            data_Simulated[treatment][
-                "sim likelihood"
-            ] += likelyhood  # and add it up for all measured variables for the given treatment
-
+        for e in range(len(data_measured_colnames)):  
+            # for each measured variable calculate loglikelihood
+            measurement = data_measured.iat[treatment, e]
+            #make sure that measurement is not NA
+            if pd.notna(measurement):
+                likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+                    data_Simulated[treatment][data_measured_colnames[e]],
+                    measurement,
+                    data_measured_errors.iat[treatment, e],
+                )
+                data_Simulated[treatment]["sim likelihood"] += likelyhood  # and add it up for all measured variables for the given treatment
+            else: 
+                likelyhood = pd.NA
+            
             print(
                 "treatment",
                 treatment,
@@ -854,7 +855,7 @@ if mode_ == "Bayesian":
                 "simulated",
                 data_Simulated[treatment][data_measured_colnames[e]],
                 "measured",
-                data_measured.iat[treatment, e],
+                measurement,
                 "error",
                 data_measured_errors.iat[treatment, e],
                 "likelihood",
@@ -938,7 +939,7 @@ if mode_ == "Bayesian":
                 # print(treatment)
                 # 9) run the model for each treatment with the new parameters
                 treatmentVar = inputBayesianRun.iloc[
-                    treatment, 0:17
+                    treatment, 0:21
                 ]  # to be moved & use iloc
                 results_df = run_model(
                     AllParam, treatmentVar, mode_, False, numDays=161, path=None
@@ -955,13 +956,16 @@ if mode_ == "Bayesian":
                 #     break  # safety for now
 
                 for e in range(len(data_measured_colnames)):
+                    measurement = data_measured.iat[treatment, e]
+                    #make sure that measurement is not NA
+                    if pd.notna(measurement):
+                        likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+                            data_Simulated[treatment][data_measured_colnames[e]],
+                            measurement,
+                            data_measured_errors.iat[treatment, e],
+                        )
+                        data_Simulated[treatment]["sim likelihood"] += likelyhood
 
-                    likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
-                        data_Simulated[treatment][data_measured_colnames[e]],
-                        data_measured.iat[treatment, e],
-                        data_measured_errors.iat[treatment, e],
-                    )
-                    data_Simulated[treatment]["sim likelihood"] += likelyhood
 
                 # old version
                 # likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
@@ -1369,7 +1373,7 @@ if mode_ == "Validation":
         df_list = []
 
         for treatment in range(numTreatments):
-            treatmentVar = inputRun.iloc[treatment, 0:17]
+            treatmentVar = inputRun.iloc[treatment, 0:21]
 
             results_df = run_model(
                 AllParam,
@@ -1383,17 +1387,18 @@ if mode_ == "Validation":
 
             # storing values for respiration plot
             if Plotting:
-                respSoil_mean_measure.append((inputRun.iloc[treatment, 17:37]).mean())
-                respSubstrate_mean_measure.append(
-                    (inputRun.iloc[treatment, 50:61]).mean()
+                labels.append(results_df["treatment"][1])
+                respSoil_mean_model.append((results_df["respSoil"].mean()) / 0.8 * 24)
+                respSubstrate_mean_model.append(
+                    (results_df["respSubstrate"].mean()) / 0.8 * 24
                 )
-
-            # This is now needed for the mean respiration output with all the treatments and sets
-            respSoil_mean_model.append((results_df["respSoil"].mean()) / 0.8 * 24)
-            respSubstrate_mean_model.append(
-                (results_df["respSubstrate"].mean()) / 0.8 * 24
-            )
-            labels.append(results_df["treatment"][1])
+                respSoil_mean_measure.append((inputRun.iloc[treatment, 33:53]).mean())
+                respSubstrate_mean_measure.append((inputRun.iloc[treatment, 66:77]).mean())
+            
+            
+            
+              
+                
 
         final_results_df = pd.concat(
             df_list, ignore_index=True
