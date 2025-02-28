@@ -32,7 +32,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Jilkova2022", "Validation"
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Normal"
+mode_ = "Bayesian"
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
 
@@ -774,7 +774,7 @@ if mode_ == "Bayesian":
     1) calculate the variance of the parameter space
     """
     # variance of the parameter space, is needed to define the step size for each parameter
-    VarianceParameterSpace = np.diag(((0.005 * (MaximumOption - MinimalOption)) ** 2))
+    VarianceParameterSpace = np.diag(((0.05 * (MaximumOption - MinimalOption)) ** 2))
 
     """2) calculate the likelihood of the parameters chosen (for a flat distribution this will always be constant or 0)
     """
