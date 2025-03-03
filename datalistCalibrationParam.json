@@ -68,7 +68,7 @@
 	"MM_N_MAOM":0.6,
 	"MM_Mic_MAOM":0.60,
 	"MM_SA_MAOM":0.00001,
-	"MM_DOM_MAOM":0.0025,
+	"MM_DOM_MAOM":0.0001,
 	"Priming_max":0,
 	"RESPbulk":0.005,
 	"RESPrhiz":0.005

@@ -211,7 +211,7 @@ def check_significant_change(values, num_identical_results, alpha=0.05):
     Returns:
     bool: True if there is a significant change, False otherwise.
     """
-
+    #if there is not at least 1000 accepted parameter sets 
     if len(values) < 2 * num_identical_results:
         return True
         # raise ValueError(f"Lists must contain at least {2 * num_identical_results} elements each.")

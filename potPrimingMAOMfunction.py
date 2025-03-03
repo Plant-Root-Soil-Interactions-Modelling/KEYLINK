@@ -173,8 +173,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         column_names = [
             "treatment",
             "day",
-            "resp",
-            "resp_sub",
+            "respSoil",
+            "respSubstrate",
             "DOM",
             "POM",
             "MAOM",
@@ -210,6 +210,12 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             "MAOMs",
             "MAOMp",
             "MAOM",
+            'POM_sub',
+            'MAOM_sub', 
+            'bact', 
+            'fungi',
+            'bact_sub',
+            'fungi_sub'
         ]
 
         results_df = pd.DataFrame(columns=column_names)
@@ -729,9 +735,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             results_df.loc[len(results_df)] = [
                 treatment,
                 d,
-                resp / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
-                resp_sub,
-                DOM / (0.8 * 1000),
+                respSoil / (0.8 * 24),     # change units from gC/m3/day to µg CO2-C/g soil/h
+                respSubstrate / (0.8 * 24),     # change units from gC/m3/day to µg CO2-C/g soil/h
+                DOM / (0.8 * 1000), # change units from gC/m3 mgC/g soil
                 POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 MAOM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 DOM_sub,
@@ -765,6 +771,12 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 MAOMs / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 MAOMp / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 MAOM / (0.8 * 1000),
+                POM_sub,
+                MAOM_sub, 
+                bact, 
+                fungi,
+                bact_sub,
+                fungi_sub
             ]  # change units from gC/m3 mgC/g soil
 
         ############# end of daily run of coreMAOM   #############
@@ -860,8 +872,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             ps[5].legend(
                 loc="upper left", bbox_to_anchor=(0, -0.15), shadow=True
             )  # loc='bottom right',
-
-            plt.savefig(os.path.join(path, "Dailyplot1_" + treatment + ".png"))
+            
+           
+            plt.savefig(os.path.join(figures_path, "Dailyplot1_" + treatment + ".png"))
             plt.close()
 
         # plot substrate-derived proportions
@@ -873,7 +886,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             outMAOMs_sub,
             outMAOMp_sub,
             treatment,
-            path,
+            figures_path,
         ):
             fig, (p1, p2, p3, p4) = plt.subplots(
                 nrows=4, ncols=1, figsize=(5, 14)
@@ -913,7 +926,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             )  # loc='bottom right',
 
             plt.savefig(
-                os.path.join(path, "Dailyplot2_" + treatment + ".png"),
+                os.path.join(figures_path, "Dailyplot2_" + treatment + ".png"),
                 bbox_inches="tight",
             )
             plt.close()
@@ -927,7 +940,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     
 # plot in normal (not KEYLINK) units
         # after each run, make a plot
-
+        
+        #define the folder where figures should be saved as output/figures
+        figures_path = os.path.join(path, "figures")
+        
         Dailyplot1(
             outDOMadded,
             outDOM,
@@ -940,9 +956,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             outMAOMp,
             outMAOMs,
             treatment,
-            path,
+            figures_path,
         )
-
+        
+        
+        
         Dailyplot2(
             outrhiz_sub,
             outbulk_sub,
@@ -951,7 +969,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             outMAOMs_sub,
             outMAOMp_sub,
             treatment,
-            path,
+            figures_path,
         )
 
     ############# end of Plotting   #############

@@ -28,13 +28,25 @@ import copy
 
 ############## Modes #################################
 # set allowed values for mode
-modes = Literal["Normal", "Sensitivity", "Bayesian", "Jilkova2022", "Validation"]
+modes = Literal["Normal", "Sensitivity", "Bayesian", "Validation"]
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Bayesian"
+mode_ = "Normal"
+
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
+
+############## Datasets #################################
+# set allowed values for dataset
+datasets = Literal["Jilkova2022", "Jilkova2024"]
+options = get_args(datasets)
+
+# set the dataset to Jilkova 2022 or Jilkova 2024
+dataset_ = "Jilkova2022"
+
+# check if dataset was set correctly, if not stop the run
+assert dataset_ in options, f'"{mode_}" is not in "{options}"'
 
 # if the Normal or Jilkova2022 mode was chosen, you can decide to turn on the Plotting
 Plotting = True
@@ -251,8 +263,23 @@ results_df = []  # temporary df to store returned dataframe
 
 ############## Normal run ###########################
 if mode_ == "Normal":
-    # Treatments
-    inputRun = pd.read_csv("Normal_run_input.csv", header=0, skiprows=0)
+    
+    if dataset_ == "Jilkova2024":
+        path_normal = "Normal_run_input_2024.csv"
+        duration = 161 #number of days of incubation
+        cols_measured_respSoil = slice(33, 53) #which columns contain measured soil derived respiration
+        cols_measured_respSubstrate = slice(66, 77)  #which columns contain measured substrate derived respiration
+        cols_data_measured = slice(21, 45)##to fix
+       
+    if dataset_ == "Jilkova2022":
+        path_normal = "Normal_run_input_2022.csv"
+        duration = 155 #number of days of incubation
+        cols_measured_respSoil = slice(29, 37) #which columns contain measured soil derived respiration
+        cols_measured_respSubstrate = slice(37, 45)  #which columns contain measured substrate derived respiration
+        cols_data_measured = slice(21, 45)
+        
+    # load input data - Treatments
+    inputRun = pd.read_csv(path_normal, header=0, skiprows=0)
 
     numTreatments = len(inputRun)
 
@@ -271,31 +298,34 @@ if mode_ == "Normal":
             treatmentVar,
             mode_="Normal",
             Plotting=Plotting,
-            numDays=161,
-            path=results_path,
+            numDays=duration,
+            path=results_path
         )
         df_list.append(results_df)
 
-        # storing values for respiration plot
+ 
+        
+        
         if Plotting:
-            labels.append(results_df["treatment"][1])
-            respSoil_mean_model.append((results_df["respSoil"].mean()) / 0.8 * 24)
-            respSubstrate_mean_model.append(
-                (results_df["respSubstrate"].mean()) / 0.8 * 24
-            )
-            respSoil_mean_measure.append((inputRun.iloc[treatment, 33:53]).mean())
-            respSubstrate_mean_measure.append((inputRun.iloc[treatment, 66:77]).mean())
+            # storing values for respiration plot
+            labels.append(results_df["treatment"][1]) # treatment label
+            #eventually this could be also obtained at the end of the run somehow, not throughout:
+            respSoil_mean_measure.append((inputRun.iloc[treatment, cols_measured_respSoil]).mean())
+            respSubstrate_mean_measure.append((inputRun.iloc[treatment, cols_measured_respSubstrate]).mean())
 
     final_results_df = pd.concat(
         df_list, ignore_index=True
-    )  # add all the rows to the results_df
-
+    )  # add all the rows to the results_df    
+            
+            
+            
     try:
-        os.makedirs("./output/data")
+            os.makedirs("./output/data")
     except FileExistsError:
         # directory already exists
         pass
-
+    
+    #save all modelled data
     final_results_df.to_csv(
         "./output/data/Normal.csv",
         index=False,
@@ -303,86 +333,78 @@ if mode_ == "Normal":
     )
 
     if Plotting:
+        #filter out modelled values for all those variables and days for which we have measured values
+        data_measured = inputRun.iloc[:, cols_data_measured]  # get measured data
+        data_measured_names = []
+        data_measured_days = []
+        data_measured_colnames = data_measured.columns.tolist() #extract column names of measured data
+        
+        data_measured_names, data_measured_days = (
+            BayesianFunctionsPotprim.split_alphanumeric_list(data_measured_colnames)
+        )           # from the column names extract variable name and day of measurement
+        unique_variables = list(set(data_measured_names)) 
+        
+        #mtransform the modelled data from wide format into long, to be able to filter by combinations of variable and day
+        df_long = pd.melt(
+            final_results_df,
+            id_vars=['day','treatment'],  # Columns to keep as is
+            value_vars=unique_variables,  # Columns to unpivot
+            var_name='variable',  # Name for the new column containing former column names
+            value_name='value'  # Name for the new column containing values
+        )
+        python_data_measured_days = [x - 1 for x in data_measured_days] 
+        
+        #pairs of variables and days for which we have measurements   
+        key = pd.DataFrame({'data_measured_names': data_measured_names, 
+                      'data_measured_days': python_data_measured_days
+                      })
+                           
+        #filter the modelled data by the measured variables and days by inner join             
+        merged_df = pd.merge(
+        df_long, 
+        key,
+        left_on=['variable', 'day'],
+        right_on=['data_measured_names','data_measured_days'],
+        how='inner'
+        )
+        #average by day and treatment
+        averages = merged_df.groupby(['day','treatment',"variable"])['value'].mean().reset_index() #averages for each variable across all replicates for each treatment
+        #only for respiration data, calculate the average across days (for the respiration plot)
+        respiration = averages[averages["variable"].isin(["respSoil", "respSubstrate"])]
+        resp_avg = respiration.groupby(['treatment',"variable"])['value'].mean().reset_index()
+        #convert KEYLINK units to normal (data) units:
+        resp_avg["value"] = resp_avg["value"]  / 0.8 * 24
+        
+        #convert the long format back to width to have separate columns for respSoil and respSubstrate
+        resp_avg = resp_avg.pivot(
+            index='treatment',        # Column(s) to use as the index
+            columns='variable', # Column whose unique values will become column names
+            values='value'     # Column whose values will fill the new DataFrame
+        ) 
+        #store the measured respiration data into a dataframe
+        resp_measured = pd.DataFrame({'treatment': labels, 
+                                       'respSoil_mean_measure': respSoil_mean_measure,
+                                       'respSubstrate_mean_measure': respSubstrate_mean_measure,                                         
+                                        })
+        #calculate averages for each treatment
+        resp_measured_avg = resp_measured.groupby('treatment').mean()
+        
+        #merge modelled and measured respiration data
+        resp_df = pd.merge(
+        resp_avg, 
+        resp_measured_avg,
+        on=['treatment'],
+        how='left'
+        )
+            
+        #draw the plot
         drawRespPlot(
-            labels,
-            respSoil_mean_model,
-            respSoil_mean_measure,
-            respSubstrate_mean_model,
-            respSubstrate_mean_measure,
+            resp_df.index.tolist(), #extract the treatment labels from the index of the dataframe
+            resp_df['respSoil'], #mean of modelled
+            resp_df['respSoil_mean_measure'],
+            resp_df["respSubstrate"],#mean of modelled
+            resp_df["respSubstrate_mean_measure"],
             "respPlot_Normal.png",
-            None,
-        )
-
-############## Jilkova2022 run ###########################
-if mode_ == "Jilkova2022":
-    # Treatments
-    inputRun = pd.read_csv("Normal_run_input_2022.csv", header=0, skiprows=0)
-
-    numTreatments = len(inputRun)
-
-    # create lists for respiration plot
-    respSoil_mean_model = []
-    respSubstrate_mean_model = []
-    respSoil_mean_measure = []
-    respSubstrate_mean_measure = []
-    labels = []
-
-    for treatment in range(numTreatments):
-        treatmentVar = inputRun.iloc[treatment, 0:21]
-
-        results_df = run_model(
-            AllParam,
-            treatmentVar,
-            mode_="Normal",
-            Plotting=Plotting,
-            numDays=155,
-            path=results_path,
-        )
-
-        df_list.append(results_df)
-
-        # storing values for respiration plot
-        if Plotting:
-            labels.append(results_df["treatment"][1])
-            respSoil_mean_model.append((results_df["respSoil"].mean()) / 0.8 * 24)
-            respSubstrate_mean_model.append(
-                (results_df["respSubstrate"].mean()) / 0.8 * 24
-            )
-
-            if results_df["treatment"][1] == "control":
-                respSoil_mean_measure.append(0.3199)
-                respSubstrate_mean_measure.append(0)
-            if results_df["treatment"][1] == "leachates":
-                respSoil_mean_measure.append(0.3980)
-                respSubstrate_mean_measure.append(0.0833)
-            if results_df["treatment"][1] == "exudates":
-                respSoil_mean_measure.append(0.3371)
-                respSubstrate_mean_measure.append(0.1028)
-
-    final_results_df = pd.concat(
-        df_list, ignore_index=True
-    )  # add all the rows to the results_df
-
-    try:
-        os.makedirs("./output/data")
-    except FileExistsError:
-        # directory already exists
-        pass
-
-    final_results_df.to_csv(
-        "./output/data/Normal2022.csv",
-        index=False,
-        float_format="%.5f",
-    )
-
-    if Plotting:
-        drawRespPlot(
-            labels,
-            respSoil_mean_model,
-            respSoil_mean_measure,
-            respSubstrate_mean_model,
-            respSubstrate_mean_measure,
-            "respPlot_Jilkova2022.png",
             None,
         )
 
@@ -557,6 +579,15 @@ if mode_ == "Sensitivity":
 
 ############## Bayesian optimization ###########################
 if mode_ == "Bayesian":
+    if dataset_ == "Jilkova2022":
+        path_bayesian = "Bayesian_run_input_2022.csv"
+        cols_data_measured = slice(21, 45)
+        cols_data_measured_errors = slice(45, 69)
+    
+    if dataset_ == "Jilkova2024":
+        path_bayesian = "Bayesian_run_input_2024.csv"
+        cols_data_measured = slice(21, 65)
+        cols_data_measured_errors = slice(65, 109)
     """
     key bayesian principle: the likelihood of a run is the sum of the likelihood of the parameters
     and how good the results fit.
@@ -713,7 +744,7 @@ if mode_ == "Bayesian":
     AllParam.update(CalibParamInit)
 
     # # read the measured data (towards which to calibrate) and the treatment definitions
-    inputBayesianRun = pd.read_csv("Bayesian_run_input.csv", header=0, skiprows=0)
+    inputBayesianRun = pd.read_csv(path_bayesian, header=0, skiprows=0)
     numTreatments = len(inputBayesianRun)
 
     # put the variables defining the treatments into 1 list
@@ -721,9 +752,10 @@ if mode_ == "Bayesian":
     # "put the measured data and their errors in separate dataframes
     data_measured = pd.DataFrame()
     data_measured_errors = pd.DataFrame()
+     
+    data_measured = inputBayesianRun.iloc[:, cols_data_measured]    
+    data_measured_errors = inputBayesianRun.iloc[:, cols_data_measured_errors]
 
-    data_measured = inputBayesianRun.iloc[:, 21:65]
-    data_measured_errors = inputBayesianRun.iloc[:, 65:109]
 
     # data_measured_errors.columns
     # inputBayesianRun({"sample"})
@@ -784,6 +816,14 @@ if mode_ == "Bayesian":
             stats.uniform.pdf(CalibratedParametersValues, MinimalOption, MaximumOption)
         )
     )
+    
+    # loglikelihood_param = np.sum(
+    #     np.log(
+    #         stats.uniform.pdf(CalibratedParametersValues, MinimalOption, MaximumOption - MinimalOption)
+    #     )
+    # )
+
+    print(loglikelihood_param)
     """
     # 3) Simulated Data in a similar frame as the measured values, 1 run is over all treatments
     """
@@ -821,7 +861,9 @@ if mode_ == "Bayesian":
             ]
 
         # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
-
+            
+    
+        # print(treatment)
         # if treatment == 2:
         #     print("line 447 safety break ")
         #     break  # safety for now
@@ -830,6 +872,8 @@ if mode_ == "Bayesian":
         4) calculate the likelihood of each parameter set for each treatment and store in sim likelihood from the differences between measured and simulated and error
         """
         for e in range(len(data_measured_colnames)):  
+            if treatment == 3:
+                # print(data_measured_colnames[e])
             # for each measured variable calculate loglikelihood
             measurement = data_measured.iat[treatment, e]
             #make sure that measurement is not NA
@@ -842,25 +886,26 @@ if mode_ == "Bayesian":
                 data_Simulated[treatment]["sim likelihood"] += likelyhood  # and add it up for all measured variables for the given treatment
             else: 
                 likelyhood = pd.NA
-            
-            print(
-                "treatment",
-                treatment,
-                "e",
-                e,
-                "variable",
-                data_measured_colnames[e],
-                "simulated",
-                data_Simulated[treatment][data_measured_colnames[e]],
-                "measured",
-                measurement,
-                "error",
-                data_measured_errors.iat[treatment, e],
-                "likelihood",
-                likelyhood,
-                "overall likelihood",
-                data_Simulated[treatment]["sim likelihood"],
-            )
+                
+            # if treatment == 3:
+            #     print(
+            #         "treatment",
+            #         treatment,
+            #         "e",
+            #         e,
+            #         "variable",
+            #         data_measured_colnames[e],
+            #         "simulated",
+            #         data_Simulated[treatment][data_measured_colnames[e]],
+            #         "measured",
+            #         measurement,
+            #         "error",
+            #         data_measured_errors.iat[treatment, e],
+            #         "likelihood",
+            #         likelyhood,
+            #         "overall likelihood",
+            #         data_Simulated[treatment]["sim likelihood"],
+            #     )
 
             # if treatment == 3:
             #     sys.exit()
@@ -969,13 +1014,26 @@ if mode_ == "Bayesian":
                         data_Simulated[treatment]["sim likelihood"] += likelyhood
 
 
-                # old version
-                # likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
-                #     data_Simulated[treatment]["resp1"],
-                #     data_measured["resp1"][treatment],
-                #     data_measured["resp1_error"][treatment],
-                # )
-                # data_Simulated[treatment]["sim likelihood"] = likelyhood
+                    # if treatment == 1:
+                    #     print(
+                    #         "treatment",
+                    #         treatment,
+                    #         "e",
+                    #         e,
+                    #         "variable",
+                    #         data_measured_colnames[e],
+                    #         "simulated",
+                    #         data_Simulated[treatment][data_measured_colnames[e]],
+                    #         "measured",
+                    #         measurement,
+                    #         "error",
+                    #         data_measured_errors.iat[treatment, e],
+                    #         "likelihood",
+                    #         likelyhood,
+                    #         "overall likelihood",
+                    #         data_Simulated[treatment]["sim likelihood"],
+                    #     )
+
 
             """
             11) calculate the average likelihood of all the treatment runs in LogLikelihoodSim1
