@@ -1132,7 +1132,7 @@ if mode_ == "Bayesian":
                
                 #print how many parameter sets were accepted from how many tries
                 numaccepted= len(parameters)
-                print(numaccepted, "parameter sets accepted from ",  NumberOfTries, "number of Tries")
+                print(numaccepted, "parameter sets accepted from ",  c, "number of Tries")
                 
                 if BayesianFunctionsPotprim.check_dataframe_significant_change(
                     parameters, alpha=0.5, num_identical_results=500
