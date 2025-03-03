@@ -770,11 +770,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 MAOMs / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 MAOMp / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                MAOM / (0.8 * 1000),
+                MAOM / (0.8 * 1000), # change units from gC/m3 mgC/g soil
                 POM_sub,
                 MAOM_sub, 
-                bact, 
-                fungi,
+                bact / 0.8,# change units from gC/m3 µgC/g soil, 
+                fungi / 0.8, # change units from gC/m3 µgC/g soil,
                 bact_sub,
                 fungi_sub
             ]  # change units from gC/m3 mgC/g soil
