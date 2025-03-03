@@ -32,7 +32,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Validation"]
 options = get_args(modes)
 
 # set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Normal"
+mode_ = "Bayesian"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -872,7 +872,7 @@ if mode_ == "Bayesian":
         4) calculate the likelihood of each parameter set for each treatment and store in sim likelihood from the differences between measured and simulated and error
         """
         for e in range(len(data_measured_colnames)):  
-            if treatment == 3:
+            # if treatment == 3:
                 # print(data_measured_colnames[e])
             # for each measured variable calculate loglikelihood
             measurement = data_measured.iat[treatment, e]
@@ -1129,7 +1129,11 @@ if mode_ == "Bayesian":
                 parameters = pd.read_csv(
                     os.path.join(sharable_path, "calibratedParameters.csv")
                 )
-
+               
+                #print how many parameter sets were accepted from how many tries
+                numaccepted= len(parameters)
+                print(numaccepted, "parameter sets accepted from ",  NumberOfTries, "number of Tries")
+                
                 if BayesianFunctionsPotprim.check_dataframe_significant_change(
                     parameters, alpha=0.5, num_identical_results=500
                 ):
