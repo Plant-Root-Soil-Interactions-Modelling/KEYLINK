@@ -695,7 +695,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=10000,
+        default=1000,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -1067,12 +1067,14 @@ if mode_ == "Bayesian":
             # if treatment == 2:
             #     sys.exit()
             log_likelihood_diff = log_likelihood_sim1 - log_likelihood_sim0
+            logalpha= log_likelihood_sim1 - log_likelihood_sim0
+            #alpha = np.exp(
+            #    log_likelihood_diff
+            #)  # if new is better this is bigger than 1
 
-            alpha = np.exp(
-                log_likelihood_diff
-            )  # if new is better this is bigger than 1
-
-            random = ra.random()  # choose random value between 0 and 1
+            #alpha = log_likelihood_diff
+            random =ra.random()
+            lograndom =np.log(random)  # choose random value between 0 and 1
             logLseries.append(log_likelihood_sim1)
 
             # print('random value', lograndom)
@@ -1081,9 +1083,9 @@ if mode_ == "Bayesian":
                 [[data_Simulated]], results_path, "SimdataAll"
             )
 
-            print("random:", random, "alpha:", alpha)
+            print("random:", random, "logalpha", log_likelihood_diff, "lograndom", lograndom)
 
-            if random < alpha:
+            if lograndom < logalpha:
                 CalibratedParametersValues = candidateValue
                 loglikelihood_param = loglikelihood_param1
                 log_likelihood_sim0 = (
