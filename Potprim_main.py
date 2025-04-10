@@ -31,7 +31,7 @@ import copy
 modes = Literal["Normal", "Sensitivity", "Bayesian", "Validation"]
 options = get_args(modes)
 
-# set the mode to Normal, Sensitivity or Bayesian
+#%% set the mode to Normal, Sensitivity or Bayesian
 mode_ = "Bayesian"
 
 # check if mode was set correctly, if not stop the run
@@ -261,7 +261,7 @@ df_list = []
 results_df = []  # temporary df to store returned dataframe
 
 
-############## Normal run ###########################
+#%% Normal run #####################################################################
 if mode_ == "Normal":
     
     if dataset_ == "Jilkova2024":
@@ -408,7 +408,7 @@ if mode_ == "Normal":
             None,
         )
 
-############## Sensitivity ###########################
+#%% Sensitivity ###########################
 if mode_ == "Sensitivity":
     t1 = time.perf_counter()
     # load parameter values from AllParam
@@ -577,7 +577,7 @@ if mode_ == "Sensitivity":
 
     print(f'Sensitivity ran for {time.strftime("%H:%M:%S", time.gmtime(t2 - t1))}\n')
 
-############## Bayesian optimization ###########################
+#%% Bayesian optimization ###########################
 if mode_ == "Bayesian":
     if dataset_ == "Jilkova2022":
         path_bayesian = "Bayesian_run_input_2022.csv"
@@ -642,6 +642,7 @@ if mode_ == "Bayesian":
     # clear the csv files so it won't append after the existing values from the run before
     csv_files = [
         "calibratedParameters.csv",
+        "AllTestedParameters.csv",
         "logLikelihood.csv",
     ]
 
@@ -692,6 +693,7 @@ if mode_ == "Bayesian":
         type=int,
         help="Run maximum this number of fields (default: all fields)",
     )
+    #%%--- Set number of tries
     parser.add_argument(
         "-t",
         "--tries",
@@ -784,6 +786,8 @@ if mode_ == "Bayesian":
     # start the chain, will hold all accepted parameter sets, and 0 if not accepted
     posteriorChain[0, :] = list(CalibratedParameters.values())
     # print(parameterlist_df)
+    #start a count of accepted parameter sets (prior length)
+    NumOfAccepted = 0
 
     # create list of lists for simulations for data on different days
     data_Simulated = dict.fromkeys(
@@ -948,7 +952,7 @@ if mode_ == "Bayesian":
     loop over number ot tries
     """
     for c in range(0, NumberOfTries):  # For each trial parameter set
-        print(c)
+        print("Parameter set try:", c+1)
         # 7) find new parameter values to try
 
         candidateparameters, candidateValue, AllParam = (
@@ -1109,6 +1113,7 @@ if mode_ == "Bayesian":
                     BestFitParam = (
                         CalibratedParametersValues  # update most likely parameter set
                     )
+                    NumOfAccepted = NumOfAccepted + 1 #count number of accepted parameter sets (length of posterior)
 
                 BayesianFunctionsPotprim.save_result(
                     [[data_Simulated]], results_path, "SimdataBestFit"
@@ -1124,7 +1129,7 @@ if mode_ == "Bayesian":
                 BayesianFunctionsPotprim.save_result(
                     [[[log_likelihood_sim0]]], logs_path2, "logLikelihood"
                 )
-
+                
                 """
                 14) test if we have enough runs: avg and stdev are table for each column of posterior
                 """
@@ -1133,8 +1138,8 @@ if mode_ == "Bayesian":
                 )
                
                 #print how many parameter sets were accepted from how many tries
-                numaccepted= len(parameters)
-                print(numaccepted, "parameter sets accepted from ",  c, "number of Tries")
+                # numaccepted= len(parameters)
+                # print(numaccepted, "parameter sets accepted from ",  c, "number of Tries")
                 
                 if BayesianFunctionsPotprim.check_dataframe_significant_change(
                     parameters, alpha=0.5, num_identical_results=500
@@ -1147,6 +1152,14 @@ if mode_ == "Bayesian":
 
         # the prior chain saves all tries, also the ones that are not 'saved' in the posterior chain
         priorChain[c, :] = candidateValue
+        #print number of accepted versus tried parameters
+        print(NumOfAccepted, "parameter sets accepted out of", c+1, "tries")
+        #save all tested parameters (prior chain) in a csv also / includes all parameter tries after first try
+        BayesianFunctionsPotprim.save_result(
+            [[candidateValue]],
+            sharable_path,
+            "AllTestedParameters",
+        )
 
     """
     end of loop
@@ -1160,7 +1173,7 @@ if mode_ == "Bayesian":
     #                                        'f_FOM_fPOM', 'f_fPOM_oPOM', 'MAOMsmaxrate', 'MAOMpmaxrate', 'AgRate',
     #                                        'MIC_gmax', 'Mic_RespRate', 'MIC_TR', 'HyphalExploration',
     #                                        'HyphaeTurnoverrate', 'Hyphae_fGRSP', 'SoilHyphaeCond'])
-    df = pd.DataFrame(priorChain, columns=list(CalibratedParameters.keys()))
+    # AllTestedParameters = pd.DataFrame(priorChain, columns=list(CalibratedParameters.keys()))
 
     # bayesian_plots(df=df, path=file_name, columns=5, save_to_file=True)
     try:
@@ -1232,12 +1245,11 @@ if mode_ == "Bayesian":
             ]
         )
 
-    ################## Histograms of accepted parameters
-    # if mode_ == "Histogram":
-
+    #%%--- Histograms of tried and accepted parameters
+    
     # Load the CSV file into a DataFrame
     df = pd.read_csv("./output_Bayesian/calibratedParameters.csv", header=None)
-
+    df_all = pd.read_csv("./output_Bayesian/AllTestedParameters.csv", header=None)
     # inputCalibrationParamfile = open("datalistCalibrationParam.json")
     # (
     #     numParams,
@@ -1250,44 +1262,81 @@ if mode_ == "Bayesian":
     # ) = BayesianFunctionsPotprim.read_parameter_data(inputCalibrationParamfile)
 
     df.columns = keys
-
+    df_all.columns = keys
+    
     # Iterate through each column in the DataFrame
     for i, column in enumerate(df.columns):
         # Create a figure for the histograms
-        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        # fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        fig, axes = plt.subplots(2, 3, sharey="row", sharex ="all", figsize=(15, 10))
+        
+        # Flatten the 2D array of axes to a 1D array
+        axes = axes.flatten()
 
-        # Get the values of the column
+        # Get the values of the column for both accepted and all tried parameters
         values = df[column].dropna()  # Drop NaN values if any
+        values_all = df_all[column].dropna()  # Drop NaN values if any
         n = len(values)
-
-        # Plot histogram for all values
-        axes[0].hist(values, bins=30, color="blue", alpha=0.7)
+        
+        #Prior
+        # Plot histogram for all tried values
+        axes[0].hist(values_all, bins=30, color="blue", alpha=0.7)
         axes[0].axvline(MinimalOption[i], color="black", linestyle="--", label="max")
         axes[0].axvline(MaximumOption[i], color="black", linestyle="--", label="min")
         axes[0].axvline(
             CalParameterValues[i], color="red", linestyle="--", label="initial"
         )
-        axes[0].set_title(f"All Values – {column}")
+        axes[0].set_title(f"Prior all Values – {column}")
 
         # Plot histogram for the last 500 values
-        last500 = values[-500:]
+        last500 = values_all[-500:]
         axes[1].hist(last500, bins=30, color="blue", alpha=0.7)
         axes[1].axvline(MinimalOption[i], color="black", linestyle="--", label="max")
         axes[1].axvline(MaximumOption[i], color="black", linestyle="--", label="min")
         axes[1].axvline(
             CalParameterValues[i], color="red", linestyle="--", label="initial"
         )
-        axes[1].set_title(f"Last 500 values – {column}")
+        axes[1].set_title(f"Prior last 500 values – {column}")
 
         # Plot histogram for the previous 500 values
-        previous500 = values[-1000:-500]
+        previous500 = values_all[-1000:-500]
         axes[2].hist(previous500, bins=30, color="blue", alpha=0.7)
         axes[2].axvline(MinimalOption[i], color="black", linestyle="--", label="max")
         axes[2].axvline(MaximumOption[i], color="black", linestyle="--", label="min")
         axes[2].axvline(
             CalParameterValues[i], color="red", linestyle="--", label="initial"
         )
-        axes[2].set_title(f"Previous 500 values – {column}")
+        axes[2].set_title(f"Prior previous 500 values – {column}")
+        
+        #Posterior
+        # Plot histogram for all accepted values
+        axes[3].hist(values, bins=30, color="blue", alpha=0.7)
+        axes[3].axvline(MinimalOption[i], color="black", linestyle="--", label="max")
+        axes[3].axvline(MaximumOption[i], color="black", linestyle="--", label="min")
+        axes[3].axvline(
+            CalParameterValues[i], color="red", linestyle="--", label="initial"
+        )
+        axes[3].set_title(f"Posterior all Values – {column}")
+
+        # Plot histogram for the last 500 values
+        last500 = values[-500:]
+        axes[4].hist(last500, bins=30, color="blue", alpha=0.7)
+        axes[4].axvline(MinimalOption[i], color="black", linestyle="--", label="max")
+        axes[4].axvline(MaximumOption[i], color="black", linestyle="--", label="min")
+        axes[4].axvline(
+            CalParameterValues[i], color="red", linestyle="--", label="initial"
+        )
+        axes[4].set_title(f"Posterior last 500 values – {column}")
+
+        # Plot histogram for the previous 500 values
+        previous500 = values[-1000:-500]
+        axes[5].hist(previous500, bins=30, color="blue", alpha=0.7)
+        axes[5].axvline(MinimalOption[i], color="black", linestyle="--", label="max")
+        axes[5].axvline(MaximumOption[i], color="black", linestyle="--", label="min")
+        axes[5].axvline(
+            CalParameterValues[i], color="red", linestyle="--", label="initial"
+        )
+        axes[5].set_title(f"Posterior previous 500 values – {column}")
 
         plt.tight_layout()
 
