@@ -697,7 +697,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=1000,
+        default=10000,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
