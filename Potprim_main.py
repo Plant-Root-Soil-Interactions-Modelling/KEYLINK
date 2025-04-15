@@ -810,7 +810,7 @@ if mode_ == "Bayesian":
     1) calculate the variance of the parameter space
     """
     # variance of the parameter space, is needed to define the step size for each parameter
-    VarianceParameterSpace = np.diag(((0.05 * (MaximumOption - MinimalOption)) ** 2))
+    VarianceParameterSpace = np.diag(((0.005 * (MaximumOption - MinimalOption)) ** 2))
 
     """2) calculate the likelihood of the parameters chosen (for a flat distribution this will always be constant or 0)
     """
