@@ -1110,6 +1110,7 @@ if mode_ == "Bayesian":
                 posteriorChain[c, :] = (
                     CalibratedParametersValues  # add step to the chain
                 )
+                NumOfAccepted = NumOfAccepted + 1 #count number of accepted parameter sets (length of posterior)
 
                 """
                 13) set parameters as best fit if they are better than current best fit
@@ -1125,7 +1126,7 @@ if mode_ == "Bayesian":
                     BestFitParam = (
                         CalibratedParametersValues  # update most likely parameter set
                     )
-                    NumOfAccepted = NumOfAccepted + 1 #count number of accepted parameter sets (length of posterior)
+                    
 
                 BayesianFunctionsPotprim.save_result(
                     [[data_Simulated]], results_path, "SimdataBestFit"
