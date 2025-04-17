@@ -175,25 +175,21 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             "day",
             "respSoil",
             "respSubstrate",
-            "DOM",
-            "POM",
-            "MAOM",
-            "DOM_sub",
-            "POM_sub",
-            "MAOM_sub",
+            "DOMSoil",
+            "DOMSubstrate",
+            "POMSoil",
+            "POMSubstrate",
+            "MAOMSoil",
+            "MAOMSubstrate",
             "CN_DOM",
             "CN_MAOM",
-            "bact",
-            "fungi",
-            "bact_sub", 
-            "fungi_sub",
-            
-            
-        ]
-        
-
+            "bactSoil",
+            "bactSubstrate",
+            "fungiSoil",
+            "fungiSubstrate"
+            ]
         results_df = pd.DataFrame(columns=column_names)
-
+        
     if mode_ == "Normal":  # normal runs
 
         column_names = [
@@ -642,6 +638,14 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         # AllC = DOM + POM + MAOM + rhiz_total + fungi + resp - DOMadded
         # print('line412', treatment, d, AllC)
 
+        #soil and substrate derived C pools
+        DOMSubstrate = DOM_sub  * DOM
+        DOMSoil = DOM - DOMSubstrate
+        POMSubstrate = POM_sub  * POM
+        POMSoil = POM - POMSubstrate
+        MAOMSubstrate = MAOM_sub  * MAOM
+        MAOMSoil = MAOM - MAOMSubstrate
+        
         #calculating fungi and bacteria back, using fixed FB ratios of rhizosphere and bulk soil
         bact_rhiz = rhiz/(FB_rhiz + 1) 
         fungi_rhiz = bact_rhiz * FB_rhiz
@@ -651,14 +655,24 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         fungi = bact_bulk + fungi_bulk
         
         #todo calculating substrate derived proportion in bacteria and fungi
+        
+        
         bact_sub = 0
         fungi_sub = 0
+        
+        
         # bact_rhiz = rhiz/(FB_rhiz + 1) 
         # fungi_rhiz = bact_rhiz * FB_rhiz
         # bact_bulk = bulk/(FB_bulk + 1) 
         # fungi_bulk = bact_bulk * FB_bulk
         # bact = bact_rhiz + fungi_rhiz
         # fungi = bact_bulk + fungi_bulk
+        
+        #calculate soil and substrate derived bacteria and fungi
+        bactSubstrate = bact_sub  * bact
+        bactSoil = bact - bactSubstrate
+        fungiSubstrate = fungi_sub  * fungi
+        fungiSoil = fungi - fungiSubstrate
         
         #todo check when CN_MAOM changes, calculate CN MAOM
         CN_MAOM = (MAOMs * CN_MAOMs + MAOMp * CN_MAOMp)/MAOM
@@ -737,20 +751,20 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 d,
                 respSoil / (0.8 * 24),     # change units from gC/m3/day to µg CO2-C/g soil/h
                 respSubstrate / (0.8 * 24),     # change units from gC/m3/day to µg CO2-C/g soil/h
-                DOM / (0.8 * 1000), # change units from gC/m3 mgC/g soil
-                POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                MAOM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                DOM_sub,
-                POM_sub,
-                MAOM_sub,
+                DOMSoil / (0.8 * 1000), # change units from gC/m3 mgC/g soil
+                DOMSubstrate / (0.8 * 1000),
+                POMSoil / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                POMSubstrate / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                MAOMSoil / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                MAOMSubstrate / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 CN_DOM,
                 CN_MAOM,
-                bact / 0.8,# change units from gC/m3 µgC/g soil
-                fungi / 0.8, # change units from gC/m3 µgC/g soil
-                bact_sub, 
-                fungi_sub,
-                
-            ]
+                bactSoil / 0.8,# change units from gC/m3 µgC/g soil
+                bactSubstrate / 0.8,# change units from gC/m3 µgC/g soil
+                fungiSoil / 0.8, # change units from gC/m3 µgC/g soil
+                fungiSubstrate / 0.8, # change units from gC/m3 µgC/g soil
+                ]
+         
 
         if mode_ == "Normal":  # for normal runs
             results_df.loc[len(results_df)] = [

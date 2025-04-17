@@ -581,13 +581,13 @@ if mode_ == "Sensitivity":
 if mode_ == "Bayesian":
     if dataset_ == "Jilkova2022":
         path_bayesian = "Bayesian_run_input_2022.csv"
-        cols_data_measured = slice(21, 45)
-        cols_data_measured_errors = slice(45, 69)
+        cols_data_measured = slice(21, 45) #range of the columns to be considered
+        cols_data_measured_errors = slice(45, 69) #range of the columns to be considered
     
     if dataset_ == "Jilkova2024":
         path_bayesian = "Bayesian_run_input_2024.csv"
-        cols_data_measured = slice(21, 65)
-        cols_data_measured_errors = slice(65, 109)
+        cols_data_measured = slice(21, 65) #range of the columns to be considered
+        cols_data_measured_errors = slice(65, 109) #range of the columns to be considered
     """
     key bayesian principle: the likelihood of a run is the sum of the likelihood of the parameters
     and how good the results fit.
@@ -766,6 +766,18 @@ if mode_ == "Bayesian":
     data_measured_names = []
     data_measured_days = []
     data_measured_colnames = data_measured.columns.tolist()
+    print(data_measured_colnames)
+    #data currently used for calibration Jilkova 2022:
+        # 'POM155', 
+        # 'MAOM155',
+        # 'POM_sub155', 
+        # 'MAOM_sub155',
+        # 'bact155', 
+        # 'fungi155',
+        # 'bact_sub155',
+        # 'fungi_sub155', 
+        # 'respSoil1', 'respSoil15', 'respSoil29', 'respSoil43', 'respSoil71', 'respSoil99', 'respSoil127', 'respSoil155', 
+        # 'respSubstrate1', 'respSubstrate15', 'respSubstrate29', 'respSubstrate43', 'respSubstrate71', 'respSubstrate99', 'respSubstrate127', 'respSubstrate155'
     data_measured_names, data_measured_days = (
         BayesianFunctionsPotprim.split_alphanumeric_list(data_measured_colnames)
     )
@@ -803,7 +815,7 @@ if mode_ == "Bayesian":
     ]
 
     """
-    actual start of calibration
+    #%%--- actual start of calibration
     """
 
     """
@@ -829,7 +841,7 @@ if mode_ == "Bayesian":
 
     print(loglikelihood_param)
     """
-    # 3) Simulated Data in a similar frame as the measured values, 1 run is over all treatments
+    #%% --- 3) Simulated Data in a similar frame as the measured values, 1 run is over all treatments
     """
     treatmentVar = ()
     results_df = pd.DataFrame()
