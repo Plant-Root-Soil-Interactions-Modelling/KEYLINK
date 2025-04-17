@@ -697,7 +697,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=1000,
+        default=10000,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -822,7 +822,7 @@ if mode_ == "Bayesian":
     1) calculate the variance of the parameter space
     """
     # variance of the parameter space, is needed to define the step size for each parameter
-    VarianceParameterSpace = np.diag(((0.05 * (MaximumOption - MinimalOption)) ** 2))
+    VarianceParameterSpace = np.diag(((0.005 * (MaximumOption - MinimalOption)) ** 2))
 
     """2) calculate the likelihood of the parameters chosen (for a flat distribution this will always be constant or 0)
     """
