@@ -660,12 +660,9 @@ if mode_ == "Bayesian":
             with open(file_path, "w") as file:
                 file.write("")  # Clear the contents of the file
 
-    # if os.path.exists(os.path.join(sharable_path, "BestFitParams.json")):
-    #     with open(os.path.join(sharable_path, "BestFitParams.json"), "w") as file:
-    #         file.write("")
 
-    # Delete previous BestFitParams file in output_Bayesian folder
-    pattern = os.path.join(sharable_path, "BestFitParams_*")
+    # Delete previous AcceptedParams file in output_Bayesian folder
+    pattern = os.path.join(sharable_path, "AcceptedParams_*")
     matching_files = glob.glob(pattern)
 
     # Check if any matching files were found
@@ -1190,29 +1187,29 @@ if mode_ == "Bayesian":
 
     # bayesian_plots(df=df, path=file_name, columns=5, save_to_file=True)
     try:
-        os.remove(os.path.join(sharable_path, "BestFitParams_*"))
+        os.remove(os.path.join(sharable_path, "AcceptedParams_*"))
     except Exception as e:
         pass
 
     # save all accepted parameters set as json >> this is used for Validation
-    BestFitParamsJsonName = "BestFitParams_" + run_name
+    AcceptedParamsJsonName = "AcceptedParams_" + run_name
     BayesianFunctionsPotprim.save_json(
         "calibratedParameters.csv",
         "logLikelihood.csv",
         keys,
         sharable_path,
         sharable_path,
-        BestFitParamsJsonName,
+        AcceptedParamsJsonName,
     )
 
-    # save all accepted parameter sets to logs folder
+    # save all accepted parameter sets to logs folder as json
     BayesianFunctionsPotprim.save_json(
         "calibratedParameters.csv",
         "logLikelihood.csv",
         keys,
         sharable_path,
         logs_path2,
-        "BestFitParams",
+        "AcceptedParams",
     )
 
     # save metadata of the calibration
@@ -1391,8 +1388,8 @@ if mode_ == "Validation":
         with open(file_path, "w") as file:
             file.write("")  # Clear the contents of the file
 
-    # Load BestFitParams
-    pattern = os.path.join(sharable_path, "BestFitParams_*")
+    # Load AcceptedParams
+    pattern = os.path.join(sharable_path, "AcceptedParams_*")
     matching_files = glob.glob(pattern)
 
     # Check if any matching files were found
@@ -1404,15 +1401,15 @@ if mode_ == "Validation":
         # Extract the filename without the path
         filename = os.path.basename(matching_files[0])
 
-        # Extract the part after "BestFitParams_"
+        # Extract the part after "AcceptedParams_"
         Bayesian_version = "_".join(filename.split("_")[1:])
 
     else:
-        print("No BestFitParams file found.")
+        print("No AcceptedParams file found.")
         sys.exit()
 
-    # save input BestFitParams to logs
-    with open(os.path.join(logs_path2, "BestFitParams_input.json"), "w") as output_file:
+    # save input AcceptedParams to logs
+    with open(os.path.join(logs_path2, "AcceptedParams_input.json"), "w") as output_file:
         json.dump(calibParam, output_file, indent=4)
 
     # Select parameter sets
