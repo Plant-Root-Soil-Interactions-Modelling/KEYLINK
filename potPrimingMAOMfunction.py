@@ -282,7 +282,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
 
     fungi_rhiz = fungi * fungi_rhiz_rel 
     rhiz = bact_rhiz +  fungi_rhiz
-    rhiz_sub = 0  # proportion of rhizerial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
+    rhiz_sub = 0  # proportion of rhizosphere microbial carbon that is substrate derived in contrast to soil-derived / values 0 to 1/
     # biomass of bulk soil microbes [gC/m3]
     bact_bulk = bact * (1 - bact_rhiz_rel)
     fungi_bulk = fungi * (1 - fungi_rhiz_rel)
@@ -484,7 +484,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         
         MAOM = MAOMs + MAOMp
 
-        # baseline microbial growth on SOM (without substrate DOM additions)
+        # bulk soil microbial growth on SOM (without substrate DOM additions)
         availability = mf.calcAvailPot(
             PV, PW
         )  # calculates availability of SOM decomposition by rhizeria and fungi, separately, from pore size distribution and soil water
@@ -544,7 +544,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
               # '\nfungiPOMgrowth', fungiPOMgrowth,               
               # '\nfungiMAOMgrowth', fungiMAOMgrowth) 
         
-        # calculate substrate derived C in rhiz and fungi
+        # recalculate substrate derived C in bulk soil microbes and C pools
         DOM_sub_abs = DOM * DOM_sub  # recalculate because changesin calc.Rhizosphere
         POM_sub_abs = POM * POM_sub  # recalculate because changes in calc.Rhizosphere
         MAOMs_sub_abs = (
@@ -555,7 +555,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         )  # absolute substrate derived C in bulk [gC/m3]
        
         
-        #calculate the overall change in bulk biomass
+        #calculate the overall change in bulk micrbial biomass
         dbulk = bulkDOMgrowth + bulkPOMgrowth + bulkMAOMgrowth - DEATHbulk * bulk - rRESPbulk * bulk     
         
 
@@ -604,7 +604,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         
         bulk_sub = (
             bulk_sub_abs / bulk
-        )  # update relative substrate derived C in rhizeria
+        )  # update relative substrate derived C in bulk soil microbes
         # add up things
         MAOM = MAOMp + MAOMs
         # bact_total = rhiz*bact_rhiz_rel + bulk*bact_bulk_rel
@@ -620,9 +620,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         MAOM_sub = MAOMp_sub * (MAOMp / MAOM) + MAOMs_sub * (
             MAOMs / MAOM
         )  # average substrate proportion in MAOM
-       # rhiz_total_sub = rhiz_DOM_sub * (rhiz_DOM / rhiz_total) + rhiz_sub * (
-       #     rhiz / rhiz_total
-        #)  # average substrate proportion in bacteria
+
         resp_sub = (
             baselineRespbulk_sub * (baselineRespbulk / resp)
             + respDOM_sub * (respDOM / resp)
@@ -636,7 +634,6 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         #respDOM - respiration of DOM feeding rhizeria without priming being activ
         respSoilBaseline = respDOM * (1-respDOM_sub) + baselineRespbulk * (1-baselineRespbulk_sub) 
         # AllC = DOM + POM + MAOM + rhiz_total + fungi + resp - DOMadded
-        # print('line412', treatment, d, AllC)
 
         #soil and substrate derived C pools
         DOMSubstrate = DOM_sub  * DOM
@@ -654,19 +651,22 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         bact = bact_rhiz + fungi_rhiz
         fungi = bact_bulk + fungi_bulk
         
-        #todo calculating substrate derived proportion in bacteria and fungi
+        #calculating substrate derived proportion in bacteria and fungi               
+        # bact_sub = 0
+        # fungi_sub = 0        
+        #first calculate in absolute units amount of substrate derived rhizosphere microbes
+        rhiz_sub_abs = rhiz * rhiz_sub
+        bulk_sub_abs = bulk * bulk_sub # same for bulk soil microbes
         
-        
-        bact_sub = 0
-        fungi_sub = 0
-        
-        
-        # bact_rhiz = rhiz/(FB_rhiz + 1) 
-        # fungi_rhiz = bact_rhiz * FB_rhiz
-        # bact_bulk = bulk/(FB_bulk + 1) 
-        # fungi_bulk = bact_bulk * FB_bulk
-        # bact = bact_rhiz + fungi_rhiz
-        # fungi = bact_bulk + fungi_bulk
+        # use the same equations as above when calculating the total four microbial pools, just use the substrate derived proportions instead
+        bact_rhiz_sub_abs = rhiz_sub_abs/(FB_rhiz + 1) 
+        fungi_rhiz_sub_abs = bact_rhiz_sub_abs * FB_rhiz
+        bact_bulk_sub_abs = bulk_sub_abs/(FB_bulk + 1) 
+        fungi_bulk_sub_abs = bact_bulk_sub_abs * FB_bulk
+        bact_sub_abs = bact_rhiz_sub_abs + fungi_rhiz_sub_abs
+        fungi_sub_abs = bact_bulk_sub_abs + fungi_bulk_sub_abs
+        bact_sub = bact_sub_abs/bact
+        fungi_sub = fungi_sub_abs/fungi
         
         #calculate soil and substrate derived bacteria and fungi
         bactSubstrate = bact_sub  * bact
