@@ -1,23 +1,24 @@
 # stuff needed for Bayesian mode
 import argparse
-
 # import concurrent.futures
 import json
 
 # import math
 import os
 import time
-
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from numpy import random as ra
 from scipy import stats
-from scipy.stats import qmc
-import BayesianFunctionsPotprim
+import BayesianFunctionsPotprim #needed in Bayesian mode
+import MainFunctionsPotprim #needed in other modes, plotting, validation etc.
 import sys
 import csv
 from datetime import datetime
 import glob
+import shutil
+from matplotlib.lines import Line2D
 
 # needed by all modes / normal, sensitivity and bayesian mode
 from potPrimingMAOMfunction import *
@@ -56,7 +57,7 @@ if mode_ == "Sensitivity" or mode_ == "Bayesian":
     Plotting = False
 
 ########### Folders setup ############################
-the_current_path = os.path.abspath(os.getcwd())
+# the_current_path = os.path.abspath(os.getcwd())
 results_path = "./output"
 sharable_path = "./output_Bayesian"
 
@@ -65,188 +66,6 @@ try:
 except FileExistsError:
     # directory already exists
     pass
-
-
-# setup the logs folder
-def create_log_folder(mode_):
-    logs_path = "./logs"
-    date_folder = datetime.now().strftime("%y%m%d")
-
-    # Base folder name
-    base_folder_name = f"{date_folder}_{mode_}"
-    logs_path2 = os.path.join(logs_path, base_folder_name)
-    counter = 1
-
-    try:
-        os.makedirs(logs_path2)
-        return logs_path2, base_folder_name
-    except FileExistsError:
-        # Directory already exists, so we need to find a new name
-        while os.path.exists(logs_path2):
-            # Change the naming format to "xy_2" instead of "xy_1_2"
-            logs_path2 = os.path.join(logs_path, f"{base_folder_name}_{counter}")
-            base_folder_name2 = f"{base_folder_name}_{counter}"
-            counter += 1
-        os.makedirs(logs_path2)
-        return logs_path2, base_folder_name2
-
-
-############## Creating the Respiration Plot #########
-def drawRespPlot(
-    labels,
-    respSoil_mean_model,
-    respSoil_mean_measure,
-    respSubstrate_mean_model,
-    respSubstrate_mean_measure,
-    name,
-    logs_path2,
-):
-    # create plot
-    plt.figure(figsize=(10, 12))
-    x = np.arange(len(labels))  # label locations
-    width = 0.3  # width of the bars
-
-    # create first subplot
-    plt.subplot(2, 1, 1)
-    plt.bar(x - width / 2, respSoil_mean_model, width, label="Modeled", color="gray")
-    plt.bar(
-        x + width / 2, respSoil_mean_measure, width, label="Measured", color="black"
-    )
-    plt.title("Soil derived")
-    plt.ylabel("Respiration [µg C-CO2/g soil/h]")
-    plt.xticks(x, labels, rotation=90, ha="center")
-    plt.legend(loc="upper left", bbox_to_anchor=(1, 1), shadow=True)
-
-    # create second subplot
-    plt.subplot(2, 1, 2)
-    plt.bar(
-        x - width / 2, respSubstrate_mean_model, width, label="Modeled", color="gray"
-    )
-    plt.bar(
-        x + width / 2,
-        respSubstrate_mean_measure,
-        width,
-        label="Measured",
-        color="black",
-    )
-    plt.title("Substrate derived")
-    plt.ylabel("Respiration [µg C-CO2/g soil/h]")
-    plt.xticks(x, labels, rotation=90, ha="center")
-
-    plt.tight_layout()
-
-    if "Validation" in name:
-        try:
-            os.makedirs(os.path.join(logs_path2))
-        except FileExistsError:
-            # directory already exists
-            pass
-
-        plt.savefig(os.path.join(os.path.join(logs_path2, name)))
-
-    else:
-        plt.savefig(os.path.join("./output/figures/", name))
-
-    plt.close()
-
-
-############## RMSE ##################################
-def calculateRMSE(actual, predicted, variable, filepath):
-    actual = np.array(actual)
-    predicted = np.array(predicted)
-
-    rmse = np.sqrt(((predicted - actual) ** 2).mean())
-
-    # save as a one csv file
-    try:
-        os.makedirs(filepath)
-    except FileExistsError:
-        # directory already exists
-        pass
-
-    file_exists = os.path.isfile(os.path.join(filepath, "rmse.csv"))
-    file_is_empty = (
-        file_exists and os.path.getsize(os.path.join(filepath, "rmse.csv")) == 0
-    )
-
-    with open(os.path.join(filepath, "rmse.csv"), newline="", mode="a") as file:
-        csv_writer = csv.writer(file)
-
-        # Write the header
-        if not file_exists or file_is_empty:
-            csv_writer.writerow(["Variable", "RMSE"])
-
-        # Write the key and values to the CSV file
-        csv_writer.writerow([variable, rmse])
-
-    return rmse
-
-
-############## EF (Nash-Sutcliffe Efficiency) ########
-def calculateEF(actual, predicted, variable, filepath):
-    actual = np.array(actual)
-    predicted = np.array(predicted)
-
-    ef = 1 - (
-        np.sum((actual - predicted) ** 2) / np.sum((actual - np.mean(actual)) ** 2)
-    )
-
-    # save as a one csv file
-    try:
-        os.makedirs(filepath)
-    except FileExistsError:
-        # directory already exists
-        pass
-
-    file_exists = os.path.isfile(os.path.join(filepath, "ef.csv"))
-    file_is_empty = (
-        file_exists and os.path.getsize(os.path.join(filepath, "ef.csv")) == 0
-    )
-
-    with open(os.path.join(filepath, "ef.csv"), newline="", mode="a") as file:
-        csv_writer = csv.writer(file)
-
-        # Write the header
-        if not file_exists or file_is_empty:
-            csv_writer.writerow(["Variable", "EF"])
-
-        # Write the key and values to the CSV file
-        csv_writer.writerow([variable, ef])
-
-    return ef
-
-
-############## Bias ##################################
-def calculateBias(actual, predicted, variable, filepath):
-    actual = np.array(actual)
-    predicted = np.array(predicted)
-
-    bias = np.mean(actual - predicted)
-
-    # save as a one csv file
-    try:
-        os.makedirs(filepath)
-    except FileExistsError:
-        # directory already exists
-        pass
-
-    file_exists = os.path.isfile(os.path.join(filepath, "bias.csv"))
-    file_is_empty = (
-        file_exists and os.path.getsize(os.path.join(filepath, "bias.csv")) == 0
-    )
-
-    with open(os.path.join(filepath, "bias.csv"), newline="", mode="a") as file:
-        csv_writer = csv.writer(file)
-
-        # Write the header
-        if not file_exists or file_is_empty:
-            csv_writer.writerow(["Variable", "Bias"])
-
-        # Write the key and values to the CSV file
-        csv_writer.writerow([variable, bias])
-
-    return bias
-
 
 ############## Read data #############################
 # read the fixed parameter list
@@ -260,17 +79,258 @@ AllParam = json.load(inputfileParam)
 df_list = []
 results_df = []  # temporary df to store returned dataframe
 
-
-#%% Normal run #####################################################################
-if mode_ == "Normal":
+#%% define normal run which includes simple validation
+#first define normal run as function so that it can be also used in Normal mode as well as at the end of Bayesian for immediate validation of the new calibration    
+def normal_run(path_normal, 
+               duration, 
+               cols_measured_respSoil, 
+               cols_measured_respSubstrate,
+               cols_data_measured,
+               AllParam, 
+               Plotting,
+               results_path
+               ):
     
-    if dataset_ == "Jilkova2024":
-        path_normal = "Normal_run_input_2024.csv"
-        duration = 161 #number of days of incubation
-        cols_measured_respSoil = slice(33, 53) #which columns contain measured soil derived respiration
-        cols_measured_respSubstrate = slice(66, 77)  #which columns contain measured substrate derived respiration
-        cols_data_measured = slice(21, 45)##to fix
-       
+        # load input data - Treatments
+        inputRun = pd.read_csv(path_normal, header=0, skiprows=0)    
+        numTreatments = len(inputRun)
+
+        # create lists for respiration plot
+        respSoil_mean_measure = []
+        respSubstrate_mean_measure = []
+        labels = []
+        
+        #%%--- run the model
+        #run the model for all treatments/rows in treatment input file
+
+        for treatment in range(numTreatments):
+            treatmentVar = inputRun.iloc[treatment, 0:21] # select first 21 columns from the input file
+
+            results_df = run_model(
+                AllParam,
+                treatmentVar,
+                mode_="Normal",
+                Plotting=Plotting,
+                numDays=duration,
+                path=results_path
+            )
+            results_df['treatmentID'] = treatment + 1
+            df_list.append(results_df)         
+                            
+            if Plotting:
+                # storing values for respiration plot
+                labels.append(results_df["treatment"][1]) # treatment label
+                #eventually this could be also obtained at the end of the run somehow, not throughout:
+                respSoil_mean_measure.append((inputRun.iloc[treatment, cols_measured_respSoil]).mean())
+                respSubstrate_mean_measure.append((inputRun.iloc[treatment, cols_measured_respSubstrate]).mean())
+
+        final_results_df = pd.concat(
+            df_list, ignore_index=True
+        )  # add all the rows to the results_df                        
+        
+        #make output directory                            
+        try:
+                os.makedirs("./output/data")
+        except FileExistsError:
+            # if directory already exists
+            pass
+        
+        #save all modelled data
+        final_results_df.to_csv(
+            "./output/data/Normal.csv",
+            index=False,
+            float_format="%.5f",
+        )
+        #%%--- validation plots
+        if Plotting:
+            #filter out modelled values for all those variables and days for which we have measured values
+            #first automatically extract for which data we have measured data
+            data_measured = inputRun.iloc[:, cols_data_measured]  # get measured data
+            data_measured_names = []
+            data_measured_days = []
+            data_measured_colnames = data_measured.columns.tolist() #extract column names of measured data
+            
+            data_measured_names, data_measured_days = (
+                BayesianFunctionsPotprim.split_alphanumeric_list(data_measured_colnames)
+            )           # from the column names extract variable name and day of measurement
+
+         
+            unique_variables = list(set(data_measured_names)) 
+            # print(unique_variables)
+            
+            # print(final_results_df)
+            #then transform the modelled data from wide format into long, to be able to filter by combinations of variable and day
+            df_long = pd.melt(
+                final_results_df,
+                id_vars=['treatmentID','day','treatment'],  # Columns to keep as is
+                value_vars=unique_variables,  # Columns to unpivot
+                var_name='variable',  # Name for the new column containing former column names
+                value_name='value'  # Name for the new column containing values
+                )
+           
+            python_data_measured_days = [x - 1 for x in data_measured_days] 
+            
+            #pairs of variables and days for which we have measurements   
+            key = pd.DataFrame({'data_measured_names': data_measured_names, 
+                          'data_measured_days': python_data_measured_days
+                          })
+            # print(key)              
+            #filter the modelled data by the measured variables and days by inner join             
+            merged_df = pd.merge(
+            df_long, 
+            key,
+            left_on=['variable', 'day'],
+            right_on=['data_measured_names','data_measured_days'],
+            how='inner'
+            )
+            # print(merged_df)
+ 
+            # print(merged_df)
+            #average by day and treatment
+            averages = merged_df.groupby(['day','treatment',"variable"])['value'].mean().reset_index() #averages for each variable across all replicates for each treatment
+            
+            #%%------Respiration plot###########################################################################
+            #filter out respiration data
+            respiration = averages[averages["variable"].isin(["respSoil", "respSubstrate"])]
+            #only for respiration data, calculate the average across days (for the respiration plot)
+            resp_avg = respiration.groupby(['treatment',"variable"])['value'].mean().reset_index()
+            #convert KEYLINK units to normal (data) units:
+            # resp_avg["value"] = resp_avg["value"]  / 0.8 * 24
+            
+            #convert the long format back to width to have separate columns for respSoil and respSubstrate
+            resp_avg = resp_avg.pivot(
+                index='treatment',        # Column(s) to use as the index
+                columns='variable', # Column whose unique values will become column names
+                values='value'     # Column whose values will fill the new DataFrame
+            ) 
+            #store the measured respiration data into a dataframe
+            resp_measured = pd.DataFrame({'treatment': labels, 
+                                           'respSoil_mean_measure': respSoil_mean_measure,
+                                           'respSubstrate_mean_measure': respSubstrate_mean_measure,                                         
+                                            })
+            #calculate averages for each treatment
+            resp_measured_avg = resp_measured.groupby('treatment').mean()
+            
+            #merge modelled and measured respiration data
+            resp_df = pd.merge(
+            resp_avg, 
+            resp_measured_avg,
+            on=['treatment'],
+            how='left'
+            )
+            pd.set_option('display.max_columns', None)
+            figures_path = os.path.join(results_path, "figures")
+            
+            #make a directory for the figures
+            try:
+                os.makedirs(figures_path)
+            except FileExistsError:
+                # directory already exists
+                pass
+           
+            #draw the respiration plot
+            MainFunctionsPotprim.drawRespPlot(
+                resp_df.index.tolist(), #extract the treatment labels from the index of the dataframe
+                resp_df['respSoil'], #mean of modelled
+                resp_df['respSoil_mean_measure'],
+                resp_df["respSubstrate"],#mean of modelled
+                resp_df["respSubstrate_mean_measure"],
+                figures_path,
+            )
+            #%%------1:1 plots and model performance metrics###################
+            #first prepare the modelled data in the same format as the input data (with same columns names)
+            # add 1 to all "day" values, so it matches the naming in input day
+            merged_df['day'] = merged_df['day'] + 1
+            #pivot all modelled values wider 
+            # Step 1: Pivot
+            
+            wide_df = merged_df.pivot(index=['treatmentID', "treatment"], columns=['variable', 'day'], values='value')
+            
+            # Step 2: Flatten MultiIndex columns
+            wide_df.columns = [f'{var}{day}' for var, day in wide_df.columns]
+            
+            # Step 3: Reset index and rename dataframe
+            data_modelled = wide_df.reset_index()               
+            
+            # print(data_modelled)
+            # print(data_modelled.columns) # has the modelled data but also treatmentID and treatment
+            # print(data_measured) 
+            # print(data_measured.columns) #has only the actual columns with data, 26 columns
+            
+            #first plot the non-respiration 1:1 plots
+            # -----select columns NOT starting with 'resp' ---
+            columns_to_plot = data_measured.columns
+            # columns_to_plot = [col for col in data_measured.columns if not col.startswith("resp")]
+            #prepare a colour paletter (this could be customized for Jilkova2024 when needed)
+            custom_palette = {
+                'control': 'grey',
+                'leachates': 'green',
+                'exudates': 'orange',                
+                'exudates+leachates': 'brown'
+            }
+            metrics_list = []
+            # --- 3. Plot in 2x2 grids ---
+            for i in range(0, len(columns_to_plot), 4):
+                subset = columns_to_plot[i:i+4]
+                
+                fig, axes = plt.subplots(2, 2, figsize=(10, 10))
+                axes = axes.flatten()
+                
+
+                
+                # List to collect all unique treatments for the legend
+                all_treatments = list(custom_palette.keys())
+                
+                # Create custom legend handles
+               
+                legend_handles = [Line2D([0], [0], marker='o', color='w', 
+                                      markerfacecolor=custom_palette[treatment], 
+                                      markersize=8) for treatment in all_treatments]
+                
+                for j, col in enumerate(subset):#loop over all four variables for this 2x2 graph
+                    MainFunctionsPotprim.plot_1to1(axes[j], data_measured[col], data_modelled[col], data_modelled['treatment'], col, custom_palette)
+                    # Calculate summary/diagnostic metrics for this variable
+                    rmse, bias, ef = MainFunctionsPotprim.calculate_metrics(data_measured[col], data_modelled[col])
+        
+                    # Add metrics text to each subplot
+                    metrics_text = f'RMSE = {rmse:.3f}\nBias = {bias:.3f}\nEF = {ef:.3f}'
+                    axes[j].text(0.05, 0.95, metrics_text, transform=axes[j].transAxes, 
+                             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
+                    metrics_list.append({'Variable': col, 'RMSE': rmse, 'Bias': bias, 'EF': ef})
+                # Hide unused axes if fewer than 4
+                for k in range(len(subset), 4):
+                    fig.delaxes(axes[k])
+                
+                fig.tight_layout(rect=[0, 0.05, 1, 1])  # Leave space at the bottom for the legend
+                # Add a single legend for the entire figure
+                # Add a single legend for the entire figure
+                fig.legend(handles=legend_handles, labels=all_treatments, 
+                           loc='lower center', bbox_to_anchor=(0.5, 0), 
+                           ncol=len(custom_palette), frameon=True, title='Treatment')
+                
+                filename = f'1to1_plots_{i//4 + 1}.png'
+                filename2 = os.path.join(figures_path, filename)
+                plt.savefig(filename2, dpi=300)
+                plt.show()
+                plt.close(fig)  # Close the figure to free memory
+            # Save metrics
+            metrics_df = pd.DataFrame(metrics_list)
+            mean_ef = metrics_df['EF'].mean()
+            metrics_df = pd.concat([metrics_df, pd.DataFrame([{'Variable': 'Mean EF', 'RMSE': np.nan, 'Bias': np.nan, 'EF': mean_ef}])], ignore_index=True)
+             
+
+           #save metrics from this run in the output folder
+            csv_file = os.path.join(results_path, 'model_performance_metrics.csv')
+            if os.path.exists(csv_file):
+                metrics_df.to_csv(csv_file, mode='a', header=False, index=False)
+            else:
+                metrics_df.to_csv(csv_file, index=False) 
+                
+            return mean_ef, metrics_df #return mean EF as overall performance metric
+        
+#%% Normal run with validation #####################################################################
+if mode_ == "Normal":
+        
     if dataset_ == "Jilkova2022":
         path_normal = "Normal_run_input_2022.csv"
         duration = 155 #number of days of incubation
@@ -278,136 +338,34 @@ if mode_ == "Normal":
         cols_measured_respSubstrate = slice(37, 45)  #which columns contain measured substrate derived respiration
         cols_data_measured = slice(21, 45)
         
-    # load input data - Treatments
-    inputRun = pd.read_csv(path_normal, header=0, skiprows=0)
+    if dataset_ == "Jilkova2024":
+        path_normal = "Normal_run_input_2024.csv"
+        duration = 161 #number of days of incubation
+        cols_measured_respSoil = slice(33, 53) #which columns contain measured soil derived respiration
+        cols_measured_respSubstrate = slice(66, 77)  #which columns contain measured substrate derived respiration
+        cols_data_measured = slice(21, 65) #columns with all measured data
+   
+                             
 
-    numTreatments = len(inputRun)
-
-    # create lists for respiration plot
-    respSoil_mean_model = []
-    respSubstrate_mean_model = []
-    respSoil_mean_measure = []
-    respSubstrate_mean_measure = []
-    labels = []
-
-    for treatment in range(numTreatments):
-        treatmentVar = inputRun.iloc[treatment, 0:21]
-
-        results_df = run_model(
-            AllParam,
-            treatmentVar,
-            mode_="Normal",
-            Plotting=Plotting,
-            numDays=duration,
-            path=results_path
-        )
-        df_list.append(results_df)
-
- 
-        
-        
-        if Plotting:
-            # storing values for respiration plot
-            labels.append(results_df["treatment"][1]) # treatment label
-            #eventually this could be also obtained at the end of the run somehow, not throughout:
-            respSoil_mean_measure.append((inputRun.iloc[treatment, cols_measured_respSoil]).mean())
-            respSubstrate_mean_measure.append((inputRun.iloc[treatment, cols_measured_respSubstrate]).mean())
-
-    final_results_df = pd.concat(
-        df_list, ignore_index=True
-    )  # add all the rows to the results_df    
-            
-            
-            
-    try:
-            os.makedirs("./output/data")
-    except FileExistsError:
-        # directory already exists
-        pass
+# end of normal run function
+#run it now
+    mean_ef, metrics_df = normal_run(path_normal, 
+                   duration, 
+                   cols_measured_respSoil, 
+                   cols_measured_respSubstrate,
+                   cols_data_measured,
+                   AllParam, 
+                   Plotting,
+                   results_path
+                   )
     
-    #save all modelled data
-    final_results_df.to_csv(
-        "./output/data/Normal.csv",
-        index=False,
-        float_format="%.5f",
-    )
-
-    if Plotting:
-        #filter out modelled values for all those variables and days for which we have measured values
-        data_measured = inputRun.iloc[:, cols_data_measured]  # get measured data
-        data_measured_names = []
-        data_measured_days = []
-        data_measured_colnames = data_measured.columns.tolist() #extract column names of measured data
-        
-        data_measured_names, data_measured_days = (
-            BayesianFunctionsPotprim.split_alphanumeric_list(data_measured_colnames)
-        )           # from the column names extract variable name and day of measurement
-        unique_variables = list(set(data_measured_names)) 
-        
-        #mtransform the modelled data from wide format into long, to be able to filter by combinations of variable and day
-        df_long = pd.melt(
-            final_results_df,
-            id_vars=['day','treatment'],  # Columns to keep as is
-            value_vars=unique_variables,  # Columns to unpivot
-            var_name='variable',  # Name for the new column containing former column names
-            value_name='value'  # Name for the new column containing values
-        )
-        python_data_measured_days = [x - 1 for x in data_measured_days] 
-        
-        #pairs of variables and days for which we have measurements   
-        key = pd.DataFrame({'data_measured_names': data_measured_names, 
-                      'data_measured_days': python_data_measured_days
-                      })
-                           
-        #filter the modelled data by the measured variables and days by inner join             
-        merged_df = pd.merge(
-        df_long, 
-        key,
-        left_on=['variable', 'day'],
-        right_on=['data_measured_names','data_measured_days'],
-        how='inner'
-        )
-        #average by day and treatment
-        averages = merged_df.groupby(['day','treatment',"variable"])['value'].mean().reset_index() #averages for each variable across all replicates for each treatment
-        #only for respiration data, calculate the average across days (for the respiration plot)
-        respiration = averages[averages["variable"].isin(["respSoil", "respSubstrate"])]
-        resp_avg = respiration.groupby(['treatment',"variable"])['value'].mean().reset_index()
-        #convert KEYLINK units to normal (data) units:
-        resp_avg["value"] = resp_avg["value"]  / 0.8 * 24
-        
-        #convert the long format back to width to have separate columns for respSoil and respSubstrate
-        resp_avg = resp_avg.pivot(
-            index='treatment',        # Column(s) to use as the index
-            columns='variable', # Column whose unique values will become column names
-            values='value'     # Column whose values will fill the new DataFrame
-        ) 
-        #store the measured respiration data into a dataframe
-        resp_measured = pd.DataFrame({'treatment': labels, 
-                                       'respSoil_mean_measure': respSoil_mean_measure,
-                                       'respSubstrate_mean_measure': respSubstrate_mean_measure,                                         
-                                        })
-        #calculate averages for each treatment
-        resp_measured_avg = resp_measured.groupby('treatment').mean()
-        
-        #merge modelled and measured respiration data
-        resp_df = pd.merge(
-        resp_avg, 
-        resp_measured_avg,
-        on=['treatment'],
-        how='left'
-        )
-            
-        #draw the plot
-        drawRespPlot(
-            resp_df.index.tolist(), #extract the treatment labels from the index of the dataframe
-            resp_df['respSoil'], #mean of modelled
-            resp_df['respSoil_mean_measure'],
-            resp_df["respSubstrate"],#mean of modelled
-            resp_df["respSubstrate_mean_measure"],
-            "respPlot_Normal.png",
-            None,
-        )
-
+    print(metrics_df)     
+    print('''
+          0.75 < EF < 1  very good model performance
+          0.5 < EF < 0.65 satisfactory to good
+          EF < 0 poor performance (model predictions worse than the mean of observations)
+          ''')
+    
 #%% Sensitivity ###########################
 if mode_ == "Sensitivity":
     t1 = time.perf_counter()
@@ -583,11 +541,23 @@ if mode_ == "Bayesian":
         path_bayesian = "Bayesian_run_input_2022.csv"
         cols_data_measured = slice(21, 45) #range of the columns to be considered
         cols_data_measured_errors = slice(45, 69) #range of the columns to be considered
+        #these extra ones are needed for validation step
+        duration = 155 #number of days of incubation
+        cols_measured_respSoil = slice(29, 37) #which columns contain measured soil derived respiration
+        cols_measured_respSubstrate = slice(37, 45)  #which columns contain measured substrate derived respiration
     
     if dataset_ == "Jilkova2024":
         path_bayesian = "Bayesian_run_input_2024.csv"
         cols_data_measured = slice(21, 65) #range of the columns to be considered
         cols_data_measured_errors = slice(65, 109) #range of the columns to be considered
+        #these extra ones are needed for validation step
+        duration = 161 #number of days of incubation
+        cols_measured_respSoil = slice(33, 53) #which columns contain measured soil derived respiration
+        cols_measured_respSubstrate = slice(66, 77)  #which columns contain measured substrate derived respiration
+
+        
+
+        
     """
     key bayesian principle: the likelihood of a run is the sum of the likelihood of the parameters
     and how good the results fit.
@@ -672,7 +642,7 @@ if mode_ == "Bayesian":
         pass
 
     # Set a folder for logs
-    logs_path2, run_name = create_log_folder(mode_)
+    logs_path, run_name = MainFunctionsPotprim.create_log_folder(mode_)
 
     # Initialize parser
     parser = argparse.ArgumentParser(description="Run Bayesian optimization")
@@ -694,7 +664,7 @@ if mode_ == "Bayesian":
     parser.add_argument(
         "-t",
         "--tries",
-        default=10000,
+        default=3,
         type=int,
         help="Run this number of tries (default: 10000)",
     )  # was 10000
@@ -729,12 +699,12 @@ if mode_ == "Bayesian":
         keys,
     ) = BayesianFunctionsPotprim.read_parameter_data(inputCalibrationParamfile)
 
-    # Save initial parameters to logs
+    # Save initial parameters to output Bayesian
     with open("datalistCalibrationParam.json", "r") as inputCalibrationParamfile:
         data = json.load(inputCalibrationParamfile)
 
     with open(
-        os.path.join(logs_path2, "datalistCalibrationParam.json"), "w"
+        os.path.join(sharable_path, "datalistCalibrationParam.json"), "w"
     ) as output_file:
         json.dump(data, output_file, indent=4)
 
@@ -763,7 +733,7 @@ if mode_ == "Bayesian":
     data_measured_names = []
     data_measured_days = []
     data_measured_colnames = data_measured.columns.tolist()
-    print(data_measured_colnames)
+    # print(data_measured_colnames)
     #data currently used for calibration Jilkova 2022:
         # 'POM155', 
         # 'MAOM155',
@@ -1136,9 +1106,9 @@ if mode_ == "Bayesian":
                 BayesianFunctionsPotprim.save_result(
                     [[[log_likelihood_sim0]]], sharable_path, "logLikelihood"
                 )
-                BayesianFunctionsPotprim.save_result(
-                    [[[log_likelihood_sim0]]], logs_path2, "logLikelihood"
-                )
+                # BayesianFunctionsPotprim.save_result(
+                #     [[[log_likelihood_sim0]]], logs_path, "logLikelihood"
+                # )
                 
                 """
                 14) test if we have enough runs: avg and stdev are table for each column of posterior
@@ -1174,24 +1144,15 @@ if mode_ == "Bayesian":
     """
     end of loop
     """
-
+    #%% --- final export of accepted parameters
     t2 = time.perf_counter()
 
-    print(f'Calibration ran for {time.strftime("%H:%M:%S", time.gmtime(t2 - t1))}\n')
-    # df = pd.DataFrame(priorChain, columns=['a0Photo_Eff', 'SoilRootCond', 'minimalStomatalResistance', 'a9DistriRoot',
-    #                                        'a10DistriFruit', 'a91DistriHyphae', 'ratioExudRoot', 'f_MIC_DOM',
-    #                                        'f_FOM_fPOM', 'f_fPOM_oPOM', 'MAOMsmaxrate', 'MAOMpmaxrate', 'AgRate',
-    #                                        'MIC_gmax', 'Mic_RespRate', 'MIC_TR', 'HyphalExploration',
-    #                                        'HyphaeTurnoverrate', 'Hyphae_fGRSP', 'SoilHyphaeCond'])
-    # AllTestedParameters = pd.DataFrame(priorChain, columns=list(CalibratedParameters.keys()))
-
-    # bayesian_plots(df=df, path=file_name, columns=5, save_to_file=True)
     try:
         os.remove(os.path.join(sharable_path, "AcceptedParams_*"))
     except Exception as e:
         pass
 
-    # save all accepted parameters set as json >> this is used for Validation
+    # save all accepted parameters set as json >> this is then used for Validation
     AcceptedParamsJsonName = "AcceptedParams_" + run_name
     BayesianFunctionsPotprim.save_json(
         "calibratedParameters.csv",
@@ -1202,60 +1163,22 @@ if mode_ == "Bayesian":
         AcceptedParamsJsonName,
     )
 
-    # save all accepted parameter sets to logs folder as json
-    BayesianFunctionsPotprim.save_json(
-        "calibratedParameters.csv",
-        "logLikelihood.csv",
-        keys,
-        sharable_path,
-        logs_path2,
-        "AcceptedParams",
-    )
-
-    # save metadata of the calibration
-    content = f"tries = {NumberOfTries}\nconverged = {converged}\ntime = {time.strftime('%H:%M:%S', time.gmtime(t2 - t1))}"
-
-    with open(os.path.join(logs_path2, "info.txt"), "w") as output_file:
-        output_file.write(content)
-
-    # save metadata in one csv file
-    file_exists = os.path.isfile("./logs/logs_Bayesian.csv")
-    file_is_empty = file_exists and os.path.getsize("./logs/logs_Bayesian.csv") == 0
-
-    log_likelihood_csv = pd.read_csv(
-        os.path.join(logs_path2, "logLikelihood.csv"), header=None
-    )
-    bestLikelihood = log_likelihood_csv[0].max()
-    numberAccepted = log_likelihood_csv.shape[0]
-
-    with open("./logs/logs_Bayesian.csv", "a", newline="") as f:
-        writer = csv.writer(f)
-
-        # Write the header
-        if not file_exists or file_is_empty:
-            writer.writerow(
-                [
-                    "Run",
-                    "Tries",
-                    "Converged",
-                    "Best likelihood",
-                    "Number of accepted",
-                    "Date",
-                ]
-            )
-
-        writer.writerow(
-            [
-                run_name,
-                NumberOfTries,
-                converged,
-                bestLikelihood,
-                numberAccepted,
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            ]
-        )
-
     #%%--- Histograms of tried and accepted parameters
+    #make 2 figures output folders or check if they exist
+    sharable_figures = os.path.join(sharable_path, "figures") #output_Bayesian/figures folder
+    # logs_figures = os.path.join(logs_path, "figures") #logs/run/figures folder
+    
+    try:
+        os.makedirs(sharable_figures)
+    except FileExistsError:
+        # directory already exists
+        pass
+    
+    # try:
+    #     os.makedirs(logs_figures)
+    # except FileExistsError:
+    #     # directory already exists
+    #     pass
     
     # Load the CSV file into a DataFrame
     df = pd.read_csv("./output_Bayesian/calibratedParameters.csv", header=None)
@@ -1350,324 +1273,97 @@ if mode_ == "Bayesian":
 
         plt.tight_layout()
 
-        plt.savefig(os.path.join(logs_path2, "hist_" + column + ".png"))
+        # plt.savefig(os.path.join(logs_figures, "hist_" + column + ".png"))
+        plt.savefig(os.path.join(sharable_figures, "hist_" + column + ".png")) #save also into output_Bayesian
         plt.close()
-
-
-############## Validation run ###########################
-if mode_ == "Validation":
-    # Clear files
-    csv_files = [
-        "selectedLikelihoods.csv",
-        "rmse.csv",
-        "ef.csv",
-    ]
-
-    for file in csv_files:
-        file_path = os.path.join(sharable_path, file)
-        if os.path.exists(file_path):
-            with open(file_path, "w") as file:
-                file.write("")  # Clear the contents of the file
-
-    logs_path2, run_name = create_log_folder(mode_)
-    logs_figures = os.path.join(logs_path2, "figures")
-
-    try:
-        os.makedirs(logs_figures)
-    except FileExistsError:
-        # directory already exists
-        pass
-
-    # Input values
-    inputRun = pd.read_csv("Validation_run_input.csv", header=0, skiprows=0)
-    numTreatments = len(inputRun)
-
-    # Clear file with mean respirations if it already exists
-    file_path = os.path.join(results_path, "selectedSets_MeanRespiration.csv")
-    if os.path.exists(file_path):
-        with open(file_path, "w") as file:
-            file.write("")  # Clear the contents of the file
-
-    # Load AcceptedParams
-    pattern = os.path.join(sharable_path, "AcceptedParams_*")
-    matching_files = glob.glob(pattern)
-
-    # Check if any matching files were found
-    if matching_files:
-        # Open the first matching file (or handle multiple files as needed)
-        with open(matching_files[0], "r") as f1:
-            calibParam = json.load(f1)  # Load the JSON data from the file
-
-        # Extract the filename without the path
-        filename = os.path.basename(matching_files[0])
-
-        # Extract the part after "AcceptedParams_"
-        Bayesian_version = "_".join(filename.split("_")[1:])
-
+        
+    #%%Validation part of Bayesian mode ###########################
+    #run normal run using best parameter set
+    #%% ---  step 1: select the best parameter set
+    # Load the "AcceptedParams" json from output_Bayesian/, its name contains also a date, so search for file starting AcceptedParams
+    file_path = os.path.join(sharable_path, "AcceptedParams_*")
+    files = glob.glob(file_path)
+    
+    if len(files) == 1: #safety check, there should be just one file like this
+        with open(files[0], 'r') as f:
+            calibParam = json.load(f)
+        # print(calibParam)
     else:
-        print("No AcceptedParams file found.")
-        sys.exit()
-
-    # save input AcceptedParams to logs
-    with open(os.path.join(logs_path2, "AcceptedParams_input.json"), "w") as output_file:
-        json.dump(calibParam, output_file, indent=4)
-
+        raise FileNotFoundError("Expected exactly one file starting with 'AcceptedParams', found: {}".format(len(files)))
+    
+    
     # Select parameter sets
     selected_sets = []
     selected_likelihoods = []
-
-    ##### Latin Hypercube ############
-    # # Extract likelihoods (keys) and parameters sets (values) from uploaded json
-    # likelihoods = []
-    # parameter_sets = []
-
-    # for likelihood, parameters in calibParam.items():
-    #     likelihoods.append(float(likelihood))
-    #     parameter_sets.append(parameters)
-
-    # # Calculate weights of the likelihoods
-    # total_likelihood = sum(likelihoods)
-    # weights = [likelihood / total_likelihood for likelihood in likelihoods]
-
-    # # Actual Latin Hypercube
-    # n_samples = 3  # Adjust based on your needs
-    # sampler = qmc.LatinHypercube(d=len(parameter_sets))
-    # sample = sampler.random(n=n_samples)
-
-    # for i in range(n_samples):
-    #     index = np.random.choice(len(parameter_sets), p=weights)
-    #     selected_sets.append(parameter_sets[index])
-    #     selected_likelihoods.append(index)
-
+    
     # Select 1 set of parameters with the highest likelihood
-    calibParam = {k: calibParam[k] for k in sorted(calibParam)}
-    likelihood = list(calibParam.keys())[0]
-    selected_sets.append(calibParam[likelihood])
-    selected_likelihoods.append(likelihood)
+    calibParam = {k: calibParam[k] for k in sorted(calibParam)} #sort the calibrated parameter sets by likelihood
+    bestlikelihood = list(calibParam.keys())[0] #likelihood of the best parameter set
+    selected_sets.append(calibParam[bestlikelihood]) #add to the list, this can be later expanded if multiple parameter sets are chosen for validation
+    selected_likelihoods.append(bestlikelihood) #add to the list, this can be later expanded if multiple parameter sets are chosen for validation
+    
 
+    # print("all likelihoods", list(calibParam.keys()))
+    print("best parameter set likelihood", bestlikelihood)
+    print("best parameter set", selected_sets)
+    
     # Save the set of parameters that will be used
-    with open(os.path.join(logs_path2, "setParamValidation.json"), "w") as json_file:
+    with open(os.path.join(sharable_path, "BestParamSetValidation.json"), "w") as json_file:
         json.dump(selected_sets, json_file, indent=4)
-
-    # Save the likelihoods
-    file_exists = os.path.isfile(os.path.join(logs_path2, "selectedLikelihoods.csv"))
-    file_is_empty = (
-        file_exists
-        and os.path.getsize(os.path.join(logs_path2, "selectedLikelihoods.csv")) == 0
-    )
-    with open(
-        os.path.join(logs_path2, "selectedLikelihoods.csv"), "w", newline=""
-    ) as file:
-        csv_writer = csv.writer(file)
-
-        # Write the header
-        if not file_exists or file_is_empty:
-            csv_writer.writerow(["Set", "Likelihood"])
-
-        for index, likelihood in enumerate(selected_likelihoods):
-            # Write the key and values to the CSV file
-            csv_writer.writerow([index + 1, likelihood])
-
-    # Merge calibrated parameters with the fixed ones – this should happen inside the for loop in the future
+    
+    #%% --- step 2: combine it with the "fixed" parameters which are not calibrated for
     with open("fixedParameters.json", "r") as f2:
         fixedParam = json.load(
             f2
         )  # only the parameters that are fixed, ie not calibrated
-
-    # create lists for respiration plot
-    respSoil_mean_model = []
-    respSubstrate_mean_model = []
-    respSoil_mean_measure = []
-    respSubstrate_mean_measure = []
-    labels = []
-
-    for index, set in enumerate(selected_sets):
+        
+    for index, parset in enumerate(selected_sets): #ready for multiple parameter sets
         # Combine the calibrated parameters and the fixed parameters into one variable
-        AllParam = {**set, **fixedParam}
+        AllParam = {**parset, **fixedParam}
+        
+        
+       #%% --- step 3: run normal run with best parameter set
+        Plotting = True # needs to be set to True cuz for Bayesian it is automatically switched to False
+        mean_ef, metrics_df = normal_run(path_bayesian, 
+                       duration, 
+                       cols_measured_respSoil, 
+                       cols_measured_respSubstrate,
+                       cols_data_measured,
+                       AllParam,
+                       Plotting, 
+                       sharable_path
+                       )
+    #copy the whole output_Bayesian folder to logs folder
+    shutil.copytree(sharable_path, logs_path, dirs_exist_ok=True)
+    
+    print(f"Output folder copied to {logs_path}")  
 
-        # Empty these variables so every plot shows only the values of the specific set
-        # However, it won't be here later on, when we rewrite the Plotting for the mean of the results over sets
-        # This is only provisional
-        respSoil_mean_model = []
-        respSubstrate_mean_model = []
-        respSoil_mean_measure = []
-        respSubstrate_mean_measure = []
-        labels = []
-
-        final_results_df = pd.DataFrame()  # empty, so every set has its own file
-        df_list = []
-
-        for treatment in range(numTreatments):
-            treatmentVar = inputRun.iloc[treatment, 0:21]
-
-            results_df = run_model(
-                AllParam,
-                treatmentVar,
-                mode_="Normal",
-                Plotting=Plotting,
-                numDays=161,
-                path=logs_figures,
-            )
-            df_list.append(results_df)
-
-            # storing values for respiration plot
-            if Plotting:
-                labels.append(results_df["treatment"][1])
-                respSoil_mean_model.append((results_df["respSoil"].mean()) / 0.8 * 24)
-                respSubstrate_mean_model.append(
-                    (results_df["respSubstrate"].mean()) / 0.8 * 24
-                )
-                respSoil_mean_measure.append((inputRun.iloc[treatment, 33:53]).mean())
-                respSubstrate_mean_measure.append((inputRun.iloc[treatment, 66:77]).mean())
-            
-            
-            
-              
-                
-
-        final_results_df = pd.concat(
-            df_list, ignore_index=True
-        )  # add all the rows to the results_df
-
-        try:
-            os.makedirs("./output/data")
-        except FileExistsError:
-            # directory already exists
-            pass
-
-        final_results_df.to_csv(
-            os.path.join("./output/data", "Validation_" + str(index + 1) + ".csv"),
-            index=False,
-            float_format="%.5f",
-        )
-
-        # Save mean respiration in treatments, sets under each other
-        file_path = os.path.join(results_path, "selectedSets_MeanRespiration.csv")
-        file_exists = os.path.isfile(file_path)
-        file_is_empty = file_exists and os.path.getsize(file_path) == 0
-
-        with open(
-            file_path,
-            mode="a",
-            newline="",
-        ) as csvfile:
-            csv_writer = csv.writer(csvfile)
-
-            # Write the header
-            if not file_exists or file_is_empty:
-                csv_writer.writerow(["Set", "Treatment", "respSoil", "respSubstrate"])
-
-            for label, value1, value2 in zip(
-                labels, respSoil_mean_model, respSubstrate_mean_model
-            ):
-                # Write the key and values to the CSV file
-                csv_writer.writerow([index + 1, label, value1, value2])
-
-        ###### Plotting is now inside the for loop over selected sets
-        # Later, we should put the Plotting outside the loop and draw it using mean respirations over sets
-        if Plotting:
-            name = "respPlot_Validation_" + str(index + 1) + ".png"
-            drawRespPlot(
-                labels,
-                respSoil_mean_model,
-                respSoil_mean_measure,
-                respSubstrate_mean_model,
-                respSubstrate_mean_measure,
-                name,
-                logs_figures,
-            )
-
-    ######## Calculate RMSE ########################
-    # It's now calculated from the last set, needs to be changed for the mean of everything !!!!!!!!!!!
-
-    # Derive respiration from simulated values (modelled in Validation mode)
-    obs_days_soil = [
-        0,
-        2,
-        6,
-        13,
-        21,
-        23,
-        27,
-        34,
-        49,
-        51,
-        55,
-        62,
-        91,
-        93,
-        97,
-        104,
-        147,
-        149,
-        153,
-        160,
-    ]  # list of days in which the respiration was measured for soil; note that it is 1 smaller than in the input file as in the output file, it starts with 0
-    obs_days_sub = [
-        0,
-        2,
-        6,
-        13,
-        49,
-        51,
-        55,
-        62,
-        147,
-        149,
-        153,
-        160,
-    ]  # list of days in which the respiration was measured for substrate; also starts with 0
-    respSoil_sim = []
-    respSub_sim = []
-
-    # Iterate over the DataFrame rows
-    for index, row in final_results_df.iterrows():
-        if row["day"] in obs_days_soil:
-            respSoil_sim.append(row["respSoil"])
-
-        if row["day"] in obs_days_sub:
-            respSub_sim.append(row["respSubstrate"])
-
-    # Derive respiration from observed values
-    respSoil_obs = []
-    respSub_obs = []
-
-    for index, row in inputRun.iterrows():
-        for column_name, column_value in row.items():
-            if (
-                column_name.startswith("resp")
-                and "sub" not in column_name
-                and "error" not in column_name
-            ):
-                if "obs" in column_name:
-                    # Append to respSub_obs
-                    respSub_obs.append(column_value)
-                else:
-                    # Append to respSoil_obs
-                    respSoil_obs.append(column_value)
-
-    ######## Calculate RMSE ##################################################
-    RMSE_Soil = calculateRMSE(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
-    RMSE_Substrate = calculateRMSE(
-        respSub_obs, respSub_sim, "respSubstrate", logs_path2
-    )
-
-    ######## Calculate EF (Nash-Sutcliffe Efficiency) ########################
-    EF_Soil = calculateEF(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
-    EF_Substrate = calculateEF(respSub_obs, respSub_sim, "respSubstrate", logs_path2)
-
-    ######## Calculate Bias ##################################################
-    Bias_Soil = calculateBias(respSoil_obs, respSoil_sim, "respSoil", logs_path2)
-    Bias_Substrate = calculateBias(
-        respSub_obs, respSub_sim, "respSubstrate", logs_path2
-    )
-
+    #%% --- Final reports of calibration + validation
+    # save metadata of the calibration
+    content = f"""\        
+        {NumOfAccepted} parameter sets accepted out of {c+1} tries
+        converged = {converged}
+        best likelihood = {bestlikelihood}
+        mean EF = {mean_ef}
+        Calibration ran for {time.strftime('%H:%M:%S', time.gmtime(t2 - t1))}
+        {metrics_df}
+        """
+    print(content)
+    with open(os.path.join(sharable_path, "info.txt"), "w") as output_file:
+        output_file.write(content)
+    
+        
     # save metadata in one csv file
-    file_exists = os.path.isfile("./logs/logs_Validation.csv")
-    file_is_empty = file_exists and os.path.getsize("./logs/logs_Validation.csv") == 0
+    file_exists = os.path.isfile("./logs/logs_Bayesian.csv")
+    file_is_empty = file_exists and os.path.getsize("./logs/logs_Bayesian.csv") == 0
 
-    # Save overall log file
-    with open("./logs/logs_Validation.csv", "a", newline="") as f:
+    log_likelihood_csv = pd.read_csv(
+        os.path.join(sharable_path, "logLikelihood.csv"), header=None
+    )
+    bestLikelihood = log_likelihood_csv[0].max()
+    numberAccepted = log_likelihood_csv.shape[0]
+
+    with open("./logs/logs_Bayesian.csv", "a", newline="") as f:
         writer = csv.writer(f)
 
         # Write the header
@@ -1675,13 +1371,11 @@ if mode_ == "Validation":
             writer.writerow(
                 [
                     "Run",
-                    "RMSE_Soil",
-                    "EF_Soil",
-                    "Bias_Soil",
-                    "RMSE_Substrate",
-                    "EF_Substrate",
-                    "Bias_Substrate",
-                    "Bayesian version",
+                    "Tries",
+                    "Converged",
+                    "Best likelihood",
+                    "Number of accepted",
+                    "Mean EF",
                     "Date",
                 ]
             )
@@ -1689,136 +1383,480 @@ if mode_ == "Validation":
         writer.writerow(
             [
                 run_name,
-                RMSE_Soil,
-                EF_Soil,
-                Bias_Soil,
-                RMSE_Substrate,
-                EF_Substrate,
-                Bias_Substrate,
-                Bayesian_version,
+                NumberOfTries,
+                converged,
+                bestLikelihood,
+                numberAccepted,
+                mean_ef,
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             ]
         )
 
-    ################ In case we ever need to calculate RMSE for each treatment separately ######################
-    # # Derive respiration from simulated values (modelled in Validation mode)
-    # respSoil_sim = {}
-    # respSub_sim = {}
-    # obs_days_soil = [
-    #     0,
-    #     2,
-    #     6,
-    #     13,
-    #     21,
-    #     23,
-    #     27,
-    #     34,
-    #     49,
-    #     51,
-    #     55,
-    #     62,
-    #     91,
-    #     93,
-    #     97,
-    #     104,
-    #     147,
-    #     149,
-    #     153,
-    #     160,
-    # ]  # list of days in which the respiration was measured for soil; note that it is 1 smaller than in the input file as in the output file, it starts with 0
-    # obs_days_sub = [
-    #     0,
-    #     2,
-    #     6,
-    #     13,
-    #     49,
-    #     51,
-    #     55,
-    #     62,
-    #     147,
-    #     149,
-    #     153,
-    #     160,
-    # ]  # list of days in which the respiration was measured for substrate; also starts with 0
+# # %%Old Validation run ###########################
+# if mode_ == "Validation":
+#     # Clear files
+#     csv_files = [
+#         "selectedLikelihoods.csv",
+#         "rmse.csv",
+#         "ef.csv",
+#     ]
 
-    # # Iterate over the DataFrame rows
-    # for index, row in final_results_df.iterrows():
-    #     treatment = row["treatment"]
+#     for file in csv_files:
+#         file_path = os.path.join(sharable_path, file)
+#         if os.path.exists(file_path):
+#             with open(file_path, "w") as file:
+#                 file.write("")  # Clear the contents of the file
 
-    #     # Append respSoil values
-    #     if treatment not in respSoil_sim:
-    #         respSoil_sim[treatment] = (
-    #             []
-    #         )  # Create a new list if the treatment is not in the dictionary
-    #     if row["day"] in obs_days_soil:
-    #         respSoil_sim[treatment].append(row["respSoil"])
+#     logs_path, run_name = MainFunctionsPotprim.create_log_folder(mode_)
+#     # logs_figures = os.path.join(logs_path, "figures")
 
-    #     # Append respSubstrate values
-    #     if treatment not in respSub_sim:
-    #         respSub_sim[treatment] = (
-    #             []
-    #         )  # Create a new list if the treatment is not in the dictionary
-    #     if row["day"] in obs_days_sub:
-    #         respSub_sim[treatment].append(row["respSubstrate"])
+#     # try:
+#     #     os.makedirs(logs_figures)
+#     # except FileExistsError:
+#     #     # directory already exists
+#     #     pass
 
-    # # Derive respiration from observed values
-    # respSoil_obs = {}
-    # respSub_obs = {}
+#     # Input values
+#     inputRun = pd.read_csv("Validation_run_input.csv", header=0, skiprows=0)
+#     numTreatments = len(inputRun)
 
-    # for index, row in inputRun.iterrows():
-    #     treatment = row["treatment"]
+#     # Clear file with mean respirations if it already exists
+#     file_path = os.path.join(results_path, "selectedSets_MeanRespiration.csv")
+#     if os.path.exists(file_path):
+#         with open(file_path, "w") as file:
+#             file.write("")  # Clear the contents of the file
 
-    #     if treatment not in respSoil_obs:
-    #         respSoil_obs[treatment] = []
+#     # Load AcceptedParams
+#     pattern = os.path.join(sharable_path, "AcceptedParams_*")
+#     matching_files = glob.glob(pattern)
 
-    #     if treatment not in respSub_obs:
-    #         respSub_obs[treatment] = []
+#     # Check if any matching files were found
+#     if matching_files:
+#         # Open the first matching file (or handle multiple files as needed)
+#         with open(matching_files[0], "r") as f1:
+#             calibParam = json.load(f1)  # Load the JSON data from the file
 
-    #     for column_name, column_value in row.items():
-    #         if column_name.startswith("resp") and "error" not in column_name:
-    #             if "sub" in column_name:
-    #                 # Append to respSub_obs
-    #                 respSub_obs[treatment].append(column_value)
-    #             else:
-    #                 # Append to respSoil_obs
-    #                 respSoil_obs[treatment].append(column_value)
+#         # Extract the filename without the path
+#         filename = os.path.basename(matching_files[0])
 
-    # # Now we will actually calculate the RMSE, yaaay!
-    # rmse_soil = {}
-    # rmse_sub = {}
+#         # Extract the part after "AcceptedParams_"
+#         Bayesian_version = "_".join(filename.split("_")[1:])
 
-    # for (key1, value1), (key2, value2) in zip(
-    #     respSoil_obs.items(), respSoil_sim.items()
-    # ):
-    #     if key1 == key2:  # Ensure the keys match
-    #         actual = np.array(value1)
-    #         predicted = np.array(value2)
+#     else:
+#         print("No AcceptedParams file found.")
+#         sys.exit()
 
-    #         rmse_soil[key1] = np.sqrt(((predicted - actual) ** 2).mean())
+#     # save input AcceptedParams to logs
+#     with open(os.path.join(logs_path, "AcceptedParams_input.json"), "w") as output_file:
+#         json.dump(calibParam, output_file, indent=4)
 
-    # for (key1, value1), (key2, value2) in zip(respSub_obs.items(), respSub_sim.items()):
-    #     if key1 == key2:  # Ensure the keys match
-    #         actual = np.array(value1)
-    #         predicted = np.array(value2)
+#     # Select parameter sets
+#     selected_sets = []
+#     selected_likelihoods = []
 
-    #         rmse_sub[key1] = np.sqrt(((predicted - actual) ** 2).mean())
+#     ##### Latin Hypercube ############
+#     # # Extract likelihoods (keys) and parameters sets (values) from uploaded json
+#     # likelihoods = []
+#     # parameter_sets = []
 
-    # # save as a one csv file
-    # try:
-    #     os.makedirs("./output_Bayesian")
-    # except FileExistsError:
-    #     # directory already exists
-    #     pass
+#     # for likelihood, parameters in calibParam.items():
+#     #     likelihoods.append(float(likelihood))
+#     #     parameter_sets.append(parameters)
 
-    # with open(os.path.join(sharable_path, "rmse.csv"), mode="w", newline="") as csvfile:
-    #     csv_writer = csv.writer(csvfile)
+#     # # Calculate weights of the likelihoods
+#     # total_likelihood = sum(likelihoods)
+#     # weights = [likelihood / total_likelihood for likelihood in likelihoods]
 
-    #     # Write the header
-    #     csv_writer.writerow(["Treatment", "respSoil", "respSub"])
+#     # # Actual Latin Hypercube
+#     # n_samples = 3  # Adjust based on your needs
+#     # sampler = qmc.LatinHypercube(d=len(parameter_sets))
+#     # sample = sampler.random(n=n_samples)
 
-    #     # Iterate over the keys in the dictionaries
-    #     for key in rmse_soil.keys():
-    #         value1 = rmse_soil[key]
-    #         value2 = rmse_sub[key]
-    #         # Write the key and values to the CSV file
-    #         csv_writer.writerow([key, value1, value2])
+#     # for i in range(n_samples):
+#     #     index = np.random.choice(len(parameter_sets), p=weights)
+#     #     selected_sets.append(parameter_sets[index])
+#     #     selected_likelihoods.append(index)
+
+#     # Select 1 set of parameters with the highest likelihood
+#     calibParam = {k: calibParam[k] for k in sorted(calibParam)}
+#     likelihood = list(calibParam.keys())[0]
+#     selected_sets.append(calibParam[likelihood])
+#     selected_likelihoods.append(likelihood)
+
+#     # Save the set of parameters that will be used
+#     with open(os.path.join(logs_path, "setParamValidation.json"), "w") as json_file:
+#         json.dump(selected_sets, json_file, indent=4)
+
+#     # Save the likelihoods
+#     file_exists = os.path.isfile(os.path.join(logs_path, "selectedLikelihoods.csv"))
+#     file_is_empty = (
+#         file_exists
+#         and os.path.getsize(os.path.join(logs_path, "selectedLikelihoods.csv")) == 0
+#     )
+#     with open(
+#         os.path.join(logs_path, "selectedLikelihoods.csv"), "w", newline=""
+#     ) as file:
+#         csv_writer = csv.writer(file)
+
+#         # Write the header
+#         if not file_exists or file_is_empty:
+#             csv_writer.writerow(["Set", "Likelihood"])
+
+#         for index, likelihood in enumerate(selected_likelihoods):
+#             # Write the key and values to the CSV file
+#             csv_writer.writerow([index + 1, likelihood])
+
+#     # Merge calibrated parameters with the fixed ones – this should happen inside the for loop in the future
+#     with open("fixedParameters.json", "r") as f2:
+#         fixedParam = json.load(
+#             f2
+#         )  # only the parameters that are fixed, ie not calibrated
+
+#     # create lists for respiration plot
+#     respSoil_mean_model = []
+#     respSubstrate_mean_model = []
+#     respSoil_mean_measure = []
+#     respSubstrate_mean_measure = []
+#     labels = []
+
+#     for index, parset in enumerate(selected_sets):
+#         # Combine the calibrated parameters and the fixed parameters into one variable
+#         AllParam = {**parset, **fixedParam}
+
+#         # Empty these variables so every plot shows only the values of the specific set
+#         # However, it won't be here later on, when we rewrite the Plotting for the mean of the results over sets
+#         # This is only provisional
+#         respSoil_mean_model = []
+#         respSubstrate_mean_model = []
+#         respSoil_mean_measure = []
+#         respSubstrate_mean_measure = []
+#         labels = []
+
+#         final_results_df = pd.DataFrame()  # empty, so every set has its own file
+#         df_list = []
+
+#         for treatment in range(numTreatments):
+#             treatmentVar = inputRun.iloc[treatment, 0:21]
+
+#             results_df = run_model(
+#                 AllParam,
+#                 treatmentVar,
+#                 mode_="Normal",
+#                 Plotting=Plotting,
+#                 numDays=161,
+#                 path=logs_figures,
+#             )
+#             df_list.append(results_df)
+
+#             # storing values for respiration plot
+#             if Plotting:
+#                 labels.append(results_df["treatment"][1])
+#                 respSoil_mean_model.append((results_df["respSoil"].mean()) / 0.8 * 24)
+#                 respSubstrate_mean_model.append(
+#                     (results_df["respSubstrate"].mean()) / 0.8 * 24
+#                 )
+#                 respSoil_mean_measure.append((inputRun.iloc[treatment, 33:53]).mean())
+#                 respSubstrate_mean_measure.append((inputRun.iloc[treatment, 66:77]).mean())
+            
+            
+            
+              
+                
+
+#         final_results_df = pd.concat(
+#             df_list, ignore_index=True
+#         )  # add all the rows to the results_df
+
+#         try:
+#             os.makedirs("./output/data")
+#         except FileExistsError:
+#             # directory already exists
+#             pass
+
+#         final_results_df.to_csv(
+#             os.path.join("./output/data", "Validation_" + str(index + 1) + ".csv"),
+#             index=False,
+#             float_format="%.5f",
+#         )
+
+#         # Save mean respiration in treatments, sets under each other
+#         file_path = os.path.join(results_path, "selectedSets_MeanRespiration.csv")
+#         file_exists = os.path.isfile(file_path)
+#         file_is_empty = file_exists and os.path.getsize(file_path) == 0
+
+#         with open(
+#             file_path,
+#             mode="a",
+#             newline="",
+#         ) as csvfile:
+#             csv_writer = csv.writer(csvfile)
+
+#             # Write the header
+#             if not file_exists or file_is_empty:
+#                 csv_writer.writerow(["Set", "Treatment", "respSoil", "respSubstrate"])
+
+#             for label, value1, value2 in zip(
+#                 labels, respSoil_mean_model, respSubstrate_mean_model
+#             ):
+#                 # Write the key and values to the CSV file
+#                 csv_writer.writerow([index + 1, label, value1, value2])
+
+#         ###### Plotting is now inside the for loop over selected sets
+#         # Later, we should put the Plotting outside the loop and draw it using mean respirations over sets
+#         if Plotting:
+#             name = "respPlot_Validation_" + str(index + 1) + ".png"
+#             MainFunctionsPotprim.drawRespPlot(
+#                 labels,
+#                 respSoil_mean_model,
+#                 respSoil_mean_measure,
+#                 respSubstrate_mean_model,
+#                 respSubstrate_mean_measure,
+#                 name,
+#                 logs_figures,
+#             )
+
+#     ######## Calculate RMSE ########################
+#     # It's now calculated from the last set, needs to be changed for the mean of everything !!!!!!!!!!!
+
+#     # Derive respiration from simulated values (modelled in Validation mode)
+#     obs_days_soil = [
+#         0,
+#         2,
+#         6,
+#         13,
+#         21,
+#         23,
+#         27,
+#         34,
+#         49,
+#         51,
+#         55,
+#         62,
+#         91,
+#         93,
+#         97,
+#         104,
+#         147,
+#         149,
+#         153,
+#         160,
+#     ]  # list of days in which the respiration was measured for soil; note that it is 1 smaller than in the input file as in the output file, it starts with 0
+#     obs_days_sub = [
+#         0,
+#         2,
+#         6,
+#         13,
+#         49,
+#         51,
+#         55,
+#         62,
+#         147,
+#         149,
+#         153,
+#         160,
+#     ]  # list of days in which the respiration was measured for substrate; also starts with 0
+#     respSoil_sim = []
+#     respSub_sim = []
+
+#     # Iterate over the DataFrame rows
+#     for index, row in final_results_df.iterrows():
+#         if row["day"] in obs_days_soil:
+#             respSoil_sim.append(row["respSoil"])
+
+#         if row["day"] in obs_days_sub:
+#             respSub_sim.append(row["respSubstrate"])
+
+#     # Derive respiration from observed values
+#     respSoil_obs = []
+#     respSub_obs = []
+
+#     for index, row in inputRun.iterrows():
+#         for column_name, column_value in row.items():
+#             if (
+#                 column_name.startswith("resp")
+#                 and "sub" not in column_name
+#                 and "error" not in column_name
+#             ):
+#                 if "obs" in column_name:
+#                     # Append to respSub_obs
+#                     respSub_obs.append(column_value)
+#                 else:
+#                     # Append to respSoil_obs
+#                     respSoil_obs.append(column_value)
+
+#     ######## Calculate RMSE ##################################################
+#     RMSE_Soil = calculateRMSE(respSoil_obs, respSoil_sim, "respSoil", logs_path)
+#     RMSE_Substrate = calculateRMSE(
+#         respSub_obs, respSub_sim, "respSubstrate", logs_path
+#     )
+
+#     ######## Calculate EF (Nash-Sutcliffe Efficiency) ########################
+#     EF_Soil = calculateEF(respSoil_obs, respSoil_sim, "respSoil", logs_path)
+#     EF_Substrate = calculateEF(respSub_obs, respSub_sim, "respSubstrate", logs_path)
+
+#     ######## Calculate Bias ##################################################
+#     Bias_Soil = calculateBias(respSoil_obs, respSoil_sim, "respSoil", logs_path)
+#     Bias_Substrate = calculateBias(
+#         respSub_obs, respSub_sim, "respSubstrate", logs_path
+#     )
+
+#     # save metadata in one csv file
+#     file_exists = os.path.isfile("./logs/logs_Validation.csv")
+#     file_is_empty = file_exists and os.path.getsize("./logs/logs_Validation.csv") == 0
+
+#     # Save overall log file
+#     with open("./logs/logs_Validation.csv", "a", newline="") as f:
+#         writer = csv.writer(f)
+
+#         # Write the header
+#         if not file_exists or file_is_empty:
+#             writer.writerow(
+#                 [
+#                     "Run",
+#                     "RMSE_Soil",
+#                     "EF_Soil",
+#                     "Bias_Soil",
+#                     "RMSE_Substrate",
+#                     "EF_Substrate",
+#                     "Bias_Substrate",
+#                     "Bayesian version",
+#                     "Date",
+#                 ]
+#             )
+
+#         writer.writerow(
+#             [
+#                 run_name,
+#                 RMSE_Soil,
+#                 EF_Soil,
+#                 Bias_Soil,
+#                 RMSE_Substrate,
+#                 EF_Substrate,
+#                 Bias_Substrate,
+#                 Bayesian_version,
+#                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+#             ]
+#         )
+
+#     ################ In case we ever need to calculate RMSE for each treatment separately ######################
+#     # # Derive respiration from simulated values (modelled in Validation mode)
+#     # respSoil_sim = {}
+#     # respSub_sim = {}
+#     # obs_days_soil = [
+#     #     0,
+#     #     2,
+#     #     6,
+#     #     13,
+#     #     21,
+#     #     23,
+#     #     27,
+#     #     34,
+#     #     49,
+#     #     51,
+#     #     55,
+#     #     62,
+#     #     91,
+#     #     93,
+#     #     97,
+#     #     104,
+#     #     147,
+#     #     149,
+#     #     153,
+#     #     160,
+#     # ]  # list of days in which the respiration was measured for soil; note that it is 1 smaller than in the input file as in the output file, it starts with 0
+#     # obs_days_sub = [
+#     #     0,
+#     #     2,
+#     #     6,
+#     #     13,
+#     #     49,
+#     #     51,
+#     #     55,
+#     #     62,
+#     #     147,
+#     #     149,
+#     #     153,
+#     #     160,
+#     # ]  # list of days in which the respiration was measured for substrate; also starts with 0
+
+#     # # Iterate over the DataFrame rows
+#     # for index, row in final_results_df.iterrows():
+#     #     treatment = row["treatment"]
+
+#     #     # Append respSoil values
+#     #     if treatment not in respSoil_sim:
+#     #         respSoil_sim[treatment] = (
+#     #             []
+#     #         )  # Create a new list if the treatment is not in the dictionary
+#     #     if row["day"] in obs_days_soil:
+#     #         respSoil_sim[treatment].append(row["respSoil"])
+
+#     #     # Append respSubstrate values
+#     #     if treatment not in respSub_sim:
+#     #         respSub_sim[treatment] = (
+#     #             []
+#     #         )  # Create a new list if the treatment is not in the dictionary
+#     #     if row["day"] in obs_days_sub:
+#     #         respSub_sim[treatment].append(row["respSubstrate"])
+
+#     # # Derive respiration from observed values
+#     # respSoil_obs = {}
+#     # respSub_obs = {}
+
+#     # for index, row in inputRun.iterrows():
+#     #     treatment = row["treatment"]
+
+#     #     if treatment not in respSoil_obs:
+#     #         respSoil_obs[treatment] = []
+
+#     #     if treatment not in respSub_obs:
+#     #         respSub_obs[treatment] = []
+
+#     #     for column_name, column_value in row.items():
+#     #         if column_name.startswith("resp") and "error" not in column_name:
+#     #             if "sub" in column_name:
+#     #                 # Append to respSub_obs
+#     #                 respSub_obs[treatment].append(column_value)
+#     #             else:
+#     #                 # Append to respSoil_obs
+#     #                 respSoil_obs[treatment].append(column_value)
+
+#     # # Now we will actually calculate the RMSE, yaaay!
+#     # rmse_soil = {}
+#     # rmse_sub = {}
+
+#     # for (key1, value1), (key2, value2) in zip(
+#     #     respSoil_obs.items(), respSoil_sim.items()
+#     # ):
+#     #     if key1 == key2:  # Ensure the keys match
+#     #         actual = np.array(value1)
+#     #         predicted = np.array(value2)
+
+#     #         rmse_soil[key1] = np.sqrt(((predicted - actual) ** 2).mean())
+
+#     # for (key1, value1), (key2, value2) in zip(respSub_obs.items(), respSub_sim.items()):
+#     #     if key1 == key2:  # Ensure the keys match
+#     #         actual = np.array(value1)
+#     #         predicted = np.array(value2)
+
+#     #         rmse_sub[key1] = np.sqrt(((predicted - actual) ** 2).mean())
+
+#     # # save as a one csv file
+#     # try:
+#     #     os.makedirs("./output_Bayesian")
+#     # except FileExistsError:
+#     #     # directory already exists
+#     #     pass
+
+#     # with open(os.path.join(sharable_path, "rmse.csv"), mode="w", newline="") as csvfile:
+#     #     csv_writer = csv.writer(csvfile)
+
+#     #     # Write the header
+#     #     csv_writer.writerow(["Treatment", "respSoil", "respSub"])
+
+#     #     # Iterate over the keys in the dictionaries
+#     #     for key in rmse_soil.keys():
+#     #         value1 = rmse_soil[key]
+#     #         value2 = rmse_sub[key]
+#     #         # Write the key and values to the CSV file
+#     #         csv_writer.writerow([key, value1, value2])

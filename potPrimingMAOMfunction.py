@@ -194,24 +194,22 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
 
         column_names = [
             "treatment",
-            "day",
-            "DOMaddition",
-            "DOM",
-            "rhiz",
-            "bulk",
-            "respSubstrate",
-            "baselineResp",
+            "day", 
+            "DOM_added",
             "respSoil",
-            "POM",
-            "MAOMs",
-            "MAOMp",
-            "MAOM",
-            'POM_sub',
-            'MAOM_sub', 
-            'bact', 
-            'fungi',
-            'bact_sub',
-            'fungi_sub'
+            "respSubstrate",
+            "DOMSoil",
+            "DOMSubstrate",
+            "POMSoil",
+            "POMSubstrate",
+            "MAOMSoil",
+            "MAOMSubstrate",
+            "CN_DOM",
+            "CN_MAOM",
+            "bactSoil",
+            "bactSubstrate",
+            "fungiSoil",
+            "fungiSubstrate"
         ]
 
         results_df = pd.DataFrame(columns=column_names)
@@ -771,27 +769,22 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 treatment,
                 d,
                 DOM_added / 0.8,  # change units from gC/m3 µgC/g soil
-                DOM / 0.8,  # change units from gC/m3 µgC/g soil
-                rhiz / 0.8,  # change units from gC/m3 µgC/g soil
-                bulk / 0.8,  # change units from gC/m3 µgC/g soil
-                # fungi / 0.8,  # change units from gC/m3 µgC/g soil
-                respSubstrate
-                / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
-                baselineResp
-                / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
-                respSoil
-                / (0.8 * 24),  # change units from gC/m3/day to µg CO2-C/g soil/h
-                POM / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                MAOMs / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                MAOMp / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
-                MAOM / (0.8 * 1000), # change units from gC/m3 mgC/g soil
-                POM_sub,
-                MAOM_sub, 
-                bact / 0.8,# change units from gC/m3 µgC/g soil, 
-                fungi / 0.8, # change units from gC/m3 µgC/g soil,
-                bact_sub,
-                fungi_sub
-            ]  # change units from gC/m3 mgC/g soil
+                respSoil / (0.8 * 24),     # change units from gC/m3/day to µg CO2-C/g soil/h
+                respSubstrate / (0.8 * 24),     # change units from gC/m3/day to µg CO2-C/g soil/h
+                DOMSoil / (0.8 * 1000), # change units from gC/m3 mgC/g soil
+                DOMSubstrate / (0.8 * 1000),
+                POMSoil / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                POMSubstrate / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                MAOMSoil / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                MAOMSubstrate / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                CN_DOM,
+                CN_MAOM,
+                bactSoil / 0.8,# change units from gC/m3 µgC/g soil
+                bactSubstrate / 0.8,# change units from gC/m3 µgC/g soil
+                fungiSoil / 0.8, # change units from gC/m3 µgC/g soil
+                fungiSubstrate / 0.8, # change units from gC/m3 µgC/g soil
+               
+            ]  
 
         ############# end of daily run of coreMAOM   #############
 
