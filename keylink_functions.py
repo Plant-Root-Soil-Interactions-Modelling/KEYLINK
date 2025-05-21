@@ -786,7 +786,7 @@ def calcRhizosphere(
     if Priming is True and mCN < 1:  # if Priming is allowed and there was a shortage
         # print('priming active')
         # POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp
-
+      
         POM, MAOMs, MAOMp, respPriming, respPriming_sub, PrimingGrowth, DOMusedforPriming = calcPriming(
             POM,
             POM_sub,
@@ -949,7 +949,7 @@ def calcPriming(
     #     # bact_DOM += PrimingGrowth #grow new microbes thanks to priming, assuming this C comes from DOM
     respPrim = (
         SOMprimed + DOMusedforPriming - PrimingGrowth
-    )  # carbon from primed SOM is respired, the C used for biomass of PrimingGrowth is taken from ExtraGrowth and then the rest was burnt off for mining for nitrogen
+    )  # carbon from primed SOM is respired, the C used for biomass of PrimingGrowth is taken from DOM and then the rest was burnt off for mining for nitrogen
     respPrim_SOMprimed_sub_abs = (
         POMprimed * POM_sub + MAOMsprimed * MAOMs_sub + MAOMpprimed * MAOMp_sub
     )  # substrate derived C respired from SOM pools
@@ -959,6 +959,14 @@ def calcPriming(
     respPrim_sub = respPrim_sub_abs / respPrim
     POM -= POMprimed
     MAOMs -= MAOMsprimed
+    print("calcPriming line 962")
+    print('fraction primed POM, MAOMs, MAOMp', POMprimed/SOMprimed, MAOMsprimed/SOMprimed, MAOMpprimed/SOMprimed)
+    print('fraction_sub POM, MAOMs, MAOMp', POM_sub, MAOMs_sub, MAOMp_sub)
+    print('fraction SOMprimed and DOM burnt off (DOMusedforPriming - PrimingGrowth)', SOMprimed/respPrim, (DOMusedforPriming - PrimingGrowth)/respPrim)
+    print('SOMprimed_sub', respPrim_SOMprimed_sub_abs/SOMprimed)
+    print('DOM respired from priming_sub', (DOMusedforPriming - PrimingGrowth) * DOM_sub)
+    print('respPrim_sub', respPrim_sub)
+    
 
     # if MAOMpprimed > MAOMp:
     #     print(
