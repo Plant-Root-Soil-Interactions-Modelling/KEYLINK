@@ -626,7 +626,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             + respDOM_sub * (respDOM / resp)
             + respPriming_sub * (respPriming / resp)
         )
-
+        print ("fractions resp",baselineRespbulk / resp,respDOM / resp,respPriming / resp)
+        print ("fractions resp sub",baselineRespbulk_sub,respDOM_sub,respPriming_sub)
+        
+        
         respSubstrate = resp_sub * resp  # substrate derived respiration (absolute)
         respSoil = resp - respSubstrate  # soil-derived respiration (absolute)
         

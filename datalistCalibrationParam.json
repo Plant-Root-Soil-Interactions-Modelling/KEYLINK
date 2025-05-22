@@ -2,7 +2,7 @@
     "InitParam": {
         "bact_rhiz_rel": 0.60,
         "fungi_rhiz_rel": 0.23,
-        "DOM_EC": 153,
+        "DOM_EC": 2000,
         "DEATHrhiz": 0.029,
         "DEATHbulk": 0.027,
         "KSrhiz": 458,
@@ -11,7 +11,7 @@
         "kMAOMs_MAOMp": 19.25,
         "MAOMpmaxrate": 0.848,
         "MAOMsmaxrate": 0.979,
-        "MAOMmaxrate": 0.13,
+        "MAOMmaxrate": 0.23,
         "MAOMratioSP": 2.31,
         "maxEffectMicMAOM": 0.78,
         "maxEffectSA_MAOM": 0.96,
@@ -24,11 +24,12 @@
         "RESPbulk": 0.09,
         "RESPrhiz": 0.09,
         "fSOM": 0.5
+
     },
     "MaxParam": {
         "bact_rhiz_rel": 0.78,
         "fungi_rhiz_rel": 0.3,
-        "DOM_EC": 200,
+        "DOM_EC": 4000,
         "DEATHrhiz": 0.046,
         "DEATHbulk": 0.042,
         "KSrhiz": 836,
@@ -37,7 +38,7 @@
         "kMAOMs_MAOMp": 25,
         "MAOMpmaxrate": 0.999,
         "MAOMsmaxrate": 0.999,
-        "MAOMmaxrate": 0.17,
+        "MAOMmaxrate": 0.57,
         "MAOMratioSP": 3,
         "maxEffectMicMAOM": 0.999,
         "maxEffectSA_MAOM": 0.999,
@@ -48,8 +49,9 @@
         "MM_DOM_MAOM": 0.011,
         "Priming_max": 0.00023,
         "RESPbulk": 0.2,
-        "RESPrhiz": 0.2,
+        "RESPrhiz": 0.5,
         "fSOM": 1
+
     },
     "MinParam": {
         "bact_rhiz_rel": 0.42,
@@ -66,15 +68,16 @@
         "MAOMmaxrate": 0.09,
         "MAOMratioSP": 1.6,
         "maxEffectMicMAOM": 0.5,
-        "maxEffectSA_MAOM": 0.5,
+        "maxEffectSA_MAOM": 0.8,
         "maxEffectN_MAOM": 0.5,
         "MM_N_MAOM": 0.6,
         "MM_Mic_MAOM": 0.9,
         "MM_SA_MAOM": 5e-04,
         "MM_DOM_MAOM": 0.0005,
         "Priming_max": 0.0001,
-        "RESPbulk": 0.08,
+	"RESPbulk": 0.008,
         "RESPrhiz": 0.08,
         "fSOM": 0
+
     }
 }
