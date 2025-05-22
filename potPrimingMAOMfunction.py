@@ -16,7 +16,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # output dataframe list
     bact_rhiz_rel = AllParam["bact_rhiz_rel"]
     fungi_rhiz_rel = AllParam["fungi_rhiz_rel"]
-    DOM_EC = AllParam["DOM_EC"]
+    DOM_EC = AllParam["DOM_EC"] #energy content of DOM J/gC
     # kpriming = AllParam["kpriming"]
     KSrhiz = AllParam["KSrhiz"]
     KSbulk = AllParam["KSbulk"]
@@ -58,6 +58,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     RESPbulk = AllParam[
         "RESPbulk"
     ]  # respiration rate of fungi, [gC/(gC day)], was 0.03 KEYLINK
+    fSOM = AllParam["fSOM"] # what part of PrimingGrowth uses primed SOM as opposed to DOM, fraction 0-1
     T_MAXrhiz = AllParam["T_MAXrhiz"]
     T_MINrhiz = AllParam["T_MINrhiz"]
     T_OPTrhiz = AllParam["T_OPTrhiz"]
@@ -360,9 +361,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         #     print("MAOMp2: ", MAOMp)
 
         # find t modifier
-        modtrhiz = mf.calcmodt(temp, T_OPTrhiz, T_MINrhiz, T_MAXrhiz)
-        modtbulk = mf.calcmodt(temp, T_OPTbulk, T_MINbulk, T_MAXbulk)
-        rRESPrhiz = mf.calcresp(temp, T_OPTrhiz, RESPrhiz, Q10rhiz)
+        modtrhiz = mf.calcmodt(temp, T_OPTrhiz, T_MINrhiz, T_MAXrhiz) #temp modifier of growth, rhizosphere microbes
+        modtbulk = mf.calcmodt(temp, T_OPTbulk, T_MINbulk, T_MAXbulk) #temp modifier of growth, bulk microbes
+        rRESPrhiz = mf.calcresp(temp, T_OPTrhiz, RESPrhiz, Q10rhiz) #respiration rate as modified by temperature
         rRESPbulk = mf.calcresp(temp, T_OPTbulk, RESPbulk, Q10bulk)
         # print(rRESPrhiz, rRESPfungi)
 
@@ -412,6 +413,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 kPOM_MAOM,
                 kMAOMs_MAOMp,
                 modtrhiz,
+                fSOM
             )
         # print('calc.Rhizo')
         #               if (MAOMs<0):

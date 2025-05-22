@@ -23,6 +23,7 @@
     "Priming_max": 0.0001923490485911,
     "RESPbulk": 0.0980206910765256,
     "RESPrhiz": 0.1999976132675858,
+    "fSOM": 1,
     "GMAXrhiz":5,
     "GMAXbulk":0.6,  
     "mRecrhiz":0.5,  
