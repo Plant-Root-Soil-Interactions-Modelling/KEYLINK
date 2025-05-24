@@ -33,7 +33,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Validation"]
 options = get_args(modes)
 
 #%% set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Normal"
+mode_ = "Bayesian"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -679,7 +679,7 @@ if mode_ == "Bayesian":
 
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 10
+    NumberOfTries = 10000
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 

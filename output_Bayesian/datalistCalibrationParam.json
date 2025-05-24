@@ -22,7 +22,8 @@
         "MM_DOM_MAOM": 0.000789,
         "Priming_max": 0.000177,
         "RESPbulk": 0.09,
-        "RESPrhiz": 0.3
+        "RESPrhiz": 0.09,
+        "fSOM": 0.5
     },
     "MaxParam": {
         "bact_rhiz_rel": 0.78,
@@ -47,7 +48,8 @@
         "MM_DOM_MAOM": 0.011,
         "Priming_max": 0.00023,
         "RESPbulk": 0.2,
-        "RESPrhiz": 0.7
+        "RESPrhiz": 0.5,
+        "fSOM": 1
     },
     "MinParam": {
         "bact_rhiz_rel": 0.42,
@@ -71,7 +73,8 @@
         "MM_SA_MAOM": 0.0005,
         "MM_DOM_MAOM": 0.0005,
         "Priming_max": 0.0001,
-        "RESPbulk": 0.005,
-        "RESPrhiz": 0.08
+        "RESPbulk": 0.008,
+        "RESPrhiz": 0.08,
+        "fSOM": 0
     }
 }
