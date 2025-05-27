@@ -657,7 +657,7 @@ if mode_ == "Bayesian":
     #%%--- Set number of tries
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 10
+    NumberOfTries = 100
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 
@@ -1136,7 +1136,7 @@ if mode_ == "Bayesian":
         sharable_path,
         AcceptedParamsJsonName,
     )
-
+    
     #%%--- Histograms of tried and accepted parameters
     #make 2 figures output folders or check if they exist
     sharable_figures = os.path.join(sharable_path, "figures") #output_Bayesian/figures folder
@@ -1258,6 +1258,9 @@ if mode_ == "Bayesian":
     file_path = os.path.join(sharable_path, "AcceptedParams_*")
     files = glob.glob(file_path)
     
+    calibParam = [] #empty calibParam after last calibration
+    
+    
     if len(files) == 1: #safety check, there should be just one file like this
         with open(files[0], 'r') as f:
             calibParam = json.load(f)
@@ -1269,6 +1272,7 @@ if mode_ == "Bayesian":
     # Select parameter sets
     selected_sets = []
     selected_likelihoods = []
+    bestlikelihood = [] # also empty this
     
     # Select 1 set of parameters with the highest likelihood
     calibParam = {k: calibParam[k] for k in sorted(calibParam)} #sort the calibrated parameter sets by likelihood
