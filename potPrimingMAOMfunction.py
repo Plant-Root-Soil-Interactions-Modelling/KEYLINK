@@ -626,8 +626,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             + respDOM_sub * (respDOM / resp)
             + respPriming_sub * (respPriming / resp)
         )
-        print ("fractions resp",baselineRespbulk / resp,respDOM / resp,respPriming / resp)
-        print ("fractions resp sub",baselineRespbulk_sub,respDOM_sub,respPriming_sub)
+        # print ("fractions resp",baselineRespbulk / resp,respDOM / resp,respPriming / resp)
+        # print ("fractions resp sub",baselineRespbulk_sub,respDOM_sub,respPriming_sub)
         
         
         respSubstrate = resp_sub * resp  # substrate derived respiration (absolute)
@@ -637,10 +637,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         #respDOM - respiration of DOM feeding rhizeria without priming being activ
         respSoilBaseline = respDOM * (1-respDOM_sub) + baselineRespbulk * (1-baselineRespbulk_sub) 
         # AllC = DOM + POM + MAOM + rhiz_total + fungi + resp - DOMadded
-        print("Potprim function line 635")
-        print("fractions resp: baselineRespbulk, respDOM, respPriming", baselineRespbulk/resp, respDOM/resp, respPriming/resp)
-        print("fractions resp_sub:", baselineRespbulk_sub, respDOM_sub, respPriming_sub)
-        print("")
+        # print("Potprim function line 635")
+        # print("fractions resp: baselineRespbulk, respDOM, respPriming", baselineRespbulk/resp, respDOM/resp, respPriming/resp)
+        # print("fractions resp_sub:", baselineRespbulk_sub, respDOM_sub, respPriming_sub)
+        # print("")
         #soil and substrate derived C pools
         DOMSubstrate = DOM_sub  * DOM
         DOMSoil = DOM - DOMSubstrate

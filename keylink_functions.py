@@ -979,13 +979,13 @@ def calcPriming(
     
     POM -= POMprimed
     MAOMs -= MAOMsprimed
-    print("calcPriming line 962")
-    print('fraction primed POM, MAOMs, MAOMp', POMprimed/SOMprimed, MAOMsprimed/SOMprimed, MAOMpprimed/SOMprimed)
-    print('fraction_sub POM, MAOMs, MAOMp', POM_sub, MAOMs_sub, MAOMp_sub)
-    print('fraction SOMprimed and DOM burnt off (DOMusedforPriming - PrimingGrowth)', SOMprimed/respPrim, (DOMusedforPriming - PrimingGrowth)/respPrim)
-    print('SOMprimed_sub', respPrim_SOMprimed_sub_abs/SOMprimed)
-    print('DOM respired from priming_sub', (DOMusedforPriming - PrimingGrowth) * DOM_sub)
-    print('respPrim_sub', respPrim_sub)
+    # print("calcPriming line 962")
+    # print('fraction primed POM, MAOMs, MAOMp', POMprimed/SOMprimed, MAOMsprimed/SOMprimed, MAOMpprimed/SOMprimed)
+    # print('fraction_sub POM, MAOMs, MAOMp', POM_sub, MAOMs_sub, MAOMp_sub)
+    # print('fraction SOMprimed and DOM burnt off (DOMusedforPriming - PrimingGrowth)', SOMprimed/respPrim, (DOMusedforPriming - PrimingGrowth)/respPrim)
+    # print('SOMprimed_sub', respPrim_SOMprimed_sub_abs/SOMprimed)
+    # print('DOM respired from priming_sub', (DOMusedforPriming - PrimingGrowth) * DOM_sub)
+    # print('respPrim_sub', respPrim_sub)
     
 
     # if MAOMpprimed > MAOMp:

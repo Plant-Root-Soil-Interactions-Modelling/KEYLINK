@@ -608,38 +608,15 @@ if mode_ == "Bayesian":
     #     exit(0)
 
     converged = False
-
-    # clear the csv files so it won't append after the existing values from the run before
-    csv_files = [
-        "calibratedParameters.csv",
-        "AllTestedParameters.csv",
-        "logLikelihood.csv",
-    ]
-
-    csv_files2 = ["SimdataAll.csv", "SimdataBestFit.csv"]
-
-    for file in csv_files:
-        file_path = os.path.join(sharable_path, file)
-        if os.path.exists(file_path):
-            with open(file_path, "w") as file:
-                file.write("")  # Clear the contents of the file
-
-    for file in csv_files2:
-        file_path = os.path.join(results_path, file)
-        if os.path.exists(file_path):
-            with open(file_path, "w") as file:
-                file.write("")  # Clear the contents of the file
-
-
-    # Delete previous AcceptedParams file in output_Bayesian folder
-    pattern = os.path.join(sharable_path, "AcceptedParams_*")
-    matching_files = glob.glob(pattern)
-
-    # Check if any matching files were found
-    try:
-        os.remove(matching_files[0])
-    except:
-        pass
+    
+    #empty whole output_Bayesian folder 
+    for filename in os.listdir(sharable_path):
+        file_path = os.path.join(sharable_path, filename)
+        if os.path.isfile(file_path) or os.path.islink(file_path):
+            os.unlink(file_path)  # Delete file or symbolic link
+        elif os.path.isdir(file_path):
+            shutil.rmtree(file_path)  # Delete subdirectory
+        
 
     # Set a folder for logs
     logs_path, run_name = MainFunctionsPotprim.create_log_folder(mode_)
@@ -660,7 +637,7 @@ if mode_ == "Bayesian":
         type=int,
         help="Run maximum this number of fields (default: all fields)",
     )
-    #%%--- Set number of tries
+
     parser.add_argument(
         "-t",
         "--tries",
@@ -677,9 +654,10 @@ if mode_ == "Bayesian":
     parallel = args.parallel
     debug = args.debug
 
+    #%%--- Set number of tries
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 10000
+    NumberOfTries = 10
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 
@@ -1147,11 +1125,6 @@ if mode_ == "Bayesian":
     """
     #%% --- final export of accepted parameters
     t2 = time.perf_counter()
-
-    try:
-        os.remove(os.path.join(sharable_path, "AcceptedParams_*"))
-    except Exception as e:
-        pass
 
     # save all accepted parameters set as json >> this is then used for Validation
     AcceptedParamsJsonName = "AcceptedParams_" + run_name
