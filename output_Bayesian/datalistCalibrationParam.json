@@ -22,7 +22,7 @@
         "MM_DOM_MAOM": 0.004471,
         "Priming_max": 0.000177,
         "RESPbulk": 0.103,
-        "RESPrhiz": 0.493,
+        "RESPrhiz": 5.793,
         "fSOM": 0.98
     },
     "MaxParam": {
@@ -48,7 +48,7 @@
         "MM_DOM_MAOM": 0.011,
         "Priming_max": 0.00023,
         "RESPbulk": 0.2,
-        "RESPrhiz": 0.5,
+        "RESPrhiz": 9.9,
         "fSOM": 1
     },
     "MinParam": {

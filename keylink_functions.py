@@ -814,6 +814,7 @@ def calcRhizosphere(
         PrimingGrowth = 0
         ExtraGrowth = 0
         DOMusedforPriming=0
+        SOMprimed_sub=0
 
     BactTurnover = DEATH * bact_DOM  # death of bacteria before adding today's growth
     respDOM = (
