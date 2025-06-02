@@ -325,6 +325,7 @@ def calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id):
     else:
         mpH = 1
     if(CNsource<=0):
+        print("CNsource", "CNbiomass", CNsource, CNbiomass)
         CNsource=CNsource
     mCN = min(1, (CNbiomass / CNsource) ** pCN)  # effect of CN
     value = min(1, mCN * mpH * mRec)  # assuming complete additivity
@@ -773,7 +774,7 @@ def calcRhizosphere(
     growth = modtBact * calcgrowth(
         bact_DOM, DOM, 1, gmaxmod, KS * bact_DOM
     )  # Monod kinetic equation of growth  # g day net
-
+    # print("calcRhizosphere line 776 CN_bact, CN_DOM, CN_bact/CN_DOM", CN_bact, CN_DOM, CN_bact/CN_DOM)
     mCN = min(1, (CN_bact / CN_DOM) ** pCN)  # effect of CN
     ExtraGrowth = (
         1 - mCN
@@ -1111,6 +1112,8 @@ def calcMAOM(
     DOM = DOM - dMAOMs
     DOM_N -= dMAOMs / CN_DOM
     # CN_DOM = DOM/DOM_N # calculate new CN of DOM pool
+    print("(MAOMs + dMAOMs)",(MAOMs + dMAOMs), "(MAOMs / CN_MAOMs)", MAOMs / CN_MAOMs, "dMAOMs / CN_DOM", dMAOMs / CN_DOM)
+    print("dMAOMs", dMAOMs, "CN_DOM", CN_DOM)
     CN_MAOMs = (MAOMs + dMAOMs) / (MAOMs / CN_MAOMs + dMAOMs / CN_DOM)
     MAOMs = MAOMs + dMAOMs
 

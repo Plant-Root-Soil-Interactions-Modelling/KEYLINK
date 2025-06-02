@@ -8,6 +8,7 @@ import keylink_functions as mf
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import sys
 
 import os
 
@@ -248,6 +249,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     CN_MAOMs = treatmentVar[
         "CN_MAOMsini"
     ]  # estimated but we don't know the true value, assumed to vary with CN_DOM
+    print(treatmentVar["treatment"])
+    # if treatmentVar["treatmentID"] == 2:
+    #     return
+    
+    print(CN_MAOMs, "CN_MAOMs")
     fungi = treatmentVar[
         "fungi"
     ]  # biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
@@ -320,6 +326,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # def coreMAOM (Bayesian, Sensitivity):
 
     for d in range(numDays):
+        print("day", d)
+        if d == 16:
+            print("potPrimingMAOMfunction.py line 331, day 16 reached")
+            sys.exit()
         # on day 0 and then every 14 days, add DOM
         # if treatmentID == 5:
         #     print(treatmentID, "CN_DOM in the beginning of day: ", CN_DOM)
@@ -437,7 +447,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         MicrobialC = (
             rhiz + bulk
         )  # all microbes contribute to MAOM formation
-        
+        print("line 448 CN_MAOMs", CN_MAOMs) 
         if CN_DOM > 0:
             (
                 DOM,
@@ -474,14 +484,14 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 CN_MAOMp,
                 CN_MAOMs,
             )
-
+                
         # if treatmentID == 5:
         #     print(treatmentID, "CN_DOM after calcMAOM: ", CN_DOM)
 
         else: #CN_DOM negative
             CN_DOM=CN_DOM  
             
-        
+        print("line 485 CN_MAOMs", CN_MAOMs) 
         MAOM = MAOMs + MAOMp
 
         # bulk soil microbial growth on SOM (without substrate DOM additions)
@@ -498,6 +508,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
    
         
         if DOM > 0:
+            print("501 DOM bulk CN_DOM", CN_DOM)
             gmaxbDOM = (
              mf.calcgmaxmod(CN_bulk, CN_DOM, pCN, 0.0, 0, pH, 1) * GMAXbulk
              ) # gmax for bulk on DOM
@@ -514,6 +525,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
    
         #then to ensure that the sum of gmaxes from different substrates does not exceed GMAX, 
         #reduce GMAX accordingly by what growth was already realized from previous substrates
+        print("518 POM bulk CN_POM", CN_POM)
         gmaxbPOM = (
             mf.calcgmaxmod(CN_bulk, CN_POM, pCN, 0.0, 0, pH, 1) * (GMAXbulk - bulkDOMgrowth)
         )  # gmax for rhiz on POM
@@ -525,6 +537,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         
         # we assume MAOMp can only be lost through priming, so normal growth uses MAOMs
         #also reduce gmax by what was already grown on DOM and POM
+        print("530 MAOM bulk CN_MAOMs", CN_MAOMs)
         gmaxbMAOM = (
             mf.calcgmaxmod(CN_bulk, CN_MAOMs, pCN, recMAOM, mRecbulk, pH, 1) * (GMAXbulk - bulkDOMgrowth - bulkPOMgrowth)
         )  # gmax for rhiz on MAOM
