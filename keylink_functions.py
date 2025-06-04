@@ -759,6 +759,7 @@ def calcRhizosphere(
     # print ('line 511 calcRhizosphere', 'bact_DOM=', bact_DOM, 'CN_DOM', CN_DOM)
     # calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id)
     # gmaxbPOM = mf.calcgmaxmod(CN_bact, CN_POM, pCN, 0.0, 0, pH, 1) * GMAX #gmax for bact on POM
+    
     gmaxmod = (
         calcgmaxmod(CN_bact, CN_DOM, pCN, 0, 0, pH, 1) * GMAX
     )  # maximum growth for bacteria growing on DOM g/(g day)
@@ -771,17 +772,24 @@ def calcRhizosphere(
 
     # calculate growth
     # def calcgrowth(biomass, source, avail, gmaxmod, Ks):
-    growth = modtBact * calcgrowth(
-        bact_DOM, DOM, 1, gmaxmod, KS * bact_DOM
-    )  # Monod kinetic equation of growth  # g day net
-    # print("calcRhizosphere line 776 CN_bact, CN_DOM, CN_bact/CN_DOM", CN_bact, CN_DOM, CN_bact/CN_DOM)
+    # first deduct maintenance resp, this reduces 'availability' from the 1 used before
+    avail = (DOM/2 - rRESPbact * bact_DOM)/DOM/2
+    if avail < 0:
+        growth = 0
+        #DEATH=-avail  #death because not enough for mainentance
+        #respDOM=avail
+    else:
+        growth = modtBact * calcgrowth(
+            bact_DOM, DOM, avail, gmaxmod, KS * bact_DOM
+        )  # Monod kinetic equation of growth  # g day net
+
     mCN = min(1, (CN_bact / CN_DOM) ** pCN)  # effect of CN
     ExtraGrowth = (
         1 - mCN
     ) * growth  # what didn't yet grow in g/day because of N shortage
     # Priming = False
 
-    # print(treatment, "CN_bact: ", CN_bact, "CN_DOM: ", CN_DOM, "pCN: ", pCN)
+#    print("CN_bact: ", CN_bact, "CN_DOM: ", CN_DOM, "mCN: ", mCN, "ExtraGrowth",ExtraGrowth)
     # if treatment == 5:
     #     exit()
 
@@ -821,12 +829,18 @@ def calcRhizosphere(
     respDOM = (
         rRESPbact * bact_DOM
     )  # respiration of DOM-feeding bacteria before adding today's growth without priming effect yet
+    
+    if avail < 0:
+        BactTurnover+=avail*DOM/2  #shortage becomes death
+        respDOM-=avail*DOM/2
+    
+    # calculate substrate derived respiration, resp comes from DOM so same signature
     respDOM_sub_abs = (
-        respDOM * bact_DOM_sub
-    )  # what part of this respiration is substrate derived
+            respDOM * DOM_sub
+        )  # what part of this respiration is substrate derived
     respDOM_sub = respDOM_sub_abs / respDOM
-
-    bact_DOM += growth + PrimingGrowth - BactTurnover - respDOM
+    
+    bact_DOM += growth + PrimingGrowth - BactTurnover # respiration comes from DOM not biomass
     
     #calculate how much of PrimingGrowth is done using carbon from SOM and how much from DOM
     PrimingGrowth_SOM = fSOM * PrimingGrowth  #fSOM is the fraction 0-1 of growth realized using carbon from primed SOM
@@ -840,7 +854,7 @@ def calcRhizosphere(
     )  # add the corresponding part of growth on DOM and SOMprimed as substrate derived C, subtract corresponding part of death and respiration
 
     # change DOM / what was eaten and what was added from dying bacteria
-    DOM += -growth - DOMusedforPriming + BactTurnover
+    DOM += -growth - DOMusedforPriming + BactTurnover - respDOM
     # substrate-derived amounts
     DOM_sub_abs += (
         -growth * DOM_sub - DOMusedforPriming * DOM_sub + BactTurnover * bact_DOM_sub

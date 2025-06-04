@@ -1,3 +1,29 @@
+"""
+Main program for running the POTPRIM model in different modes.
+
+This script allows running the POTPRIM (Potential Priming) model in various modes:
+- Normal: Standard model run with default parameters
+- Sensitivity: Sensitivity analysis of model parameters 
+- Bayesian: Bayesian calibration of model parameters
+- Validation: Model validation against experimental data
+
+The program can work with different datasets:
+- Jilkova2022: Dataset from Jilkova et al. 2022 publication
+- Jilkova2024: Dataset from Jilkova et al. 2024 publication
+
+The script handles parameter initialization, data loading, model execution,
+and result processing depending on the selected mode. For Bayesian mode,
+it implements parameter optimization using Bayesian methods.
+
+Usage:
+    Run the script and specify mode and dataset variables at the top.
+    Additional command line arguments are available for Bayesian mode:
+    -p/--parallel: Run in parallel mode
+    -f/--fields: Maximum number of fields to run
+    -t/--tries: Number of optimization tries
+    -d/--debug: Print debug information
+"""
+
 # stuff needed for Bayesian mode
 import argparse
 # import concurrent.futures
@@ -1087,9 +1113,9 @@ if mode_ == "Bayesian":
                     )
                     
 
-                BayesianFunctionsPotprim.save_result(
-                    [[data_Simulated]], results_path, "SimdataBestFit"
-                )
+                    BayesianFunctionsPotprim.save_result(
+                        [[data_Simulated]], results_path, "SimdataBestFit"
+                    )
                 BayesianFunctionsPotprim.save_result(
                     [[CalibratedParametersValues]],
                     sharable_path,
