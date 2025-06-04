@@ -651,8 +651,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         respSoilBaseline = respDOM * (1-respDOM_sub) + baselineRespbulk * (1-baselineRespbulk_sub) 
         # AllC = DOM + POM + MAOM + rhiz_total + fungi + resp - DOMadded
         # print("Potprim function line 635")
-        # print("fractions resp: baselineRespbulk, respDOM, respPriming", baselineRespbulk/resp, respDOM/resp, respPriming/resp)
-        # print("fractions resp_sub:", baselineRespbulk_sub, respDOM_sub, respPriming_sub)
+        #print("fractions resp: baselineRespbulk, respDOM, respPriming", baselineRespbulk/resp, respDOM/resp, respPriming/resp)
+        #print("fractions resp_sub:", baselineRespbulk_sub, respDOM_sub, respPriming_sub)
         # print("")
         #soil and substrate derived C pools
         DOMSubstrate = DOM_sub  * DOM
