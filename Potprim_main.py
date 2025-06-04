@@ -3,6 +3,8 @@ import argparse
 # import concurrent.futures
 import json
 
+import warnings
+
 # import math
 import os
 import time
@@ -26,6 +28,13 @@ from typing import Literal, get_args
 
 # needed for sensitivity and bayesian
 import copy
+
+#this will stop execution right away when this error arises
+warnings.simplefilter("error", RuntimeWarning)
+warnings.simplefilter("error", DeprecationWarning)
+warnings.simplefilter("error", FutureWarning)
+warnings.simplefilter("error", ResourceWarning)
+warnings.simplefilter("error", SyntaxWarning)
 
 ############## Modes #################################
 # set allowed values for mode
@@ -69,10 +78,14 @@ except FileExistsError:
 
 ############## Read data #############################
 # read the fixed parameter list
-inputfileParam = open(
-    "datalistInput.json"
-)  # input parameters (all) is always in same filenam
-AllParam = json.load(inputfileParam)
+
+with open("datalistInput.json", "r", encoding="utf-8") as inputfileParam:
+    AllParam = json.load(inputfileParam)
+    
+# inputfileParam = open(
+#     "datalistInput.json"
+# )  # input parameters (all) is always in same filenam
+# AllParam = json.load(inputfileParam)
 
 
 # Create variables
@@ -657,7 +670,7 @@ if mode_ == "Bayesian":
     #%%--- Set number of tries
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 10
+    NumberOfTries = 1000
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 
@@ -1318,7 +1331,7 @@ if mode_ == "Bayesian":
 
     #%% --- Final reports of calibration + validation
     # save metadata of the calibration
-    content = f"""\        
+    content = f"""        
         {NumOfAccepted} parameter sets accepted out of {c+1} tries
         converged = {converged}
         best likelihood = {bestlikelihood}
