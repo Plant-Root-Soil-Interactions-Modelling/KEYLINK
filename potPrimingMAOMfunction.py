@@ -249,11 +249,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     CN_MAOMs = treatmentVar[
         "CN_MAOMsini"
     ]  # estimated but we don't know the true value, assumed to vary with CN_DOM
-    # print(treatmentVar["treatment"])
+    print(treatmentVar["treatment"])
     # if treatmentVar["treatmentID"] == 2:
     #     return
     
-    # print(CN_MAOMs, "CN_MAOMs")
+    print(CN_MAOMs, "CN_MAOMs")
     fungi = treatmentVar[
         "fungi"
     ]  # biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
@@ -327,24 +327,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
 
     for d in range(numDays):
         # print("day", d)
-<<<<<<< HEAD
-        
-        #safety checks
-        if any(x < 0 for x in [DOM, POM, MAOMs, MAOMp, rhiz, bulk]):
-            sys.exit("one of the C pools is negative")
-            
-        if any(x <= 0 for x in [CN_DOM, CN_POM, CN_MAOMs, CN_MAOMp, CN_rhiz, CN_bulk]):
-            sys.exit("one of the CN ratios is negative or equal to zero")
-            
-        # if d == 16:
-        #     print("potPrimingMAOMfunction.py line 331, day 16 reached")
-        #     sys.exit()
-=======
->>>>>>> 0fd8445 (also allowing bulk microbes to respire without Ncost)
         # on day 0 and then every 14 days, add DOM
         # if treatmentID == 5:
         #     print(treatmentID, "CN_DOM in the beginning of day: ", CN_DOM)
-        # print("DOM line 336", DOM)
+
         if d == 0 or (d % d_freq) == 0:  # on first day and then every d_freq days
             DOM_added = DOMinput  # to keep track of the additions
             DOM_added_all += DOM_added  # keep track of sum of additions
@@ -389,7 +375,6 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         # print(rRESPrhiz, rRESPfungi)
 
         # microbial growth on DOM and priming, only susing MAOMs
- 
         if CN_DOM > 0:
             (
                 DOM,
@@ -441,13 +426,12 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         #               if (MAOMs<0):
         #                   print('mainLine270 DOM, rhiz, fungi, MAOMs, MAOMp', DOM,rhiz, fungi, MAOMs, MAOMp)
         else:
-            # print("line 433 negative CN DOM CN_DOM", CN_DOM)
+
             respDOM = 0
             respDOM_sub = 0
             respPriming = 0
             respPriming_sub = 0
-        
-        # print("DOM line 438", DOM)
+
         # if treatmentID == 5:
         #     print(treatmentID, "CN_DOM after calcRhizosphere: ", CN_DOM)
         resp = respDOM + respPriming
@@ -460,11 +444,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         MicrobialC = (
             rhiz + bulk
         )  # all microbes contribute to MAOM formation
-<<<<<<< HEAD
-        # print("line 448 CN_MAOMs", CN_MAOMs) 
-=======
         #print("line 448 CN_MAOMs", CN_MAOMs) 
->>>>>>> 0fd8445 (also allowing bulk microbes to respire without Ncost)
         if CN_DOM > 0:
             (
                 DOM,
@@ -508,11 +488,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         else: #CN_DOM negative
                 CN_DOM=CN_DOM  
             
-<<<<<<< HEAD
-        # print("line 485 CN_MAOMs", CN_MAOMs) 
-=======
                 #print("line 485 CN_MAOMs", CN_MAOMs) 
->>>>>>> 0fd8445 (also allowing bulk microbes to respire without Ncost)
         MAOM = MAOMs + MAOMp
 
         # bulk soil microbial growth on SOM (without substrate DOM additions)
@@ -529,11 +505,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
    
         
         if DOM > 0:
-<<<<<<< HEAD
-            # print("501 DOM bulk CN_DOM", CN_DOM)
-=======
             
->>>>>>> 0fd8445 (also allowing bulk microbes to respire without Ncost)
             gmaxbDOM = (
              mf.calcgmaxmod(CN_bulk, CN_DOM, pCN, 0.0, 0, pH, 1) * GMAXbulk
              ) # gmax for bulk on DOM
@@ -554,17 +526,12 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             )
             
         else:
-            # print("line 525 negative or zero DOM", DOM)
             bulkDOMgrowth = 0
          
    
         #then to ensure that the sum of gmaxes from different substrates does not exceed GMAX, 
         #reduce GMAX accordingly by what growth was already realized from previous substrates
-<<<<<<< HEAD
-        # print("518 POM bulk CN_POM", CN_POM)
-=======
         #print("518 POM bulk CN_POM", CN_POM)
->>>>>>> 0fd8445 (also allowing bulk microbes to respire without Ncost)
         gmaxbPOM = (
             mf.calcgmaxmod(CN_bulk, CN_POM, pCN, 0.0, 0, pH, 1) * (GMAXbulk - bulkDOMgrowth)
         )  # gmax for rhiz on POM
@@ -584,11 +551,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         
         # we assume MAOMp can only be lost through priming, so normal growth uses MAOMs
         #also reduce gmax by what was already grown on DOM and POM
-<<<<<<< HEAD
-        # print("530 MAOM bulk CN_MAOMs", CN_MAOMs)
-=======
         #print("530 MAOM bulk CN_MAOMs", CN_MAOMs)
->>>>>>> 0fd8445 (also allowing bulk microbes to respire without Ncost)
         gmaxbMAOM = (
             mf.calcgmaxmod(CN_bulk, CN_MAOMs, pCN, recMAOM, mRecbulk, pH, 1) * (GMAXbulk - bulkDOMgrowth - bulkPOMgrowth)
         )  # gmax for rhiz on MAOM
@@ -698,7 +661,6 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             + respDOM_sub * (respDOM / resp)
             + respPriming_sub * (respPriming / resp)
         )
-        
         # print ("fractions resp",baselineRespbulk / resp,respDOM / resp,respPriming / resp)
         # print ("fractions resp sub",baselineRespbulk_sub,respDOM_sub,respPriming_sub)
         
@@ -787,11 +749,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             # outFungi.append(fungi / 0.8)  # change units from gC/m3 µgC/g soil
             outRespSubstrate.append(
                 respSubstrate / (0.8 * 24)
-            )  # change units from gC/m3/day to µgC/g soil/h
+            )  # change units from gC/m3/day
             outRespSoilBaseline.append(
                 respSoilBaseline / (0.8 * 24)
-            )  # change units from gC/m3/day to µg CO2-C/g soil/h
-            outRespSoil.append(respSoil / (0.8 * 24))  # change units from gC/m3/day to µg CO2-C/g soil/h
+            )  # change units from gC/m3/day
+            outRespSoil.append(respSoil / (0.8 * 24))  # change units from gC/m3/day
             # substrate-derived %
             outrhiz_sub.append(rhiz_sub)
             outbulk_sub.append(bulk_sub)
