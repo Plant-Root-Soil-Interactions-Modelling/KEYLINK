@@ -327,6 +327,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
 
     for d in range(numDays):
         # print("day", d)
+<<<<<<< HEAD
         
         #safety checks
         if any(x < 0 for x in [DOM, POM, MAOMs, MAOMp, rhiz, bulk]):
@@ -338,6 +339,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         # if d == 16:
         #     print("potPrimingMAOMfunction.py line 331, day 16 reached")
         #     sys.exit()
+=======
+>>>>>>> 0fd8445 (also allowing bulk microbes to respire without Ncost)
         # on day 0 and then every 14 days, add DOM
         # if treatmentID == 5:
         #     print(treatmentID, "CN_DOM in the beginning of day: ", CN_DOM)
@@ -457,7 +460,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         MicrobialC = (
             rhiz + bulk
         )  # all microbes contribute to MAOM formation
+<<<<<<< HEAD
         # print("line 448 CN_MAOMs", CN_MAOMs) 
+=======
+        #print("line 448 CN_MAOMs", CN_MAOMs) 
+>>>>>>> 0fd8445 (also allowing bulk microbes to respire without Ncost)
         if CN_DOM > 0:
             (
                 DOM,
@@ -499,9 +506,13 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         #     print(treatmentID, "CN_DOM after calcMAOM: ", CN_DOM)
 
         else: #CN_DOM negative
-            CN_DOM=CN_DOM  
+                CN_DOM=CN_DOM  
             
+<<<<<<< HEAD
         # print("line 485 CN_MAOMs", CN_MAOMs) 
+=======
+                #print("line 485 CN_MAOMs", CN_MAOMs) 
+>>>>>>> 0fd8445 (also allowing bulk microbes to respire without Ncost)
         MAOM = MAOMs + MAOMp
 
         # bulk soil microbial growth on SOM (without substrate DOM additions)
@@ -518,15 +529,28 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
    
         
         if DOM > 0:
+<<<<<<< HEAD
             # print("501 DOM bulk CN_DOM", CN_DOM)
+=======
+            
+>>>>>>> 0fd8445 (also allowing bulk microbes to respire without Ncost)
             gmaxbDOM = (
              mf.calcgmaxmod(CN_bulk, CN_DOM, pCN, 0.0, 0, pH, 1) * GMAXbulk
              ) # gmax for bulk on DOM
             
-        
+            # get resp from DOM and reduce avaialabilty
+            if availability[0]* bulk > rRESPbulk * bulk:
+                respDOM+=rRESPbulk * bulk
+                respDOMbulk = rRESPbulk * bulk
+                avail=availability[0]-rRESPbulk
+                respRest=0
+            else:
+                respDOM=availability[0]* bulk
+                avail=0
+                respRest=rRESPbulk * bulk - respDOM
             #calculate realized growth on DOM (this is actually assimilation, not growth)
             bulkDOMgrowth = modtbulk * mf.calcgrowth(
-                bulk, DOM, availability[0], gmaxbDOM, KSbulk * bulk
+                bulk, DOM, avail, gmaxbDOM, KSbulk * bulk
             )
             
         else:
@@ -536,27 +560,50 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
    
         #then to ensure that the sum of gmaxes from different substrates does not exceed GMAX, 
         #reduce GMAX accordingly by what growth was already realized from previous substrates
+<<<<<<< HEAD
         # print("518 POM bulk CN_POM", CN_POM)
+=======
+        #print("518 POM bulk CN_POM", CN_POM)
+>>>>>>> 0fd8445 (also allowing bulk microbes to respire without Ncost)
         gmaxbPOM = (
             mf.calcgmaxmod(CN_bulk, CN_POM, pCN, 0.0, 0, pH, 1) * (GMAXbulk - bulkDOMgrowth)
         )  # gmax for rhiz on POM
         
+        if availability[0]* POM > respRest:
+                respPOM=respRest
+                avail=availability[0]-respRest/POM
+                respRest=0
+        else:
+                respPOM=availability[0]* POM
+                avail=0
+                respRest=respRest-respMAOMs
         #calculate realized growth on POM
         bulkPOMgrowth = modtbulk * mf.calcgrowth(
-            bulk, POM, availability[0], gmaxbPOM, KSbulk * bulk
+            bulk, POM, avail, gmaxbPOM, KSbulk * bulk
         )
         
         # we assume MAOMp can only be lost through priming, so normal growth uses MAOMs
         #also reduce gmax by what was already grown on DOM and POM
+<<<<<<< HEAD
         # print("530 MAOM bulk CN_MAOMs", CN_MAOMs)
+=======
+        #print("530 MAOM bulk CN_MAOMs", CN_MAOMs)
+>>>>>>> 0fd8445 (also allowing bulk microbes to respire without Ncost)
         gmaxbMAOM = (
             mf.calcgmaxmod(CN_bulk, CN_MAOMs, pCN, recMAOM, mRecbulk, pH, 1) * (GMAXbulk - bulkDOMgrowth - bulkPOMgrowth)
         )  # gmax for rhiz on MAOM
         
-        
+        if availability[0]* MAOMs > respRest:
+                respMAOMs=respRest
+                avail=availability[0]-respRest/MAOMs
+                respRest=0
+        else:
+                respMAOMs=availability[0]* MAOMs
+                avail=0
+                respRest=respRest-respMAOMs
         #calculate realized growth on MAOM
         bulkMAOMgrowth = modtbulk * mf.calcgrowth(
-            bulk, MAOMs, availability[0], gmaxbMAOM, KSbulk * bulk
+            bulk, MAOMs, avail, gmaxbMAOM, KSbulk * bulk
         )
        
         # print('GMAX', GMAX,
@@ -579,17 +626,18 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         )  # absolute substrate derived C in bulk [gC/m3]
        
         
-        #calculate the overall change in bulk micrbial biomass
-        dbulk = bulkDOMgrowth + bulkPOMgrowth + bulkMAOMgrowth - DEATHbulk * bulk - rRESPbulk * bulk     
+        #calculate the overall change in bulk micrbial biomass, only if there was not enough for respiration this has become death
+        dbulk = bulkDOMgrowth + bulkPOMgrowth + bulkMAOMgrowth - DEATHbulk * bulk - respRest
+
         
 
-        #the consequent changes in the pools being eaten
-        DOM += - bulkDOMgrowth + DEATHbulk * bulk   # add dead bulk to DOM
-        POM += -bulkPOMgrowth   # subtract what has been eaten from POM
-        MAOMs += -bulkMAOMgrowth   # and MAOMs
+        #the consequent changes in the pools being eaten for growth or respired
+        DOM += - bulkDOMgrowth + DEATHbulk * bulk + respRest - respDOMbulk  # add dead bulk to DOM and death from no C to resp
+        POM += -bulkPOMgrowth - respPOM  # subtract what has been eaten from POM to grow and to respire
+        MAOMs += -bulkMAOMgrowth - respMAOMs   # and MAOMs
 
         # update CN DOM
-        DOM_N += - bulkDOMgrowth / CN_bulk + DEATHbulk * bulk / CN_bulk 
+        DOM_N += - bulkDOMgrowth / CN_bulk + DEATHbulk * bulk / CN_bulk + respRest / CN_bulk
 
         CN_DOM = DOM / DOM_N  # recalculate CN DOM
 
@@ -600,7 +648,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         #        print('mainLine307  rhiz, rhizPOMgrowth, POM, rhizMAOMgrowth, DEATH*rhiz, rRESPrhiz*rhiz', rhiz, rhizPOMgrowth, POM, rhizMAOMgrowth, DEATH*rhiz, rRESPrhiz*rhiz)
 
         DOM_sub_abs += (
-            - bulkDOMgrowth * DOM_sub + DEATHbulk * bulk * bulk_sub 
+            - bulkDOMgrowth * DOM_sub + DEATHbulk * bulk * bulk_sub+ respRest* bulk_sub - respDOMbulk * DOM_sub
         )  # add corresponding part of substrate derived C to DOM
         POM_sub_abs -= bulkPOMgrowth * POM_sub
         MAOMs_sub_abs -= bulkMAOMgrowth * MAOMs_sub
@@ -613,7 +661,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             - rRESPbulk * bulk * bulk_sub
         )  # add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
 
-        baselineRespbulk = rRESPbulk * bulk
+        baselineRespbulk = rRESPbulk * bulk - respRest
         baselineRespbulk_sub_abs = (
             baselineRespbulk * bulk_sub
         )  # what part of this respiration is substrate derived

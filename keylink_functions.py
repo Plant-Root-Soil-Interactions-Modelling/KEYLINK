@@ -1126,8 +1126,8 @@ def calcMAOM(
     DOM = DOM - dMAOMs
     DOM_N -= dMAOMs / CN_DOM
     # CN_DOM = DOM/DOM_N # calculate new CN of DOM pool
-    print("(MAOMs + dMAOMs)",(MAOMs + dMAOMs), "(MAOMs / CN_MAOMs)", MAOMs / CN_MAOMs, "dMAOMs / CN_DOM", dMAOMs / CN_DOM)
-    print("dMAOMs", dMAOMs, "CN_DOM", CN_DOM)
+    #print("(MAOMs + dMAOMs)",(MAOMs + dMAOMs), "(MAOMs / CN_MAOMs)", MAOMs / CN_MAOMs, "dMAOMs / CN_DOM", dMAOMs / CN_DOM)
+    #print("dMAOMs", dMAOMs, "CN_DOM", CN_DOM)
     CN_MAOMs = (MAOMs + dMAOMs) / (MAOMs / CN_MAOMs + dMAOMs / CN_DOM)
     MAOMs = MAOMs + dMAOMs
 

@@ -1,0 +1,33 @@
+\        
+        7 parameter sets accepted out of 10 tries
+        converged = False
+        best likelihood = -308.6683266809412
+        mean EF = -8.43002803240294
+        Calibration ran for 00:01:01
+                     Variable      RMSE      Bias          EF
+0          POMSoil155  1.145367  0.295437   -0.071279
+1         MAOMSoil155  1.651276  0.529479   -0.115042
+2     POMSubstrate155  0.006349 -0.005456   -2.823572
+3    MAOMSubstrate155  0.003430 -0.002296    0.897926
+4         bactSoil155  5.712771 -5.689779 -130.759251
+5        fungiSoil155  0.164691 -0.153998   -8.099892
+6    bactSubstrate155  0.216396  0.128692  -25.449747
+7   fungiSubstrate155  0.037755 -0.027083   -0.762480
+8           respSoil1  0.194780  0.186152  -10.543241
+9          respSoil15  0.052380 -0.040336   -1.470440
+10         respSoil29  0.071065  0.028809   -0.199209
+11         respSoil43  0.095699 -0.018511   -0.042332
+12         respSoil71  0.096400 -0.027186   -0.093553
+13         respSoil99  0.065804 -0.010169   -0.024148
+14        respSoil127  0.051027  0.037208   -1.159307
+15        respSoil155  0.043284  0.016978   -0.202289
+16     respSubstrate1  0.069614 -0.059470   -2.700867
+17    respSubstrate15  0.078039 -0.067007   -2.782151
+18    respSubstrate29  0.069623 -0.059695   -2.731590
+19    respSubstrate43  0.076390 -0.065815   -2.825234
+20    respSubstrate71  0.078001 -0.066746   -2.658257
+21    respSubstrate99  0.085010 -0.071456   -2.305741
+22   respSubstrate127  0.086707 -0.074340   -2.637396
+23   respSubstrate155  0.105054 -0.090540   -2.761581
+24            Mean EF       NaN       NaN   -8.430028
+        

@@ -1,0 +1,16 @@
+{
+    "GMAXrhiz":1.24, 
+    "GMAXbulk":0.6,  
+    "mRecrhiz":0.5,  
+    "mRecbulk":0.5, 
+    "pCN":0.8, 
+    "recMAOM":0.9, 
+    "T_OPTrhiz": 25,
+    "T_MINrhiz": 0,
+    "T_MAXrhiz": 40,
+    "T_OPTbulk": 25,
+    "T_MINbulk": 0,
+    "T_MAXbulk": 40,
+    "Q10bulk":2.5,  
+    "Q10rhiz":2.5
+}
