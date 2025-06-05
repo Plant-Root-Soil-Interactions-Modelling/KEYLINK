@@ -696,7 +696,7 @@ if mode_ == "Bayesian":
     #%%--- Set number of tries
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 1000
+    NumberOfTries = 1
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 
@@ -1350,10 +1350,7 @@ if mode_ == "Bayesian":
                        Plotting, 
                        sharable_path
                        )
-    #copy the whole output_Bayesian folder to logs folder
-    shutil.copytree(sharable_path, logs_path, dirs_exist_ok=True)
-    
-    print(f"Output folder copied to {logs_path}")  
+
 
     #%% --- Final reports of calibration + validation
     # save metadata of the calibration
@@ -1369,7 +1366,11 @@ if mode_ == "Bayesian":
     with open(os.path.join(sharable_path, "info.txt"), "w") as output_file:
         output_file.write(content)
     
-        
+    #copy the whole output_Bayesian folder to logs folder
+    shutil.copytree(sharable_path, logs_path, dirs_exist_ok=True)
+    
+    print(f"Output folder copied to {logs_path}")  
+    
     # save metadata in one csv file
     file_exists = os.path.isfile("./logs/logs_Bayesian.csv")
     file_is_empty = file_exists and os.path.getsize("./logs/logs_Bayesian.csv") == 0

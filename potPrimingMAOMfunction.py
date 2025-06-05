@@ -253,7 +253,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # if treatmentVar["treatmentID"] == 2:
     #     return
     
-    print(CN_MAOMs, "CN_MAOMs")
+    # print(CN_MAOMs, "CN_MAOMs")
     fungi = treatmentVar[
         "fungi"
     ]  # biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
@@ -281,7 +281,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         # )  # pore surface area for each pore size class, calculated from  KEYLINK function, not used currently
 
     # same for all runs
-    availability = np.zeros(3)
+    availability = np.zeros(2) 
     # biomass of rhizosphere microbes [gC/m3]
     bact_rhiz = bact * bact_rhiz_rel
 
@@ -420,7 +420,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 kPOM_MAOM,
                 kMAOMs_MAOMp,
                 modtrhiz,
-                fSOM
+                fSOM,
+                availability
             )
         # print('calc.Rhizo')
         #               if (MAOMs<0):
@@ -496,30 +497,32 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             PV, PW
         )  # calculates availability of SOM decomposition by rhizeria and fungi, separately, from pore size distribution and soil water
         # calculate maximal growth (gmax) for rhizeria/fungi on POM/MAOM separately
-
-        # if CN_MAOMs <= 0:
-        #     print("CN_MAOMs: ", CN_MAOMs)
         
         #first calculate maximum growth on DOM if it was unlimited, both for bulk microbes
         # do this only if there is some non-zero DOM, not to run into problems with dividing by zero
    
         
         if DOM > 0:
-            
+            #how fast could bulk soil microbes grow on DOM
             gmaxbDOM = (
              mf.calcgmaxmod(CN_bulk, CN_DOM, pCN, 0.0, 0, pH, 1) * GMAXbulk
              ) # gmax for bulk on DOM
             
             # get resp from DOM and reduce avaialabilty
-            if availability[0]* bulk > rRESPbulk * bulk:
-                respDOM+=rRESPbulk * bulk
+            #if the available DOM supply covers basal respiration needs of bulk microbes:
+            # if availability[0]* bulk > rRESPbulk * bulk:        
+            if availability[0]* DOM > rRESPbulk * bulk:
+                # respDOM+=rRESPbulk * bulk #add all this additional respiration to respDOM, 
                 respDOMbulk = rRESPbulk * bulk
-                avail=availability[0]-rRESPbulk
-                respRest=0
+                # avail=availability[0]-rRESPbulk
+                #reduce availability and express as 0-1
+                avail=(availability[0]*DOM - respDOMbulk)/DOM
+                respRest=0 #there is no remaining maintenance need that stayed uncovered
             else:
-                respDOM=availability[0]* bulk
-                avail=0
-                respRest=rRESPbulk * bulk - respDOM
+                # respDOM+=availability[0]* bulk
+                respDOMbulk=availability[0]* DOM #use all that was possible
+                avail=0 #nothing available anymore
+                respRest=rRESPbulk * bulk - respDOMbulk #what remains uncovered (=hunger)
             #calculate realized growth on DOM (this is actually assimilation, not growth)
             bulkDOMgrowth = modtbulk * mf.calcgrowth(
                 bulk, DOM, avail, gmaxbDOM, KSbulk * bulk
@@ -527,23 +530,26 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             
         else:
             bulkDOMgrowth = 0
+            respDOMbulk = 0
          
    
         #then to ensure that the sum of gmaxes from different substrates does not exceed GMAX, 
         #reduce GMAX accordingly by what growth was already realized from previous substrates
-        #print("518 POM bulk CN_POM", CN_POM)
         gmaxbPOM = (
             mf.calcgmaxmod(CN_bulk, CN_POM, pCN, 0.0, 0, pH, 1) * (GMAXbulk - bulkDOMgrowth)
         )  # gmax for rhiz on POM
         
+        #if the supply covers the need for basal respiration
         if availability[0]* POM > respRest:
-                respPOM=respRest
-                avail=availability[0]-respRest/POM
-                respRest=0
+                respPOM=respRest #respire as needed
+                # avail=(availability[0]-respRest/POM 
+                #same way of expressing the above (Olga's brain:)
+                avail = (availability[0]*POM - respRest)/POM #reduce available POM
+                respRest=0 #no more needs
         else:
-                respPOM=availability[0]* POM
-                avail=0
-                respRest=respRest-respMAOMs
+                respPOM=availability[0]* POM #burn off all that is available
+                avail=0 #there is no more available for growth
+                respRest=respRest-respPOM #reduce the need by what was achieved
         #calculate realized growth on POM
         bulkPOMgrowth = modtbulk * mf.calcgrowth(
             bulk, POM, avail, gmaxbPOM, KSbulk * bulk
@@ -560,10 +566,13 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 respMAOMs=respRest
                 avail=availability[0]-respRest/MAOMs
                 respRest=0
+                BulkTurnover_starvation = 0
         else:
                 respMAOMs=availability[0]* MAOMs
                 avail=0
                 respRest=respRest-respMAOMs
+                # BulkTurnover_starvation = respRest/RESPbulk #maintenance of how much biomass was not covered for
+                BulkTurnover_starvation = respRest
         #calculate realized growth on MAOM
         bulkMAOMgrowth = modtbulk * mf.calcgrowth(
             bulk, MAOMs, avail, gmaxbMAOM, KSbulk * bulk
@@ -580,27 +589,29 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         
         # recalculate substrate derived C in bulk soil microbes and C pools
         DOM_sub_abs = DOM * DOM_sub  # recalculate because changesin calc.Rhizosphere
-        POM_sub_abs = POM * POM_sub  # recalculate because changes in calc.Rhizosphere
-        MAOMs_sub_abs = (
-            MAOMs * MAOMs_sub
-        )  # recalculate because changes in calc.Rhizosphere and calc.MAOM
+        #not necessary to recalculate POM and MAOMs substrate proportions because by feeding on them, the signature will not change 
+        # POM_sub_abs = POM * POM_sub  # recalculate because changes in calc.Rhizosphere
+        # MAOMs_sub_abs = (
+        #     MAOMs * MAOMs_sub
+        # )  # recalculate because changes in calc.Rhizosphere and calc.MAOM
         bulk_sub_abs = (
             bulk * bulk_sub
         )  # absolute substrate derived C in bulk [gC/m3]
        
-        
+        bulkTurnover =  DEATHbulk * bulk + BulkTurnover_starvation
+        # bulkTurnover = max(BulkTurnover_starvation, DEATHbulk * bulk)
         #calculate the overall change in bulk micrbial biomass, only if there was not enough for respiration this has become death
-        dbulk = bulkDOMgrowth + bulkPOMgrowth + bulkMAOMgrowth - DEATHbulk * bulk - respRest
-
+        # dbulk = bulkDOMgrowth + bulkPOMgrowth + bulkMAOMgrowth - bulkTurnover - respRest
+        dbulk = bulkDOMgrowth + bulkPOMgrowth + bulkMAOMgrowth - bulkTurnover
         
 
         #the consequent changes in the pools being eaten for growth or respired
-        DOM += - bulkDOMgrowth + DEATHbulk * bulk + respRest - respDOMbulk  # add dead bulk to DOM and death from no C to resp
+        DOM += - bulkDOMgrowth + bulkTurnover - respDOMbulk  # add dead bulk to DOM including death from no C to resp
         POM += -bulkPOMgrowth - respPOM  # subtract what has been eaten from POM to grow and to respire
         MAOMs += -bulkMAOMgrowth - respMAOMs   # and MAOMs
 
         # update CN DOM
-        DOM_N += - bulkDOMgrowth / CN_bulk + DEATHbulk * bulk / CN_bulk + respRest / CN_bulk
+        DOM_N += - bulkDOMgrowth / CN_bulk + bulkTurnover / CN_bulk
 
         CN_DOM = DOM / DOM_N  # recalculate CN DOM
 
@@ -611,22 +622,25 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         #        print('mainLine307  rhiz, rhizPOMgrowth, POM, rhizMAOMgrowth, DEATH*rhiz, rRESPrhiz*rhiz', rhiz, rhizPOMgrowth, POM, rhizMAOMgrowth, DEATH*rhiz, rRESPrhiz*rhiz)
 
         DOM_sub_abs += (
-            - bulkDOMgrowth * DOM_sub + DEATHbulk * bulk * bulk_sub+ respRest* bulk_sub - respDOMbulk * DOM_sub
+            - bulkDOMgrowth * DOM_sub + bulkTurnover * bulk_sub - respDOMbulk * DOM_sub
         )  # add corresponding part of substrate derived C to DOM
-        POM_sub_abs -= bulkPOMgrowth * POM_sub
-        MAOMs_sub_abs -= bulkMAOMgrowth * MAOMs_sub
+        # POM_sub_abs -= bulkPOMgrowth * POM_sub
+        # MAOMs_sub_abs -= bulkMAOMgrowth * MAOMs_sub
         
         bulk_sub_abs += (
             bulkDOMgrowth * DOM_sub
             + bulkMAOMgrowth * MAOMs_sub
             + bulkPOMgrowth * POM_sub
-            - DEATHbulk * bulk * bulk_sub
-            - rRESPbulk * bulk * bulk_sub
-        )  # add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of death and respiration
+            - bulkTurnover * bulk_sub
+        )  # add the corresponding part of growth on MAOM as substrate derived C, subtract correspodning part of Turnover
 
-        baselineRespbulk = rRESPbulk * bulk - respRest
+        # baselineRespbulk = rRESPbulk * bulk - respRest #achieved basal respiration
+        #achieved basal respiration
+        baselineRespbulk = respDOMbulk + respPOM + respMAOMs # same value expressed differently, to match the next
         baselineRespbulk_sub_abs = (
-            baselineRespbulk * bulk_sub
+            respDOMbulk * DOM_sub +
+            respPOM * POM_sub +
+            respMAOMs * MAOMs_sub                   
         )  # what part of this respiration is substrate derived
         baselineRespbulk_sub = baselineRespbulk_sub_abs / baselineRespbulk
         bulk += dbulk
@@ -634,8 +648,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         
         # update relative substrate derived C proportions
         DOM_sub = DOM_sub_abs / DOM  # relative substrate derived C in DOM
-        POM_sub = POM_sub_abs / POM  # relative substrate derived C in DOM
-        MAOMs_sub = MAOMs_sub_abs / MAOMs  # relative substrate derived C in DOM
+        # POM_sub = POM_sub_abs / POM  # relative substrate derived C in DOM
+        # MAOMs_sub = MAOMs_sub_abs / MAOMs  # relative substrate derived C in DOM
         
         bulk_sub = (
             bulk_sub_abs / bulk
@@ -645,8 +659,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         # bact_total = rhiz*bact_rhiz_rel + bulk*bact_bulk_rel
         # baseline respiration without priming
         baselineResp = (
-            baselineRespbulk + respDOM
-        )  # of course this respDOM is higher if previous day DOM-feeding rhizeria grew more because of priming
+            baselineRespbulk + respDOM #and by respDOM we mean respiration of DOM by rhizosphere bacteria, respiration of bulk microbes also includes some respiration on DOM
+        )  # of course this respDOM is higher if previous day rhizosphere bacteria grew more because of priming
         # all respiration
         resp = baselineResp + respPriming
         
