@@ -17,7 +17,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # output dataframe list
     bact_rhiz_rel = AllParam["bact_rhiz_rel"]
     fungi_rhiz_rel = AllParam["fungi_rhiz_rel"]
-    DOM_EC = AllParam["DOM_EC"] #energy content of DOM J/gC
+    DOM_EC = AllParam["DOM_EC"] #
     # kpriming = AllParam["kpriming"]
     KSrhiz = AllParam["KSrhiz"]
     KSbulk = AllParam["KSbulk"]
@@ -60,6 +60,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         "RESPbulk"
     ]  # respiration rate of fungi, [gC/(gC day)], was 0.03 KEYLINK
     fSOM = AllParam["fSOM"] # what part of PrimingGrowth uses primed SOM as opposed to DOM, fraction 0-1
+    availDOMtobulk = AllParam["availDOMtobulk"]
+    availDOMtorhiz = AllParam["availDOMtorhiz"]
     T_MAXrhiz = AllParam["T_MAXrhiz"]
     T_MINrhiz = AllParam["T_MINrhiz"]
     T_OPTrhiz = AllParam["T_OPTrhiz"]
@@ -421,7 +423,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 kMAOMs_MAOMp,
                 modtrhiz,
                 fSOM,
-                availability
+                #availability,  
+                availDOMtorhiz
             )
         # print('calc.Rhizo')
         #               if (MAOMs<0):
@@ -511,27 +514,30 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             # get resp from DOM and reduce avaialabilty
             #if the available DOM supply covers basal respiration needs of bulk microbes:
             # if availability[0]* bulk > rRESPbulk * bulk:        
-            if availability[0]* DOM > rRESPbulk * bulk:
+            if availDOMtobulk * DOM > rRESPbulk * bulk:
+                print(d, availDOMtobulk, "all respiration of bulk covered by DOM")
                 # respDOM+=rRESPbulk * bulk #add all this additional respiration to respDOM, 
                 respDOMbulk = rRESPbulk * bulk
                 # avail=availability[0]-rRESPbulk
                 #reduce availability and express as 0-1
-                avail=(availability[0]*DOM - respDOMbulk)/DOM
+                avail=(availDOMtobulk*DOM - respDOMbulk)/DOM
                 respRest=0 #there is no remaining maintenance need that stayed uncovered
-            else:
+            else: #if there is not enough DOM to cover 
                 # respDOM+=availability[0]* bulk
-                respDOMbulk=availability[0]* DOM #use all that was possible
+                respDOMbulk=availDOMtobulk* DOM #use all that was possible to use
                 avail=0 #nothing available anymore
                 respRest=rRESPbulk * bulk - respDOMbulk #what remains uncovered (=hunger)
+                print(d, "not all respiration of bulk covered by DOM, only", respDOMbulk/(rRESPbulk*bulk))
             #calculate realized growth on DOM (this is actually assimilation, not growth)
             bulkDOMgrowth = modtbulk * mf.calcgrowth(
                 bulk, DOM, avail, gmaxbDOM, KSbulk * bulk
             )
-            
+
         else:
+            print("DOM is zero", DOM)
             bulkDOMgrowth = 0
             respDOMbulk = 0
-         
+            respRest = rRESPbulk * bulk #all the need for basal respiration
    
         #then to ensure that the sum of gmaxes from different substrates does not exceed GMAX, 
         #reduce GMAX accordingly by what growth was already realized from previous substrates
@@ -577,7 +583,12 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         bulkMAOMgrowth = modtbulk * mf.calcgrowth(
             bulk, MAOMs, avail, gmaxbMAOM, KSbulk * bulk
         )
-       
+        
+            #safety check on growths being negative
+        if any(x < 0 for x in [bulkDOMgrowth, bulkPOMgrowth, bulkMAOMgrowth]):
+            print(bulkDOMgrowth, bulkPOMgrowth, bulkMAOMgrowth)
+            
+        print("growth rates gC/gC/day", bulkDOMgrowth/bulk, bulkPOMgrowth/bulk, bulkMAOMgrowth/bulk, (bulkDOMgrowth+bulkPOMgrowth+bulkMAOMgrowth)/bulk)    
         # print('GMAX', GMAX,
               # "\nrhizDOMgrowth", rhizDOMgrowth,
               # "\nrhizPOMgrowth", rhizPOMgrowth,

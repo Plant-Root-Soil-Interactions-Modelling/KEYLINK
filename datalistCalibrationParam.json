@@ -2,11 +2,11 @@
     "InitParam": {
         "bact_rhiz_rel": 0.5908878379556639,
         "fungi_rhiz_rel": 0.1825331353639934,
-        "DOM_EC": 2590.4515227091388,
+        "DOM_EC": 1000,
         "DEATHrhiz": 0.0013688723995454,
-        "DEATHbulk": 0.0618309362093747,
+        "DEATHbulk": 0.05,
         "KSrhiz": 4706.807114074154,
-        "KSbulk": 20159.606380307992,
+        "KSbulk": 20000,
         "kPOM_MAOM": 6.267572391387568,
         "kMAOMs_MAOMp": 23.11274846042203,
         "MAOMpmaxrate": 0.5116592620396427,
@@ -21,12 +21,14 @@
         "MM_SA_MAOM": 0.0005313470502443,
         "MM_DOM_MAOM": 0.0054896153658986,
         "Priming_max": 0.0001517045604192,
-        "RESPbulk": 0.0940245142557796,
-        "RESPrhiz": 0.1772626150681872,
-        "fSOM": 0.5900073424616775
+        "RESPbulk": 0.2,
+        "RESPrhiz": 0.3,
+        "fSOM": 0.5900073424616775,
+        "availDOMtobulk": 0,
+        "availDOMtorhiz": 0.3
     },
     "MaxParam": {
-        "bact_rhiz_rel": 0.78,
+        "bact_rhiz_rel": 0.9,
         "fungi_rhiz_rel": 0.3,
         "DOM_EC": 4000,
         "DEATHrhiz": 0.0046,
@@ -47,19 +49,21 @@
         "MM_SA_MAOM": 0.0011,
         "MM_DOM_MAOM": 0.011,
         "Priming_max": 0.00023,
-        "RESPbulk": 0.2,
-        "RESPrhiz": 0.3,
-        "fSOM": 1
+        "RESPbulk": 1,
+        "RESPrhiz": 5,
+        "fSOM": 1,
+        "availDOMtobulk": 0.7,
+        "availDOMtorhiz": 0.7
 
     },
     "MinParam": {
         "bact_rhiz_rel": 0.42,
-        "fungi_rhiz_rel": 0.15,
-        "DOM_EC": 1700,
+        "fungi_rhiz_rel": 0.1,
+        "DOM_EC": 400,
         "DEATHrhiz": 0.001,
         "DEATHbulk": 0.011,
-        "KSrhiz": 1800,
-        "KSbulk": 10000,
+        "KSrhiz": 1000,
+        "KSbulk": 5000,
         "kPOM_MAOM": 3.7,
         "kMAOMs_MAOMp": 13,
         "MAOMpmaxrate": 0.1,
@@ -74,9 +78,10 @@
         "MM_SA_MAOM": 4e-04,
         "MM_DOM_MAOM": 0.0005,
         "Priming_max": 0.0001,
-	"RESPbulk": 0.01,
-        "RESPrhiz": 0.05,
-        "fSOM": 0
-
+	    "RESPbulk": 0.05,
+        "RESPrhiz": 0.1,
+        "fSOM": 0,
+        "availDOMtobulk": 0,
+        "availDOMtorhiz": 0.05
     }
 }

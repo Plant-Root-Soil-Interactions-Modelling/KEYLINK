@@ -756,7 +756,7 @@ def calcRhizosphere(
     kMAOMs_MAOMp,
     modtBact,
     fSOM,
-    availability
+    availDOMtorhiz
 ):
     # describes rhizosphere bacterial growth on DOM
 
@@ -784,15 +784,16 @@ def calcRhizosphere(
     respDOM = rRESPbact * bact_DOM
     #reduce/calculate the new availability (unitless between 0-1, what proportion of original DOM available for growth)
     # avail = (DOM/2 - rRESPbact * bact_DOM)/DOM/2
-    avail = (DOM*availability[0] - respDOM)/DOM
+    avail = (DOM* availDOMtorhiz - respDOM)/DOM
     #if there is not enough C for basal respiration
     if avail <= 0:
         # print("growth=0")
         growth = 0
+        print("not enough DOM to cover maintenance")
         #death because not enough for maintenance (for how biomass we are lacking maintenance C)
         # BactTurnover_starvation = -avail/rRESPbact
         #burn off all the available DOM to cover part of the basal respiration
-        respDOM = DOM * availability[0]
+        respDOM = DOM *  availDOMtorhiz
         BactTurnover_starvation = -avail #what could not be covered from eating
     else:
         growth = modtBact * calcgrowth(
