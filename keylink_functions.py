@@ -789,7 +789,7 @@ def calcRhizosphere(
     if avail <= 0:
         # print("growth=0")
         growth = 0
-        print("not enough DOM to cover maintenance")
+  #      print("not enough DOM to cover maintenance")
         #death because not enough for maintenance (for how biomass we are lacking maintenance C)
         # BactTurnover_starvation = -avail/rRESPbact
         #burn off all the available DOM to cover part of the basal respiration

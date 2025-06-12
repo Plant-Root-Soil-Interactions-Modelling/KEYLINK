@@ -515,7 +515,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             #if the available DOM supply covers basal respiration needs of bulk microbes:
             # if availability[0]* bulk > rRESPbulk * bulk:        
             if availDOMtobulk * DOM > rRESPbulk * bulk:
-                print(d, availDOMtobulk, "all respiration of bulk covered by DOM")
+ #               print(d, availDOMtobulk, "all respiration of bulk covered by DOM")
                 # respDOM+=rRESPbulk * bulk #add all this additional respiration to respDOM, 
                 respDOMbulk = rRESPbulk * bulk
                 # avail=availability[0]-rRESPbulk
@@ -527,7 +527,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 respDOMbulk=availDOMtobulk* DOM #use all that was possible to use
                 avail=0 #nothing available anymore
                 respRest=rRESPbulk * bulk - respDOMbulk #what remains uncovered (=hunger)
-                print(d, "not all respiration of bulk covered by DOM, only", respDOMbulk/(rRESPbulk*bulk))
+   #             print(d, "not all respiration of bulk covered by DOM, only", respDOMbulk/(rRESPbulk*bulk))
             #calculate realized growth on DOM (this is actually assimilation, not growth)
             bulkDOMgrowth = modtbulk * mf.calcgrowth(
                 bulk, DOM, avail, gmaxbDOM, KSbulk * bulk
@@ -588,7 +588,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         if any(x < 0 for x in [bulkDOMgrowth, bulkPOMgrowth, bulkMAOMgrowth]):
             print(bulkDOMgrowth, bulkPOMgrowth, bulkMAOMgrowth)
             
-        print("growth rates gC/gC/day", bulkDOMgrowth/bulk, bulkPOMgrowth/bulk, bulkMAOMgrowth/bulk, (bulkDOMgrowth+bulkPOMgrowth+bulkMAOMgrowth)/bulk)    
+        # print("growth rates gC/gC/day", bulkDOMgrowth/bulk, bulkPOMgrowth/bulk, bulkMAOMgrowth/bulk, (bulkDOMgrowth+bulkPOMgrowth+bulkMAOMgrowth)/bulk)    
         # print('GMAX', GMAX,
               # "\nrhizDOMgrowth", rhizDOMgrowth,
               # "\nrhizPOMgrowth", rhizPOMgrowth,
