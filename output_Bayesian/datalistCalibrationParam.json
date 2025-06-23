@@ -2,9 +2,9 @@
     "InitParam": {
         "bact_rhiz_rel": 0.5908878379556639,
         "fungi_rhiz_rel": 0.1825331353639934,
-        "DOM_EC": 1000,
-        "DEATHrhiz": 0.0013688723995454,
-        "DEATHbulk": 0.05,
+        "DOM_EC": 20,
+        "DEATHrhiz": 0.1,
+        "DEATHbulk": 0.1,
         "KSrhiz": 4706.807114074154,
         "KSbulk": 20000,
         "kPOM_MAOM": 6.267572391387568,
@@ -25,14 +25,18 @@
         "RESPrhiz": 0.3,
         "fSOM": 0.5900073424616775,
         "availDOMtobulk": 0,
-        "availDOMtorhiz": 0.3
+        "availDOMtorhiz": 0.3,
+        "GMAXrhiz": 0.5,
+        "GMAXbulk": 0.1,
+        "bactini": 154,
+        "fungiini": 84
     },
     "MaxParam": {
         "bact_rhiz_rel": 0.9,
         "fungi_rhiz_rel": 0.3,
-        "DOM_EC": 4000,
-        "DEATHrhiz": 0.0046,
-        "DEATHbulk": 0.1,
+        "DOM_EC": 500,
+        "DEATHrhiz": 0.5,
+        "DEATHbulk": 0.4,
         "KSrhiz": 5036,
         "KSbulk": 32000,
         "kPOM_MAOM": 7,
@@ -53,12 +57,16 @@
         "RESPrhiz": 5,
         "fSOM": 1,
         "availDOMtobulk": 0.7,
-        "availDOMtorhiz": 0.7
+        "availDOMtorhiz": 0.7,
+        "GMAXrhiz": 4,
+        "GMAXbulk": 0.5,
+        "bactini": 160,
+        "fungiini": 160
     },
     "MinParam": {
         "bact_rhiz_rel": 0.42,
         "fungi_rhiz_rel": 0.1,
-        "DOM_EC": 400,
+        "DOM_EC": 0.5,
         "DEATHrhiz": 0.001,
         "DEATHbulk": 0.011,
         "KSrhiz": 1000,
@@ -81,6 +89,10 @@
         "RESPrhiz": 0.1,
         "fSOM": 0,
         "availDOMtobulk": 0,
-        "availDOMtorhiz": 0.05
+        "availDOMtorhiz": 0.05,
+        "GMAXrhiz": 0.05,
+        "GMAXbulk": 0.01,
+        "bactini": 54,
+        "fungiini": 60
     }
 }

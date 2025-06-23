@@ -814,7 +814,7 @@ def calcRhizosphere(
     if Priming is True and ExtraGrowth > 0:  # if Priming is allowed and there was a shortage
         # print('priming active')
         # POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp
-      
+
         POM, MAOMs, MAOMp, respPriming, respPriming_sub, PrimingGrowth, DOMusedforPriming, SOMprimed_sub = calcPriming(
             POM,
             POM_sub,
@@ -938,7 +938,11 @@ def calcPriming(
 
     # old function, overruled by thi new one
     SOMprimed = min(Priming_max * SOMprimable, ExtraGrowth * DOM_EC)
-    
+    if Priming_max * SOMprimable < ExtraGrowth * DOM_EC:
+        print("primable SOM limiting", Priming_max * SOMprimable, ExtraGrowth * DOM_EC, SOMprimed)
+    else:
+        print("decayable DOM limiting", Priming_max * SOMprimable, ExtraGrowth * DOM_EC, SOMprimed)
+        
     #either SOM or DOM was limiting,if SOM was limiting calculate used DOM
     DOMusedforPriming=SOMprimed/DOM_EC 
     

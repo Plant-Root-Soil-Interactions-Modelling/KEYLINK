@@ -36,12 +36,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     Priming_max = AllParam["Priming_max"]
     kpriming = 0
     # the ones we use from other calibration
-    GMAXrhiz = AllParam[
-        "GMAXrhiz"
-    ]  # maximal growth rate for rhizeria [gC/(gC day)], KEYLINK was 1.24
-    GMAXbulk = AllParam[
-        "GMAXbulk"
-    ]  # maximal growth rate for fungi [gC/(gC day)], KEYLINK
+
     mRecbulk = AllParam["mRecbulk"]  # how sensitive rhiz are to recalcitrance
     # resp=0.01 #respiration rate for rhizeria growing on DOM / ??do we really need a different one? it was set to 0 decided to ditch it and just the next one
     # =0.05  #respiration rate resp, [gC/(gC day)], KEYLINK
@@ -62,6 +57,22 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     fSOM = AllParam["fSOM"] # what part of PrimingGrowth uses primed SOM as opposed to DOM, fraction 0-1
     availDOMtobulk = AllParam["availDOMtobulk"]
     availDOMtorhiz = AllParam["availDOMtorhiz"]
+    GMAXrhiz = AllParam[
+        "GMAXrhiz"
+    ]  # maximal growth rate for rhizeria [gC/(gC day)], KEYLINK was 1.24
+    GMAXbulk = AllParam[
+        "GMAXbulk"
+    ]  # maximal growth rate for fungi [gC/(gC day)], KEYLINK
+    BD = 800  # bulk density [kg/m³]
+    bact = BD/1000 * AllParam[
+        "bactini"
+    ]
+    print("bact", bact)
+    #initial bact biomass in gC/m3 converting from microgramsC/g soil on input
+    fungi = BD/1000 * AllParam[
+        "fungiini"
+    ] #initial fungal biomass in gC/m3 converting from microgramsC/g soil on input
+    print("fungi", fungi)
     T_MAXrhiz = AllParam["T_MAXrhiz"]
     T_MINrhiz = AllParam["T_MINrhiz"]
     T_OPTrhiz = AllParam["T_OPTrhiz"]
@@ -97,7 +108,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # numDays = 161  # number of days of incubation experiment/how long to run the model, 155 in Jílková2022, 161 in Jílková 2024
 
     # those that will be the same for all 16 runs
-    BD = 800  # bulk density [kg/m³]
+
     claySA = 800000  # surface area of clay [m²/kg] was 8000000 cm²/g
     CN_bact = 4  # CN of rhizosphere microbes, from KEYLINK, in Jílková2022 initial CN of microbial biomass is 10
     CN_fungi = 8  # KEYLINK
@@ -245,9 +256,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # initializing variables (what changes during run)
 
     # variables that will be initialized differently for different runs
-    bact = treatmentVar[
-        "bact"
-    ]  # total biomass of rhizeria [gC/m3], was 6 final noadd average from PLFA from Jílková2022
+    # bact = BD/1000 * treatmentVar[
+    #     "bact"
+    # ]  # total biomass of bacteria [gC/m3], multiplied by BD in g/cm3 to convert from microgramsC/g-1 (on input), was 6 final noadd average from PLFA from Jílková2022
     CN_MAOMs = treatmentVar[
         "CN_MAOMsini"
     ]  # estimated but we don't know the true value, assumed to vary with CN_DOM
@@ -256,9 +267,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     #     return
     
     # print(CN_MAOMs, "CN_MAOMs")
-    fungi = treatmentVar[
-        "fungi"
-    ]  # biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
+    # fungi = BD/1000 * treatmentVar[
+    #     "fungi"
+    # ]  # biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
     DOM = treatmentVar["DOMini"]   # DOM [gC/m3]
     CN_DOM = treatmentVar["CN_DOMini"] 
     POM = treatmentVar[
@@ -293,7 +304,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # biomass of bulk soil microbes [gC/m3]
     bact_bulk = bact * (1 - bact_rhiz_rel)
     fungi_bulk = fungi * (1 - fungi_rhiz_rel)
-    bulk = bact_bulk + fungi * fungi_bulk 
+    bulk = bact_bulk + fungi_bulk 
+    print("line 308 rhiz, bulk", rhiz, bulk)
     bulk_sub = 0  # proportion of this carbon in microbes that is substrate derived in contrast to soil-derived / values 0 to 1/
     # print('bact_rhiz', 'fungi_rhiz', 'bact_bulk', 'fungi_bulk', bact_rhiz, fungi_rhiz, bact_bulk, fungi_bulk)
     
@@ -716,7 +728,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         fungi_bulk = bact_bulk * FB_bulk
         bact = bact_rhiz + fungi_rhiz
         fungi = bact_bulk + fungi_bulk
-        
+        print("line 731 rhiz, bulk", rhiz, bulk)
         #calculating substrate derived proportion in bacteria and fungi               
         # bact_sub = 0
         # fungi_sub = 0        
