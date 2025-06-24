@@ -696,7 +696,7 @@ if mode_ == "Bayesian":
     #%%--- Set number of tries
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 1000
+    NumberOfTries = 2
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 
