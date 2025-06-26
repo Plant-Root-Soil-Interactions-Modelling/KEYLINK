@@ -67,12 +67,12 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     bact = BD/1000 * AllParam[
         "bactini"
     ]
-    print("bact", bact)
+    #print("bact", bact)
     #initial bact biomass in gC/m3 converting from microgramsC/g soil on input
     fungi = BD/1000 * AllParam[
         "fungiini"
     ] #initial fungal biomass in gC/m3 converting from microgramsC/g soil on input
-    print("fungi", fungi)
+    #print("fungi", fungi)
     T_MAXrhiz = AllParam["T_MAXrhiz"]
     T_MINrhiz = AllParam["T_MINrhiz"]
     T_OPTrhiz = AllParam["T_OPTrhiz"]
@@ -262,7 +262,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     CN_MAOMs = treatmentVar[
         "CN_MAOMsini"
     ]  # estimated but we don't know the true value, assumed to vary with CN_DOM
-    print(treatmentVar["treatment"])
+    #print(treatmentVar["treatment"])
     # if treatmentVar["treatmentID"] == 2:
     #     return
     
@@ -305,7 +305,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     bact_bulk = bact * (1 - bact_rhiz_rel)
     fungi_bulk = fungi * (1 - fungi_rhiz_rel)
     bulk = bact_bulk + fungi_bulk 
-    print("line 308 rhiz, bulk", rhiz, bulk)
+ #   print("line 308 rhiz, bulk", rhiz, bulk)
     bulk_sub = 0  # proportion of this carbon in microbes that is substrate derived in contrast to soil-derived / values 0 to 1/
     # print('bact_rhiz', 'fungi_rhiz', 'bact_bulk', 'fungi_bulk', bact_rhiz, fungi_rhiz, bact_bulk, fungi_bulk)
     
@@ -546,7 +546,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             )
 
         else:
-            print("DOM is zero", DOM)
+            #print("DOM is zero", DOM)
             bulkDOMgrowth = 0
             respDOMbulk = 0
             respRest = rRESPbulk * bulk #all the need for basal respiration
@@ -728,7 +728,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         fungi_bulk = bact_bulk * FB_bulk
         bact = bact_rhiz + fungi_rhiz
         fungi = bact_bulk + fungi_bulk
-        print("line 731 rhiz, bulk", rhiz, bulk)
+        #print("line 731 rhiz, bulk", rhiz, bulk)
         #calculating substrate derived proportion in bacteria and fungi               
         # bact_sub = 0
         # fungi_sub = 0        

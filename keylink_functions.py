@@ -938,10 +938,10 @@ def calcPriming(
 
     # old function, overruled by thi new one
     SOMprimed = min(Priming_max * SOMprimable, ExtraGrowth * DOM_EC)
-    if Priming_max * SOMprimable < ExtraGrowth * DOM_EC:
-        print("primable SOM limiting", Priming_max * SOMprimable, ExtraGrowth * DOM_EC, SOMprimed)
-    else:
-        print("decayable DOM limiting", Priming_max * SOMprimable, ExtraGrowth * DOM_EC, SOMprimed)
+    # if Priming_max * SOMprimable < ExtraGrowth * DOM_EC:
+    #     print("primable SOM limiting", Priming_max * SOMprimable, ExtraGrowth * DOM_EC, SOMprimed)
+    # else:
+    #     print("decayable DOM limiting", Priming_max * SOMprimable, ExtraGrowth * DOM_EC, SOMprimed)
         
     #either SOM or DOM was limiting,if SOM was limiting calculate used DOM
     DOMusedforPriming=SOMprimed/DOM_EC 

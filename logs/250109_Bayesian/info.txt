@@ -1,3 +1,0 @@
-tries = 1000
-converged = False
-time = 00:08:41

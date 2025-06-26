@@ -696,7 +696,7 @@ if mode_ == "Bayesian":
     #%%--- Set number of tries
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 2
+    NumberOfTries = 10000
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 
@@ -951,10 +951,12 @@ if mode_ == "Bayesian":
     for c in range(0, NumberOfTries):  # For each trial parameter set
         print("Parameter set try:", c+1)
         # 7) find new parameter values to try
-
+        #CalibratedParametersValues,removed replaced 24/6 to test candidateValue
+        if c==0:
+            candidateValue=CalibratedParametersValues
         candidateparameters, candidateValue, AllParam = (
             BayesianFunctionsPotprim.find_new_parameters(
-                CalibratedParametersValues,
+                candidateValue, 
                 VarianceParameterSpace,
                 MinimalOption,
                 MaximumOption,
