@@ -44,7 +44,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     DEATHbulk = AllParam["DEATHbulk"]  # death rate for fungi [gC/(gC day)], KEYLINK
     pCN = AllParam[
         "pCN"
-    ]  # sensitivity to CN ratio of consumed substrate, values 0-1, taken from KEYLINK (value for rhizeria)
+    ]  # sensitivity to CN ratio of consumed substrate, values 0-1, taken from KEYLINK (value for bacteria)
     recMAOM = AllParam[
         "recMAOM"
     ]  # recalcitrance of MAOM, (recalcitrance of POM assumed 0)
@@ -64,15 +64,16 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         "GMAXbulk"
     ]  # maximal growth rate for fungi [gC/(gC day)], KEYLINK
     BD = 800  # bulk density [kg/m³]
-    bact = BD/1000 * AllParam[
-        "bactini"
-    ]
-    #print("bact", bact)
-    #initial bact biomass in gC/m3 converting from microgramsC/g soil on input
-    fungi = BD/1000 * AllParam[
-        "fungiini"
-    ] #initial fungal biomass in gC/m3 converting from microgramsC/g soil on input
+    MB = BD/1000 * AllParam[
+        "MBini"]
+    #initial total microbial biomass in gC/m3 converting from microgramsC/g soil on input
+    FB = AllParam[
+        "FBini"
+    ]    
+    bact = MB/(1+FB) #initial bact biomass in gC/m3 converting from microgramsC/g soil on input
+    fungi = MB - bact      #initial fungal biomass in gC/m3 
     #print("fungi", fungi)
+    #print("bacteria", bact)
     T_MAXrhiz = AllParam["T_MAXrhiz"]
     T_MINrhiz = AllParam["T_MINrhiz"]
     T_OPTrhiz = AllParam["T_OPTrhiz"]
@@ -198,6 +199,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             "MAOMSubstrate",
             "CN_DOM",
             "CN_MAOM",
+            "MB",
+            "FB",
             "bactSoil",
             "bactSubstrate",
             "fungiSoil",
@@ -728,7 +731,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         fungi_bulk = bact_bulk * FB_bulk
         bact = bact_rhiz + fungi_rhiz
         fungi = bact_bulk + fungi_bulk
-        #print("line 731 rhiz, bulk", rhiz, bulk)
+        #calculate overall MB and F:B ratio
+        MB = bact + fungi
+        FB = fungi/bact
+        if pd.isna(MB):
+            print("line 731 treatment, day, MB, FB", treatment, d, MB, FB)
         #calculating substrate derived proportion in bacteria and fungi               
         # bact_sub = 0
         # fungi_sub = 0        
@@ -837,6 +844,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 MAOMSubstrate / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
                 CN_DOM,
                 CN_MAOM,
+                MB / 0.8, # change units from gC/m3 µgC/g soil
+                FB, 
                 bactSoil / 0.8,# change units from gC/m3 µgC/g soil
                 bactSubstrate / 0.8,# change units from gC/m3 µgC/g soil
                 fungiSoil / 0.8, # change units from gC/m3 µgC/g soil

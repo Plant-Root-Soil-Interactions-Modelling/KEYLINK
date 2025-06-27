@@ -2,8 +2,8 @@
     "InitParam": {
         "bact_rhiz_rel": 0.5990867062231104,
         "fungi_rhiz_rel": 0.1758064116414866,
-        "DOM_EC": 3.730464032102253,
-        "DEATHrhiz": 0.1595363472601857,
+        "DOM_EC": 50,
+        "DEATHrhiz": 0.01,
         "DEATHbulk": 0.0158136793136192,
         "KSrhiz": 1014.1329236240724,
         "KSbulk": 25684.07057935252,
@@ -28,8 +28,8 @@
         "availDOMtorhiz": 0.6301939151223033,
         "GMAXrhiz": 8.050547711260936,
         "GMAXbulk": 3.914454642216593,
-        "bactini": 72.61075121348539,
-        "fungiini": 59.56483725003709
+        "MBini": 239,
+        "FBini": 0.65
     },
     "MaxParam": {
         "bact_rhiz_rel": 0.9,
@@ -60,15 +60,15 @@
         "availDOMtorhiz": 0.8,
         "GMAXrhiz":10,
         "GMAXbulk":4, 
-        "bactini":160, 
-        "fungiini":160
+        "MBini": 400,
+        "FBini": 0.8
 
     },
     "MinParam": {
         "bact_rhiz_rel": 0.42,
-        "fungi_rhiz_rel": 0.1,
+        "fungi_rhiz_rel": 0.05,
         "DOM_EC": 0.5,
-        "DEATHrhiz": 0.01,
+        "DEATHrhiz": 0.005,
         "DEATHbulk": 0.011,
         "KSrhiz": 100,
         "KSbulk": 5000,
@@ -93,8 +93,8 @@
         "availDOMtorhiz": 0.05,
         "GMAXrhiz":0.05,
         "GMAXbulk":0.01, 
-        "bactini":54, 
-        "fungiini":10
+        "MBini": 120,
+        "FBini": 0.3
 
     }
 }

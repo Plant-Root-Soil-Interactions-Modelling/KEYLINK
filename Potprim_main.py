@@ -68,7 +68,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Validation"]
 options = get_args(modes)
 
 #%% set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Bayesian"
+mode_ = "Normal"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -512,7 +512,7 @@ if mode_ == "Sensitivity":
                     treatmentVar,
                     mode_="Sensitivity",
                     Plotting=Plotting,
-                    numDays=161,
+                    numDays=duration,
                     path=None,
                 )
                 # add to the simulated values information about the parameter, its change and value
@@ -830,25 +830,18 @@ if mode_ == "Bayesian":
     """
     treatmentVar = ()
     results_df = pd.DataFrame()
-
+    
+    #for each row in input file
     for treatment in range(numTreatments):
         # use input data for the respective treatment
         treatmentVar = inputBayesianRun.iloc[treatment, 0:21]
-
-        # to be  corrected for nr of columns needed
-        # print(
-        #     "treatmentID",
-        #     treatmentVar["treatmentID"],
-        #     "treatment",
-        #     treatmentVar["treatment"],
-        # )
 
         results_df = run_model(
             AllParam,
             treatmentVar,
             mode_="Bayesian",
             Plotting=False,
-            numDays=161,
+            numDays=duration,
             path=None,
         )
 
@@ -861,13 +854,6 @@ if mode_ == "Bayesian":
                 data_measured_days[d] - 1, data_measured_names[d]
             ]
 
-        # we need to add for the treatment the likelyhood of all measurements added, data_measured is df so other indexing
-            
-    
-        # print(treatment)
-        # if treatment == 2:
-        #     print("line 447 safety break ")
-        #     break  # safety for now
 
         """
         4) calculate the likelihood of each parameter set for each treatment and store in sim likelihood from the differences between measured and simulated and error
@@ -887,47 +873,83 @@ if mode_ == "Bayesian":
                 data_Simulated[treatment]["sim likelihood"] += likelyhood  # and add it up for all measured variables for the given treatment
             else: 
                 likelyhood = pd.NA
-                
-            # if treatment == 3:
-            #     print(
-            #         "treatment",
-            #         treatment,
-            #         "e",
-            #         e,
-            #         "variable",
-            #         data_measured_colnames[e],
-            #         "simulated",
-            #         data_Simulated[treatment][data_measured_colnames[e]],
-            #         "measured",
-            #         measurement,
-            #         "error",
-            #         data_measured_errors.iat[treatment, e],
-            #         "likelihood",
-            #         likelyhood,
-            #         "overall likelihood",
-            #         data_Simulated[treatment]["sim likelihood"],
-            #     )
+        
 
-            # if treatment == 3:
-            #     sys.exit()
-            # if treatment == 3:
-            #     break
-            # sys.exit('safety stop to run only for first 2 treatments')
+        print("line 878 first likelihood before adding up MB and FB", data_Simulated[treatment]["sim likelihood"])
+        #then add likelihood from microbial biomass stability = ratio of initial and final biomass,
+        # Access the initial value
+        MBini = CalibratedParameters['MBini']
+        # print("MBini", MBini)
+        MB_simulated = results_df.at[155 - 1, "MB"] #MB on last day
+        dMB = MB_simulated/MBini #ratio of final to initial MB       
+        
+        
+        likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+            dMB,
+            1, #target value = we want MB to be stable
+            0.2, #guesstimated error 20%
+        )
+        print("dMB and its likelihood", dMB, likelyhood)
+        data_Simulated[treatment]["sim likelihood"] += likelyhood  # and add it up
+        
+        #same for F:B ratio stability     
+        FBini = CalibratedParameters['FBini'] #initial value
+        FB_simulated = results_df.at[155 - 1, "FB"] #FB on last day        
+        dFB = FB_simulated/FBini #ratio / should be 1        
+        likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+            dFB,
+            1, #target value, we want FB to be stable
+            0.2,#error, guesstimated error 20%
+        )
+        print("FBini, FB_simulated, dFB and its likelihood", FBini, FB_simulated, dFB, likelyhood)
+        data_Simulated[treatment]["sim likelihood"] += likelyhood  # and add it up
+
 
     """
     5) calculate the likelihood of the entire run over all treatments in log_likelihood_sim0
     """
-    # first add up likelihoods across all treatments
+    # first add up likelihoods across all treatments (from comparison of measured and simulated)
     likelihood_simulated = 0
     for treatment in range(numTreatments):  # add up likelihood across treatment
         likelihood_simulated += data_Simulated[treatment]["sim likelihood"]
         # and reset it to zero for the following parameter set trials
         data_Simulated[treatment]["sim likelihood"] = 0
+    
+    print("first likelihood_sim0 before adding priming", likelihood_simulated/len(data_Simulated))
+    
+    #then calculate likelihood connected to priming
+    #first calculate average soil-derived respiration for each treatment
+    for entry in data_Simulated:
+        resp_values = [v for k, v in entry.items() if k.startswith('respSoil')]
+        if resp_values:  # avoid division by zero
+            entry['respSoil_avg'] = sum(resp_values) / len(resp_values)
 
+    
+    #calculate average of control soil-derived respiration
+    # Get the average of respSoil_avg for first 5 rows
+    control_respSoil = sum(row['respSoil_avg'] for row in data_Simulated[:5]) / min(len(data_Simulated), 5)
+    
+    # Add relative PE to each treatment=row in data_Simulated (which is a list of dictionaries)
+    for row in data_Simulated:
+        row['PE'] = (row['respSoil_avg'] - control_respSoil)*24*155 #priming effect in microgramsC per g of soil over the whole incubation
+    
+    #make a list of expected PE values / doing manually for now
+    PE_measured = [0, 0, 0, 0, 0, 297, 268, 220, 346, 325, 72, 81, 83, -7, 91, 202, 52, 372, 88, 195]
+    
+    for row, pe_measured in zip(data_Simulated, PE_measured):
+        pe_sim = row['PE']  # access modelled PE value        
+        likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+            pe_sim,
+            pe_measured, #target value = we want MB to be stable
+            10, #guesstimated error (5% and then averaged)
+        )
+        likelihood_simulated +=  likelyhood  # and add it up
+    
     # then use this sum to calculate average likelihood of this parameter set over all treatments and save in log_likelihood_sim0
     log_likelihood_sim0 = likelihood_simulated / len(
         data_measured
     )  # divide by number of treatments
+    print("first likelihood_sim0 after including PE", log_likelihood_sim0)
     logLseries.append(log_likelihood_sim0)
     """
     6) save best fit, "BestFitParam" is the parameter set giving the highest likelihood (best fit = maximum probability)
@@ -946,7 +968,7 @@ if mode_ == "Bayesian":
     print("resultspath", results_path)
 
     """
-    loop over number ot tries
+    #%% --- loop over number ot tries
     """
     for c in range(0, NumberOfTries):  # For each trial parameter set
         print("Parameter set try:", c+1)
@@ -988,7 +1010,7 @@ if mode_ == "Bayesian":
                     treatment, 0:21
                 ]  # to be moved & use iloc
                 results_df = run_model(
-                    AllParam, treatmentVar, mode_, False, numDays=161, path=None
+                    AllParam, treatmentVar, mode_, False, numDays=duration, path=None
                 )
                 # print(results_df)
                 # we need to couple the output of the right day to the measured output
@@ -999,6 +1021,7 @@ if mode_ == "Bayesian":
                         data_measured_days[d] - 1, data_measured_names[d]
                     ]
 
+                                
                 # 10) calculate the likelihood of each treatment run for given parameter set
                 # we need to add for the treatment the likelyhood of all measurements added
                 # if treatment == 2:
@@ -1016,7 +1039,31 @@ if mode_ == "Bayesian":
                         )
                         data_Simulated[treatment]["sim likelihood"] += likelyhood
 
-
+                #then add likelihood from microbial biomass stability = ratio of initial and final biomass,
+                # Access the initial value
+                MBini = CalibratedParameters['MBini']
+                # print("MBini", MBini)
+                MB_simulated = results_df.at[155 - 1, "MB"] #MB on last day
+                dMB = MB_simulated/MBini #ratio of final to initial MB           
+                
+                likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+                    dMB,
+                    1, #target value = we want MB to be stable
+                    0.2, #guesstimated error 10%
+                )
+                data_Simulated[treatment]["sim likelihood"] += likelyhood  # and add it up
+                
+                #same for F:B ratio stability     
+                FBini = CalibratedParameters['FBini'] #initial value
+                FB_simulated = results_df.at[155 - 1, "FB"] #FB on last day        
+                dFB = FB_simulated/FBini #ratio / should be 1        
+                likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+                    dFB,
+                    1, #target value, we want FB to be stable
+                    0.2,#error, guesstimated
+                )
+                data_Simulated[treatment]["sim likelihood"] += likelyhood  # and add it up
+                
                     # if treatment == 1:
                     #     print(
                     #         "treatment",
@@ -1050,12 +1097,41 @@ if mode_ == "Bayesian":
                 likelihood_simulated += data_Simulated[treatment]["sim likelihood"]
                 # empty likelihood for next parameter set tries
                 data_Simulated[treatment]["sim likelihood"] = 0
-
-            # log_likelihood_sim1 = sum(DiffMeasureSimulated) / len(data_Simulated)
+            print("line1099 log likelihood_sim1 before adding priming", likelihood_simulated/ len(data_Simulated))
+            
+            #then calculate likelihood connected to priming
+            #first calculate average soil-derived respiration for each treatment
+            for entry in data_Simulated:
+                resp_values = [v for k, v in entry.items() if k.startswith('respSoil')]
+                if resp_values:  # avoid division by zero
+                    entry['respSoil_avg'] = sum(resp_values) / len(resp_values)
+        
+            
+            #calculate average of control soil-derived respiration
+            # Get the average of respSoil_avg for first 5 rows
+            control_respSoil = sum(row['respSoil_avg'] for row in data_Simulated[:5]) / min(len(data_Simulated), 5)
+            
+            # Add relative PE to each treatment=row in data_Simulated (which is a list of dictionaries)
+            for row in data_Simulated:
+                row['PE'] = (row['respSoil_avg'] - control_respSoil)*24*155 #priming effect in microgramsC per g of soil over the whole incubation
+            
+            #make a list of expected PE values / doing manually for now
+            PE_measured = [0, 0, 0, 0, 0, 297, 268, 220, 346, 325, 72, 81, 83, -7, 91, 202, 52, 372, 88, 195]
+            
+            for row, pe_measured in zip(data_Simulated, PE_measured):
+                pe_sim = row['PE']  # access modelled PE value        
+                likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+                    pe_sim,
+                    pe_measured, #target value = we want MB to be stable
+                    10, #guesstimated error (5% and then averaged)
+                )
+                likelihood_simulated +=  likelyhood  # and add it up
+    
             # divide by number of treatments to obtain average
             log_likelihood_sim1 = likelihood_simulated / len(data_Simulated)
             # print (DiffMeasureSimulated)
-
+            print("line 1132 likelihood_simulated after adding priming", log_likelihood_sim1)
+            
             print("finished 11)")
 
             """
