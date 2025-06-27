@@ -216,6 +216,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             "DOM_added",
             "respSoil",
             "respSubstrate",
+            "resp",
+            "baselineRespbulk",
+            "respDOM",
+            "respPriming",            
             "DOMSoil",
             "DOMSubstrate",
             "POMSoil",
@@ -227,7 +231,13 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             "bactSoil",
             "bactSubstrate",
             "fungiSoil",
-            "fungiSubstrate"
+            "fungiSubstrate",
+            "MB",
+            "rhiz",
+            "bulk",
+            "fungi",
+            "bact",
+            "FB"
         ]
 
         results_df = pd.DataFrame(columns=column_names)
@@ -265,7 +275,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     CN_MAOMs = treatmentVar[
         "CN_MAOMsini"
     ]  # estimated but we don't know the true value, assumed to vary with CN_DOM
-    #print(treatmentVar["treatment"])
+    # print(treatmentVar["treatment"])
     # if treatmentVar["treatmentID"] == 2:
     #     return
     
@@ -310,11 +320,12 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     bulk = bact_bulk + fungi_bulk 
  #   print("line 308 rhiz, bulk", rhiz, bulk)
     bulk_sub = 0  # proportion of this carbon in microbes that is substrate derived in contrast to soil-derived / values 0 to 1/
-    # print('bact_rhiz', 'fungi_rhiz', 'bact_bulk', 'fungi_bulk', bact_rhiz, fungi_rhiz, bact_bulk, fungi_bulk)
+    # print('line 323 initial, bact, fungi, FB, bact_rhiz, bact_bulk, fungi_rhiz, fungi_bulk', bact, fungi, fungi/bact, bact_rhiz, bact_bulk, fungi_rhiz, fungi_bulk)
     
     #CN ratio for rhiz and bulk based on the proportion of bacterial and fungal biomass
     CN_rhiz = (bact_rhiz*CN_bact + fungi_rhiz*CN_fungi)/rhiz
     CN_bulk = (bact_bulk*CN_bact + fungi_bulk*CN_fungi)/bulk
+
     FB_rhiz = fungi_rhiz/bact_rhiz
     FB_bulk = fungi_bulk/bact_bulk
     # print('FB_rhiz', FB_rhiz,
@@ -407,6 +418,12 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 respDOM_sub,
                 respPriming,
                 respPriming_sub,
+                ExtraGrowth,
+                CN_DOMini,
+                CN_rhizini,
+                growth,
+                pCN,
+                mCN
             ) = mf.calcRhizosphere(
                 treatmentID,
                 Priming,
@@ -450,7 +467,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             respDOM_sub = 0
             respPriming = 0
             respPriming_sub = 0
-
+        
+        # if d == 0:
+        #     print("ExtraGrowth, growth, respPriming", ExtraGrowth, growth, respPriming)
+        #     print("CN_DOM, CN_rhiz, pCN, mCN", CN_DOMini, CN_rhizini,growth,pCN, mCN)
         # if treatmentID == 5:
         #     print(treatmentID, "CN_DOM after calcRhizosphere: ", CN_DOM)
         resp = respDOM + respPriming
@@ -729,13 +749,17 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         fungi_rhiz = bact_rhiz * FB_rhiz
         bact_bulk = bulk/(FB_bulk + 1) 
         fungi_bulk = bact_bulk * FB_bulk
-        bact = bact_rhiz + fungi_rhiz
-        fungi = bact_bulk + fungi_bulk
+        bact = bact_rhiz + bact_bulk
+        fungi = fungi_rhiz + fungi_bulk
         #calculate overall MB and F:B ratio
         MB = bact + fungi
         FB = fungi/bact
-        if pd.isna(MB):
-            print("line 731 treatment, day, MB, FB", treatment, d, MB, FB)
+
+        # print("line 758 final bact, fungi, FB, bact_rhiz, bact_bulk, fungi_rhiz, fungi_bulk", bact, fungi, fungi/bact, bact_rhiz, bact_bulk, fungi_rhiz, fungi_bulk)
+        
+        #CN ratio for rhiz and bulk based on the proportion of bacterial and fungal biomass
+            
+        
         #calculating substrate derived proportion in bacteria and fungi               
         # bact_sub = 0
         # fungi_sub = 0        
@@ -860,6 +884,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 DOM_added / 0.8,  # change units from gC/m3 µgC/g soil
                 respSoil / (0.8 * 24),     # change units from gC/m3/day to µg CO2-C/g soil/h
                 respSubstrate / (0.8 * 24),     # change units from gC/m3/day to µg CO2-C/g soil/h
+                resp / (0.8 * 24),     # change units from gC/m3/day to µg CO2-C/g soil/h
+                baselineRespbulk / (0.8 * 24),     # change units from gC/m3/day to µg CO2-C/g soil/h
+                respDOM / (0.8 * 24),     # change units from gC/m3/day to µg CO2-C/g soil/h
+                respPriming / (0.8 * 24),     # change units from gC/m3/day to µg CO2-C/g soil/h
                 DOMSoil / (0.8 * 1000), # change units from gC/m3 mgC/g soil
                 DOMSubstrate / (0.8 * 1000),
                 POMSoil / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
@@ -871,7 +899,13 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 bactSoil / 0.8,# change units from gC/m3 µgC/g soil
                 bactSubstrate / 0.8,# change units from gC/m3 µgC/g soil
                 fungiSoil / 0.8, # change units from gC/m3 µgC/g soil
-                fungiSubstrate / 0.8, # change units from gC/m3 µgC/g soil
+                fungiSubstrate / 0.8, # change units from gC/m3 µgC/g soil,
+                MB / 0.8,# change units from gC/m3 µgC/g soil,
+                rhiz / 0.8,
+                bulk / 0.8,
+                fungi / 0.8,
+                bact / 0.8,
+                FB
                
             ]  
 

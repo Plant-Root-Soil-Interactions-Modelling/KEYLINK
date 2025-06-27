@@ -148,7 +148,7 @@ def normal_run(path_normal,
             results_df = run_model(
                 AllParam,
                 treatmentVar,
-                mode_="Bayesian",
+                mode_="Normal",
                 Plotting=Plotting,
                 numDays=duration,
                 path=results_path

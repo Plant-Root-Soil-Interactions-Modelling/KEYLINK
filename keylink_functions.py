@@ -758,7 +758,7 @@ def calcRhizosphere(
     fSOM,
     availDOMtorhiz
 ):
-    # describes rhizosphere bacterial growth on DOM
+    # describes rhizosphere microbe growth on DOM
 
     DOM_Nini = DOM / CN_DOM
     
@@ -802,15 +802,22 @@ def calcRhizosphere(
         BactTurnover_starvation = 0
     mCN = min(1, (CN_bact / CN_DOM) ** pCN)  # effect of CN
     
-    ExtraGrowth = (
-        1 - mCN
-    ) * growth  # what didn't yet grow in g/day because of N shortage
+    # ExtraGrowth = (
+    #     1 - mCN
+    # ) * growth  # what didn't yet grow in g/day because of N shortage
+    
+    #better ExtraGrowth
+    ExtraGrowth = growth/mCN * (1 - mCN)
+    
+    
     # Priming = False
 
 #    print("CN_bact: ", CN_bact, "CN_DOM: ", CN_DOM, "mCN: ", mCN, "ExtraGrowth",ExtraGrowth)
     # if treatment == 5:
     #     exit()
-
+    CN_DOMini = CN_DOM
+    CN_rhizini = CN_bact
+    
     if Priming is True and ExtraGrowth > 0:  # if Priming is allowed and there was a shortage
         # print('priming active')
         # POM, POM_sub, CN_POM, MAOMs, MAOMs_sub, MAOMp, MAOMp_sub, CN_MAOMp, CN_MAOMs, CN_bact, ExtraGrowth, DOM_sub, DOM_EC, Priming_max, kpriming, kPOM_MAOM, kMAOMs_MAOMp
@@ -902,6 +909,12 @@ def calcRhizosphere(
         respDOM_sub,
         respPriming,
         respPriming_sub,
+        ExtraGrowth,
+        CN_DOMini,
+        CN_rhizini,
+        growth,
+        pCN,
+        mCN
     )
 
 
