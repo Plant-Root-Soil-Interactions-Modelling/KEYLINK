@@ -148,7 +148,7 @@ def normal_run(path_normal,
             results_df = run_model(
                 AllParam,
                 treatmentVar,
-                mode_="Normal",
+                mode_="Bayesian",
                 Plotting=Plotting,
                 numDays=duration,
                 path=results_path
@@ -696,7 +696,7 @@ if mode_ == "Bayesian":
     #%%--- Set number of tries
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 10000
+    NumberOfTries = 1000
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 
@@ -875,7 +875,7 @@ if mode_ == "Bayesian":
                 likelyhood = pd.NA
         
 
-        print("line 878 first likelihood before adding up MB and FB", data_Simulated[treatment]["sim likelihood"])
+        #print("line 878 first likelihood before adding up MB and FB", data_Simulated[treatment]["sim likelihood"])
         #then add likelihood from microbial biomass stability = ratio of initial and final biomass,
         # Access the initial value
         MBini = CalibratedParameters['MBini']
@@ -889,7 +889,7 @@ if mode_ == "Bayesian":
             1, #target value = we want MB to be stable
             0.2, #guesstimated error 20%
         )
-        print("dMB and its likelihood", dMB, likelyhood)
+        #print("dMB and its likelihood", dMB, likelyhood)
         data_Simulated[treatment]["sim likelihood"] += likelyhood  # and add it up
         
         #same for F:B ratio stability     
@@ -901,7 +901,7 @@ if mode_ == "Bayesian":
             1, #target value, we want FB to be stable
             0.2,#error, guesstimated error 20%
         )
-        print("FBini, FB_simulated, dFB and its likelihood", FBini, FB_simulated, dFB, likelyhood)
+        #print("FBini, FB_simulated, dFB and its likelihood", FBini, FB_simulated, dFB, likelyhood)
         data_Simulated[treatment]["sim likelihood"] += likelyhood  # and add it up
 
 
@@ -915,7 +915,7 @@ if mode_ == "Bayesian":
         # and reset it to zero for the following parameter set trials
         data_Simulated[treatment]["sim likelihood"] = 0
     
-    print("first likelihood_sim0 before adding priming", likelihood_simulated/len(data_Simulated))
+    #print("first likelihood_sim0 before adding priming", likelihood_simulated/len(data_Simulated))
     
     #then calculate likelihood connected to priming
     #first calculate average soil-derived respiration for each treatment
@@ -938,6 +938,7 @@ if mode_ == "Bayesian":
     
     for row, pe_measured in zip(data_Simulated, PE_measured):
         pe_sim = row['PE']  # access modelled PE value        
+        print ('priming PE', pe_sim)
         likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
             pe_sim,
             pe_measured, #target value = we want MB to be stable
@@ -949,7 +950,8 @@ if mode_ == "Bayesian":
     log_likelihood_sim0 = likelihood_simulated / len(
         data_measured
     )  # divide by number of treatments
-    print("first likelihood_sim0 after including PE", log_likelihood_sim0)
+    #print("first likelihood_sim0 after including PE", log_likelihood_sim0)
+    print ('priming PE', pe_sim)
     logLseries.append(log_likelihood_sim0)
     """
     6) save best fit, "BestFitParam" is the parameter set giving the highest likelihood (best fit = maximum probability)
@@ -974,11 +976,11 @@ if mode_ == "Bayesian":
         print("Parameter set try:", c+1)
         # 7) find new parameter values to try
         #CalibratedParametersValues,removed replaced 24/6 to test candidateValue
-        if c==0:
-            candidateValue=CalibratedParametersValues
+        # if c==0:
+        #     candidateValue=CalibratedParametersValues
         candidateparameters, candidateValue, AllParam = (
             BayesianFunctionsPotprim.find_new_parameters(
-                candidateValue, 
+                CalibratedParametersValues, 
                 VarianceParameterSpace,
                 MinimalOption,
                 MaximumOption,
@@ -1113,6 +1115,8 @@ if mode_ == "Bayesian":
             
             # Add relative PE to each treatment=row in data_Simulated (which is a list of dictionaries)
             for row in data_Simulated:
+#              #  #print ('control_respSoil',control_respSoil)
+                #print ('soilAvg',row['respSoil_avg'])
                 row['PE'] = (row['respSoil_avg'] - control_respSoil)*24*155 #priming effect in microgramsC per g of soil over the whole incubation
             
             #make a list of expected PE values / doing manually for now
@@ -1120,6 +1124,8 @@ if mode_ == "Bayesian":
             
             for row, pe_measured in zip(data_Simulated, PE_measured):
                 pe_sim = row['PE']  # access modelled PE value        
+                
+                print ('priming PE', pe_sim)
                 likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
                     pe_sim,
                     pe_measured, #target value = we want MB to be stable
