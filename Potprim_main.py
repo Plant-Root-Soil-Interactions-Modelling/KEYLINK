@@ -705,29 +705,27 @@ if mode_ == "Bayesian":
 
     # numTreatments = len(calibrationData_df['Treatments'])
 
-    # read the Parameter data to  and the fixed parameter values and put them together
-    inputCalibrationParamfile = open("datalistCalibrationParam.json")
-    (
-        numParams,
-        CalibParamInit,
-        CalParameters,
-        CalParameterValues,
-        MaximumOption,
-        MinimalOption,
-        keys,
-    ) = BayesianFunctionsPotprim.read_parameter_data(inputCalibrationParamfile)
+    # read the Parameter data        
+    with open("datalistCalibrationParam.json") as inputCalibrationParamfile:
+        (
+            numParams,
+            CalibParamInit,
+            CalParameters,
+            CalParameterValues,
+            MaximumOption,
+            MinimalOption,
+            keys,
+        ) = BayesianFunctionsPotprim.read_parameter_data(inputCalibrationParamfile)
 
-    # Save initial parameters to output Bayesian
-    with open("datalistCalibrationParam.json", "r") as inputCalibrationParamfile:
-        data = json.load(inputCalibrationParamfile)
+    # copy initial parameters in output Bayesian
+    shutil.copy("datalistCalibrationParam.json",
+            os.path.join(sharable_path, "datalistCalibrationParam.json"))
+    
+    #open the "normal"input 
+    with open("datalistInput.json", "r", encoding="utf-8") as inputfileParam:
+        AllParam = json.load(inputfileParam)
 
-    with open(
-        os.path.join(sharable_path, "datalistCalibrationParam.json"), "w"
-    ) as output_file:
-        json.dump(data, output_file, indent=4)
-
-    # put the initial parametervalues in the correct list so overwrite some parameters
-    # you can start your 'walk' from another point then the old parameter value
+    # put the initial parametervalues in the correct list so overwrite some parameters        
     AllParam.update(CalibParamInit)
 
     # # read the measured data (towards which to calibrate) and the treatment definitions

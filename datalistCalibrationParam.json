@@ -1,6 +1,6 @@
 {
     "InitParam":  { 
-	"bact_rhiz_rel": 0.6129049455609088,
+	    "bact_rhiz_rel": 0.6129049455609088,
         "fungi_rhiz_rel": 0.1498424189858547,
         "DOM_EC": 58.39138186163689,
         "DEATHrhiz": 0.0152586196697685,
@@ -29,9 +29,10 @@
         "GMAXrhiz": 8.392016675809597,
         "GMAXbulk": 3.9729370210734594,
         "MBini": 213.75872501248625,
-        "FBini": 0.6865168127298734
+        "FBini": 0.6865168127298734,
+        "pCN": 0.8
 	},
-       "MaxParam": {
+    "MaxParam": {
         "bact_rhiz_rel": 0.9,
         "fungi_rhiz_rel": 0.3,
         "DOM_EC": 100,
@@ -61,7 +62,8 @@
         "GMAXrhiz": 10,
         "GMAXbulk": 5,
         "MBini": 400,
-        "FBini": 0.8
+        "FBini": 0.8,
+        "pCN": 1.1
     },
     "MinParam": {
         "bact_rhiz_rel": 0.42,
@@ -93,6 +95,7 @@
         "GMAXrhiz": 0.5,
         "GMAXbulk": 1,
         "MBini": 120,
-        "FBini": 0.3
+        "FBini": 0.3,
+        "pCN": 0.5
     }
 }
