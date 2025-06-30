@@ -47,6 +47,7 @@ from datetime import datetime
 import glob
 import shutil
 from matplotlib.lines import Line2D
+from collections import defaultdict
 
 # needed by all modes / normal, sensitivity and bayesian mode
 from potPrimingMAOMfunction import *
@@ -310,6 +311,7 @@ def normal_run(path_normal,
             metrics_list = []
             # --- 3. Plot in 2x2 grids ---
             for i in range(0, len(columns_to_plot), 4):
+                # print(data_modelled['treatment'])
                 subset = columns_to_plot[i:i+4]
                 
                 fig, axes = plt.subplots(2, 2, figsize=(10, 10))
@@ -329,8 +331,8 @@ def normal_run(path_normal,
                 for j, col in enumerate(subset):#loop over all four variables for this 2x2 graph
                     MainFunctionsPotprim.plot_1to1(axes[j], data_measured[col], data_modelled[col], data_modelled['treatment'], col, custom_palette)
                     # Calculate summary/diagnostic metrics for this variable
-                    rmse, bias, ef = MainFunctionsPotprim.calculate_metrics(data_measured[col], data_modelled[col])
-        
+                    rmse, bias, ef = MainFunctionsPotprim.calculate_metrics(data_measured[col], data_modelled[col])    
+
                     # Add metrics text to each subplot
                     metrics_text = f'RMSE = {rmse:.3f}\nBias = {bias:.3f}\nEF = {ef:.3f}'
                     axes[j].text(0.05, 0.95, metrics_text, transform=axes[j].transAxes, 
@@ -913,43 +915,136 @@ if mode_ == "Bayesian":
         # and reset it to zero for the following parameter set trials
         data_Simulated[treatment]["sim likelihood"] = 0
     
-    #print("first likelihood_sim0 before adding priming", likelihood_simulated/len(data_Simulated))
+    # print("first likelihood_sim0 before adding priming", likelihood_simulated/len(data_Simulated))
     
-    #then calculate likelihood connected to priming
-    #first calculate average soil-derived respiration for each treatment
+    #calculate priming effects and their likelihoods
+    # Step 1: Calculate averages for control (first 5 entries)
+    averages = defaultdict(float)
+    counts = defaultdict(int)
+    
+    # Find all columns starting with respSoil (keys)
+    resp_keys = [key for key in data_Simulated[0] if key.startswith('respSoil')]
+    
+    # Accumulate values from the first 5 entries
+    for entry in data_Simulated[:5]:
+        for key in resp_keys:
+            averages[key] += entry.get(key, 0)
+            counts[key] += 1
+    
+    # Calculate final average
+    for key in averages:
+        averages[key] /= counts[key]
+    
+    # Step 2: Add PE values to each entry
     for entry in data_Simulated:
-        resp_values = [v for k, v in entry.items() if k.startswith('respSoil')]
-        if resp_values:  # avoid division by zero
-            entry['respSoil_avg'] = sum(resp_values) / len(resp_values)
+        for key in resp_keys:
+            pe_key = f"PE_{key[8:]}"  # Extract number from 'respSoilX'
+            entry[pe_key] = entry.get(key, 0) - averages[key]
+   
+    #then calculate likelihood connected to priming
+    #first load measured PE data, doing manually for now
+    # Timepoints (column headers)
+    timepoints = [1, 15, 29, 43, 71, 99, 127, 155]
+    
+    # Measured PE values, as rows of lists
+    measured_pe_rows = [
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0.193041078, 0.034985897, 0.100177875, 0.187664247, 0.041343569, 0.027769672, -0.017540581, 0.070629515],
+        [0.059753228, 0.10201344, 0.115680303, 0.162590543, -0.012185349, 0.076723786, 0.01050735, 0.060506018],
+        [0.099497507, 0.01044408, 0.025241125, 0.094215362, 0.044780416, 0.071090341, 0.036433529, 0.090674294],
+        [0.026888444, 0.062919305, 0.130671021, 0.172471442, 0.063210497, 0.090222066, 0.111911731, 0.085078498],
+        [0.144149032, 0.007398843, 0.084534788, 0.200350338, 0.069568713, 0.038685621, 0.080835147, 0.07273918],
+        [0.034625915, -0.018205728, 0.060185966, 0.155945407, -0.086027403, -0.045023589, 0.028171482, 0.025587571],
+        [0.070034344, -0.045407082, 0.020044714, 0.127214007, -0.173295563, 0.097918414, 0.050425069, 0.026631378],
+        [-0.026323323, 0.027147225, 0.079715453, 0.080597113, -0.141389744, 0.079355747, 0.040404642, 0.037954106],
+        [0.106536129, -0.015017946, -0.007737672, 0.029794373, -0.197526729, -0.017418134, 0.041796859, 0.043960747],
+        [0.099057599, -0.022678775, -0.083162234, 0.009434667, 0.026184499, 0.125183071, -0.001748618, 0.043497572],
+        [0.059863804, 0.011452457, 0.046593377, 0.154451368, -0.009167898, 0.069842926, 0.055206998, 0.046937418],
+        [0.020161335, -0.002327469, -0.049300577, 0.094731, 0.031896394, -0.086740938, 0.053491715, 0.049903813],
+        [0.067993333, 0.053323092, 0.060347253, 0.228011824, 0.111372456, 0.11455997, 0.07451269, 0.088998821],
+        [0.065692151, 0.020505789, -0.050876293, 0.155538873, 0.057494665, -0.10904691, 0.018337655, 0.031095371],
+        [0.076164907, 0.019990349, -0.030081478, 0.139523774, 0.029723779, -0.024061897, 0.065909517, 0.142481845],
+    ]
+
+    # Transform into a list of dictionaries
+    measured_pe_dicts = [
+        {f"PE_{tp}": value for tp, value in zip(timepoints, row)}
+        for row in measured_pe_rows
+    ]
+        
+    #now loop over both modelled and measured data and calculate likelihood of PE
+    for sim, meas in zip(data_Simulated, measured_pe_dicts):
+        pe_list = []
+        for tp in timepoints:
+            sim_key = f"PE_{tp}" #name of the column
+            pe_sim = sim.get(sim_key) #get simulated value
+            pe_measured = meas.get(sim_key) #get measured value
+            likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+                pe_sim,
+                pe_measured, #target value 
+                0.002, #guesstimated error (5% and then averaged)
+            )
+            # print("simkey, pe_sim, pe_measured, likelyhood", sim_key, pe_sim, pe_measured, likelyhood)
+            likelihood_simulated +=  likelyhood  # and add it up
+            pe_list.append(pe_sim) #store simulated values in a list
+        #calculate total PE for each treatment/run
+        pe_tot = sum(pe_list)/len(pe_list) * 24 * 155#priming effect in microgramsC per g of soil over the whole incubation
+        sim["PE_tot"] = pe_tot  # Add it to the dictionary
+        print("PE", pe_tot)
+    
+        
+
+    #old version
+    
+    # for row, pe_measured in zip(data_Simulated, PE_measured):
+    #     pe_sim = row['PE']  # access modelled PE value        
+    #     print ('priming PE', pe_sim)
+    #     likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+    #         pe_sim,
+    #         pe_measured, #target value = we want MB to be stable
+    #         10, #guesstimated error (5% and then averaged)
+    #     )
+    #     likelihood_simulated +=  likelyhood  # and add it up
+    #first calculate priming for each time point
+    
+    # #first calculate average soil-derived respiration for each treatment
+    # for entry in data_Simulated:
+    #     resp_values = [v for k, v in entry.items() if k.startswith('respSoil')]
+    #     if resp_values:  # avoid division by zero
+    #         entry['respSoil_avg'] = sum(resp_values) / len(resp_values)
 
     
-    #calculate average of control soil-derived respiration
-    # Get the average of respSoil_avg for first 5 rows
-    control_respSoil = sum(row['respSoil_avg'] for row in data_Simulated[:5]) / min(len(data_Simulated), 5)
+    # #calculate average of control soil-derived respiration
+    # # Get the average of respSoil_avg for first 5 rows
+    # control_respSoil = sum(row['respSoil_avg'] for row in data_Simulated[:5]) / min(len(data_Simulated), 5)
     
-    # Add relative PE to each treatment=row in data_Simulated (which is a list of dictionaries)
-    for row in data_Simulated:
-        row['PE'] = (row['respSoil_avg'] - control_respSoil)*24*155 #priming effect in microgramsC per g of soil over the whole incubation
+    # # Add relative PE to each treatment=row in data_Simulated (which is a list of dictionaries)
+    # for row in data_Simulated:
+    #     row['PE'] = (row['respSoil_avg'] - control_respSoil)*24*155 #priming effect in microgramsC per g of soil over the whole incubation
     
-    #make a list of expected PE values / doing manually for now
-    PE_measured = [0, 0, 0, 0, 0, 297, 268, 220, 346, 325, 72, 81, 83, -7, 91, 202, 52, 372, 88, 195]
+    # #make a list of expected PE values / doing manually for now
+    # PE_measured = [0, 0, 0, 0, 0, 297, 268, 220, 346, 325, 72, 81, 83, -7, 91, 202, 52, 372, 88, 195]
     
-    for row, pe_measured in zip(data_Simulated, PE_measured):
-        pe_sim = row['PE']  # access modelled PE value        
-        print ('priming PE', pe_sim)
-        likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
-            pe_sim,
-            pe_measured, #target value = we want MB to be stable
-            10, #guesstimated error (5% and then averaged)
-        )
-        likelihood_simulated +=  likelyhood  # and add it up
+    # for row, pe_measured in zip(data_Simulated, PE_measured):
+    #     pe_sim = row['PE']  # access modelled PE value        
+    #     print ('priming PE', pe_sim)
+    #     likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+    #         pe_sim,
+    #         pe_measured, #target value = we want MB to be stable
+    #         10, #guesstimated error (5% and then averaged)
+    #     )
+    #     likelihood_simulated +=  likelyhood  # and add it up
     
     # then use this sum to calculate average likelihood of this parameter set over all treatments and save in log_likelihood_sim0
     log_likelihood_sim0 = likelihood_simulated / len(
         data_measured
     )  # divide by number of treatments
-    #print("first likelihood_sim0 after including PE", log_likelihood_sim0)
-    print ('priming PE', pe_sim)
+    # print("1037 first likelihood_sim0 after including PE", log_likelihood_sim0)
+    # print ('priming PE', PE_tot)
     logLseries.append(log_likelihood_sim0)
     """
     6) save best fit, "BestFitParam" is the parameter set giving the highest likelihood (best fit = maximum probability)
@@ -1100,36 +1195,117 @@ if mode_ == "Bayesian":
             print("line1099 log likelihood_sim1 before adding priming", likelihood_simulated/ len(data_Simulated))
             
             #then calculate likelihood connected to priming
-            #first calculate average soil-derived respiration for each treatment
+            # Step 1: Calculate averages for control (first 5 entries)
+            averages = defaultdict(float)
+            counts = defaultdict(int)
+            
+            # Find all columns starting with respSoil (keys)
+            resp_keys = [key for key in data_Simulated[0] if key.startswith('respSoil')]
+            
+            # Accumulate values from the first 5 entries
+            for entry in data_Simulated[:5]:
+                for key in resp_keys:
+                    averages[key] += entry.get(key, 0)
+                    counts[key] += 1
+            
+            # Calculate final average
+            for key in averages:
+                averages[key] /= counts[key]
+            
+            # Step 2: Add PE values to each entry
             for entry in data_Simulated:
-                resp_values = [v for k, v in entry.items() if k.startswith('respSoil')]
-                if resp_values:  # avoid division by zero
-                    entry['respSoil_avg'] = sum(resp_values) / len(resp_values)
+                for key in resp_keys:
+                    pe_key = f"PE_{key[8:]}"  # Extract number from 'respSoilX'
+                    entry[pe_key] = entry.get(key, 0) - averages[key]
+           
+            #then calculate likelihood connected to priming
+            #first load measured PE data, doing manually for now
+            # Timepoints (column headers)
+            timepoints = [1, 15, 29, 43, 71, 99, 127, 155]
+            
+            # Measured PE values, as rows of lists
+            measured_pe_rows = [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0.193041078, 0.034985897, 0.100177875, 0.187664247, 0.041343569, 0.027769672, -0.017540581, 0.070629515],
+                [0.059753228, 0.10201344, 0.115680303, 0.162590543, -0.012185349, 0.076723786, 0.01050735, 0.060506018],
+                [0.099497507, 0.01044408, 0.025241125, 0.094215362, 0.044780416, 0.071090341, 0.036433529, 0.090674294],
+                [0.026888444, 0.062919305, 0.130671021, 0.172471442, 0.063210497, 0.090222066, 0.111911731, 0.085078498],
+                [0.144149032, 0.007398843, 0.084534788, 0.200350338, 0.069568713, 0.038685621, 0.080835147, 0.07273918],
+                [0.034625915, -0.018205728, 0.060185966, 0.155945407, -0.086027403, -0.045023589, 0.028171482, 0.025587571],
+                [0.070034344, -0.045407082, 0.020044714, 0.127214007, -0.173295563, 0.097918414, 0.050425069, 0.026631378],
+                [-0.026323323, 0.027147225, 0.079715453, 0.080597113, -0.141389744, 0.079355747, 0.040404642, 0.037954106],
+                [0.106536129, -0.015017946, -0.007737672, 0.029794373, -0.197526729, -0.017418134, 0.041796859, 0.043960747],
+                [0.099057599, -0.022678775, -0.083162234, 0.009434667, 0.026184499, 0.125183071, -0.001748618, 0.043497572],
+                [0.059863804, 0.011452457, 0.046593377, 0.154451368, -0.009167898, 0.069842926, 0.055206998, 0.046937418],
+                [0.020161335, -0.002327469, -0.049300577, 0.094731, 0.031896394, -0.086740938, 0.053491715, 0.049903813],
+                [0.067993333, 0.053323092, 0.060347253, 0.228011824, 0.111372456, 0.11455997, 0.07451269, 0.088998821],
+                [0.065692151, 0.020505789, -0.050876293, 0.155538873, 0.057494665, -0.10904691, 0.018337655, 0.031095371],
+                [0.076164907, 0.019990349, -0.030081478, 0.139523774, 0.029723779, -0.024061897, 0.065909517, 0.142481845],
+            ]
+
+            # Transform into a list of dictionaries
+            measured_pe_dicts = [
+                {f"PE_{tp}": value for tp, value in zip(timepoints, row)}
+                for row in measured_pe_rows
+            ]
+                
+            #now loop over both modelled and measured data and calculate likelihood of PE
+            for sim, meas in zip(data_Simulated, measured_pe_dicts):
+                pe_list = []
+                for tp in timepoints:
+                    sim_key = f"PE_{tp}" #name of the column
+                    pe_sim = sim.get(sim_key) #get simulated value
+                    pe_measured = meas.get(sim_key) #get measured value
+                    likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+                        pe_sim,
+                        pe_measured, #target value 
+                        0.002, #guesstimated error (5% and then averaged)
+                    )
+                    # print("simkey, pe_sim, pe_measured, likelyhood", sim_key, pe_sim, pe_measured, likelyhood)
+                    likelihood_simulated +=  likelyhood  # and add it up
+                    pe_list.append(pe_sim) #store simulated values in a list
+                #calculate total PE for each treatment/run
+                pe_tot = sum(pe_list)/len(pe_list) * 24 * 155 #priming effect in microgramsC per g of soil over the whole incubation
+                sim["PE_tot"] = pe_tot  # Add it to the dictionary
+                print("PE", pe_tot)
+            
+            
+            
+#             #old version
+#             #first calculate average soil-derived respiration for each treatment
+#             for entry in data_Simulated:
+#                 resp_values = [v for k, v in entry.items() if k.startswith('respSoil')]
+#                 if resp_values:  # avoid division by zero
+#                     entry['respSoil_avg'] = sum(resp_values) / len(resp_values)
         
             
-            #calculate average of control soil-derived respiration
-            # Get the average of respSoil_avg for first 5 rows
-            control_respSoil = sum(row['respSoil_avg'] for row in data_Simulated[:5]) / min(len(data_Simulated), 5)
+#             #calculate average of control soil-derived respiration
+#             # Get the average of respSoil_avg for first 5 rows
+#             control_respSoil = sum(row['respSoil_avg'] for row in data_Simulated[:5]) / min(len(data_Simulated), 5)
             
-            # Add relative PE to each treatment=row in data_Simulated (which is a list of dictionaries)
-            for row in data_Simulated:
-#              #  #print ('control_respSoil',control_respSoil)
-                #print ('soilAvg',row['respSoil_avg'])
-                row['PE'] = (row['respSoil_avg'] - control_respSoil)*24*155 #priming effect in microgramsC per g of soil over the whole incubation
+#             # Add relative PE to each treatment=row in data_Simulated (which is a list of dictionaries)
+#             for row in data_Simulated:
+# #              #  #print ('control_respSoil',control_respSoil)
+#                 #print ('soilAvg',row['respSoil_avg'])
+#                 row['PE'] = (row['respSoil_avg'] - control_respSoil)*24*155 #priming effect in microgramsC per g of soil over the whole incubation
             
-            #make a list of expected PE values / doing manually for now
-            PE_measured = [0, 0, 0, 0, 0, 297, 268, 220, 346, 325, 72, 81, 83, -7, 91, 202, 52, 372, 88, 195]
+#             #make a list of expected PE values / doing manually for now
+#             PE_measured = [0, 0, 0, 0, 0, 297, 268, 220, 346, 325, 72, 81, 83, -7, 91, 202, 52, 372, 88, 195]
             
-            for row, pe_measured in zip(data_Simulated, PE_measured):
-                pe_sim = row['PE']  # access modelled PE value        
+#             for row, pe_measured in zip(data_Simulated, PE_measured):
+#                 pe_sim = row['PE']  # access modelled PE value        
                 
-                print ('priming PE', pe_sim)
-                likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
-                    pe_sim,
-                    pe_measured, #target value = we want MB to be stable
-                    10, #guesstimated error (5% and then averaged)
-                )
-                likelihood_simulated +=  likelyhood  # and add it up
+#                 print ('priming PE', pe_sim)
+#                 likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
+#                     pe_sim,
+#                     pe_measured, #target value = we want MB to be stable
+#                     10, #guesstimated error (5% and then averaged)
+#                 )
+#                 likelihood_simulated +=  likelyhood  # and add it up
     
             # divide by number of treatments to obtain average
             log_likelihood_sim1 = likelihood_simulated / len(data_Simulated)

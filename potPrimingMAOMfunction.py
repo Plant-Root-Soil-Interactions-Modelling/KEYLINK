@@ -69,7 +69,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     #initial total microbial biomass in gC/m3 converting from microgramsC/g soil on input
     FB = AllParam[
         "FBini"
-    ]    
+    ]
+    DOM = BD/1000 * AllParam["DOMini"]   # DOM in gC/m3 converting from microgramsC/g soil on input
+    CN_DOM = AllParam["CN_DOMini"] #initial CN of DOM
+    # print("DOM, CN_DOM", DOM, CN_DOM)
     bact = MB/(1+FB) #initial bact biomass in gC/m3 converting from microgramsC/g soil on input
     fungi = MB - bact      #initial fungal biomass in gC/m3 
     #print("fungi", fungi)
@@ -149,15 +152,6 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     if mode_ == "Sensitivity" or mode_ == "Bayesian":  # safety
         Plotting = False
 
-    # numruns = 0  # initializing the number of runs
-
-    # run the daily calculations
-
-    # DOMinput_treatments = np.array([10, 10, 0])  # exudates, leachates, control
-    # CN_DOMinput_treatments = np.array(
-    # [6, 80, 0]
-
-    # treatments = np.array(["exudates", "leachates", "control"])
 
     # define different output for different modes
     if mode_ == "Sensitivity":
@@ -283,8 +277,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # fungi = BD/1000 * treatmentVar[
     #     "fungi"
     # ]  # biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
-    DOM = treatmentVar["DOMini"]   # DOM [gC/m3]
-    CN_DOM = treatmentVar["CN_DOMini"] 
+
     POM = treatmentVar[
         "POMini"
     ]  # C in POM [gC/m3], calculated as initialSOM-MAOM using initialSOM from Jílková2022
