@@ -297,10 +297,63 @@ def normal_run(path_normal,
             # print(data_measured) 
             # print(data_measured.columns) #has only the actual columns with data, 26 columns
             
-            #first plot the non-respiration 1:1 plots
-            # -----select columns NOT starting with 'resp' ---
+            #calculate priming effects from modelled values            
+            # Timepoints
+            timepoints = [1, 15, 29, 43, 71, 99, 127, 155]
+            
+            # Loop through each timepoint column
+            for tp in timepoints:
+                col_name = f'respSoil{tp}'
+                pe_col_name = f'PE_{tp}'
+            
+                # Calculate baseline: average of first 5 rows
+                control_avg = data_modelled[col_name].iloc[:5].mean()
+            
+                # Subtract baseline from all rows to get priming effect
+                data_modelled[pe_col_name] = data_modelled[col_name] - control_avg
+            # print(data_modelled)        
+            
+            # add to measured data the measured PE
+            measured_pe = [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0.193041078, 0.034985897, 0.100177875, 0.187664247, 0.041343569, 0.027769672, -0.017540581, 0.070629515],
+                [0.059753228, 0.10201344, 0.115680303, 0.162590543, -0.012185349, 0.076723786, 0.01050735, 0.060506018],
+                [0.099497507, 0.01044408, 0.025241125, 0.094215362, 0.044780416, 0.071090341, 0.036433529, 0.090674294],
+                [0.026888444, 0.062919305, 0.130671021, 0.172471442, 0.063210497, 0.090222066, 0.111911731, 0.085078498],
+                [0.144149032, 0.007398843, 0.084534788, 0.200350338, 0.069568713, 0.038685621, 0.080835147, 0.07273918],
+                [0.034625915, -0.018205728, 0.060185966, 0.155945407, -0.086027403, -0.045023589, 0.028171482, 0.025587571],
+                [0.070034344, -0.045407082, 0.020044714, 0.127214007, -0.173295563, 0.097918414, 0.050425069, 0.026631378],
+                [-0.026323323, 0.027147225, 0.079715453, 0.080597113, -0.141389744, 0.079355747, 0.040404642, 0.037954106],
+                [0.106536129, -0.015017946, -0.007737672, 0.029794373, -0.197526729, -0.017418134, 0.041796859, 0.043960747],
+                [0.099057599, -0.022678775, -0.083162234, 0.009434667, 0.026184499, 0.125183071, -0.001748618, 0.043497572],
+                [0.059863804, 0.011452457, 0.046593377, 0.154451368, -0.009167898, 0.069842926, 0.055206998, 0.046937418],
+                [0.020161335, -0.002327469, -0.049300577, 0.094731, 0.031896394, -0.086740938, 0.053491715, 0.049903813],
+                [0.067993333, 0.053323092, 0.060347253, 0.228011824, 0.111372456, 0.11455997, 0.07451269, 0.088998821],
+                [0.065692151, 0.020505789, -0.050876293, 0.155538873, 0.057494665, -0.10904691, 0.018337655, 0.031095371],
+                [0.076164907, 0.019990349, -0.030081478, 0.139523774, 0.029723779, -0.024061897, 0.065909517, 0.142481845],
+            ]
+            
+            # Timepoints
+            timepoints = [1, 15, 29, 43, 71, 99, 127, 155]
+            column_names = [f'PE_{tp}' for tp in timepoints]
+            
+            # Create DataFrame with new columns
+            df_pe = pd.DataFrame(measured_pe, columns=column_names)
+            
+            # Add this dataframe to the original DataFrame of measured values
+            data_measured = pd.concat([data_measured, df_pe], axis=1)
+    
+            #calculate total PE for each treatment/run
+            # pe_tot = sum(pe_list)/len(pe_list) * 24 * 155#priming effect in microgramsC per g of soil over the whole incubation
+            # sim["PE_tot"] = pe_tot  # Add it to the dictionary
+            # print("PE", pe_tot)
+            
+            #plot the 1:1 plots
             columns_to_plot = data_measured.columns
-            # columns_to_plot = [col for col in data_measured.columns if not col.startswith("resp")]
             #prepare a colour paletter (this could be customized for Jilkova2024 when needed)
             custom_palette = {
                 'control': 'grey',
