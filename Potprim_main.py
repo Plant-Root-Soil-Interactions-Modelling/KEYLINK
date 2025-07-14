@@ -65,11 +65,11 @@ warnings.simplefilter("error", SyntaxWarning)
 
 ############## Modes #################################
 # set allowed values for mode
-modes = Literal["Normal", "Sensitivity", "Bayesian", "Validation"]
+modes = Literal["Normal", "Sensitivity", "Bayesian", "Hypercube"]
 options = get_args(modes)
 
 #%% set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Bayesian"
+mode_ = "Hypercube"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -168,19 +168,7 @@ def normal_run(path_normal,
             df_list, ignore_index=True
         )  # add all the rows to the results_df                        
         
-        #make output directory                            
-        try:
-                os.makedirs("./output/data")
-        except FileExistsError:
-            # if directory already exists
-            pass
         
-        #save all modelled data
-        final_results_df.to_csv(
-            "./output/data/Normal.csv",
-            index=False,
-            float_format="%.5f",
-        )
         #%%--- validation plots
         if Plotting:
             #filter out modelled values for all those variables and days for which we have measured values
@@ -420,7 +408,7 @@ def normal_run(path_normal,
             else:
                 metrics_df.to_csv(csv_file, index=False) 
                 
-            return mean_ef, metrics_df #return mean EF as overall performance metric
+            return mean_ef, metrics_df, final_results_df #return mean EF as overall performance metric
         
 #%% Normal run with validation #####################################################################
 if mode_ == "Normal":
@@ -443,7 +431,7 @@ if mode_ == "Normal":
 
 # end of normal run function
 #run it now
-    mean_ef, metrics_df = normal_run(path_normal, 
+    mean_ef, metrics_df, final_results_df = normal_run(path_normal, 
                    duration, 
                    cols_measured_respSoil, 
                    cols_measured_respSubstrate,
@@ -459,6 +447,20 @@ if mode_ == "Normal":
           0.5 < EF < 0.65 satisfactory to good
           EF < 0 poor performance (model predictions worse than the mean of observations)
           ''')
+    #make output directory    
+                      
+    try:
+            os.makedirs("./output/data")
+    except FileExistsError:
+        # if directory already exists
+        pass
+    
+    #save all modelled data
+    final_results_df.to_csv(
+        "./output/data/Normal.csv",
+        index=False,
+        float_format="%.5f",
+    )
     
 #%% Sensitivity ###########################
 if mode_ == "Sensitivity":
@@ -1720,7 +1722,93 @@ if mode_ == "Bayesian":
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             ]
         )
+#%% Latin Hypercube mode ###########################
+if mode_ == "Hypercube":
+    #set the path to the calibration that you want to use
+    logs_path =  "./logs/250707_Bayesian"
+    #%% --- step 1 load the hypercube sample
+    # Load the "AcceptedParams" json from output_Bayesian/, its name contains also a date, so search for file starting AcceptedParams
+    file_pattern = os.path.join(logs_path, "BestParamSetValidation*")
+    files = glob.glob(file_pattern)
+    
+    selected_sets = []
+    #load jsons into a list
+    for file_path in files:
+        with open(file_path, 'r') as f:
+            try:
+                params = json.load(f)
+                selected_sets.append(params)
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON from {file_path}: {e}")
+                
+     
 
+    #%% --- step 2: run for all parameter sets from hypercube sample
+    #load input
+    path_normal = "Normal_run_input_2022.csv"
+    inputRun = pd.read_csv(path_normal, header=0, skiprows=0)    
+    numTreatments = len(inputRun)
+    duration = 155 #number of days of incubation
+    Plotting = False # switch off for now
+    
+    df_list1 = []
+    df_list2 = []
+    
+    #for each parameter set
+    for index, parset in enumerate(selected_sets): #ready for multiple parameter sets
+        # Combine the calibrated parameters and the fixed parameters into one variable
+        AllParam.update(parset) #this overwrites part of the input parameters which are calibrated
+        print("index", index)
+        print(AllParam)
+        #for each treatment (row in Normal_input)
+        for treatment in range(numTreatments):
+            treatmentVar = inputRun.iloc[treatment, 0:21] # select first 21 columns from the input file
+       
+            results_df = run_model(
+                AllParam,
+                treatmentVar,
+                mode_="Normal",
+                Plotting=Plotting,
+                numDays=duration,
+                path=results_path
+            )
+            #create treatment ID starting from 1
+            results_df['treatmentID'] = treatment + 1
+            #create parameter set ID starting from 1
+            results_df['setID'] = index + 1
+            #store the results in a list of dataframes
+            df_list1.append(results_df)         
+                            
+
+       #create dataset for all treatments from one parameter set
+        final_results_df = pd.concat(
+            df_list1, ignore_index=True
+        ) 
+        #store this dataframe in a second list of dataframes
+        df_list2.append(final_results_df)
+        
+   
+    #overall output dataset including simulated data from all parameter sets in hypercube sample
+    overall_results_df = pd.concat(
+        df_list2, ignore_index=True
+    ) 
+    #save as csv file
+    
+    #make output directory (data)
+    data_path = os.path.join(logs_path, "data")
+    
+    try:
+            os.makedirs(data_path)
+    except FileExistsError:
+        # if directory already exists
+        pass
+    #save all modelled data
+    
+    overall_results_df.to_csv(
+        os.path.join(logs_path, "data/Simdata_Hypercube.csv"),
+        index=False,
+        float_format="%.5f",
+    )
 # # %%Old Validation run ###########################
 # if mode_ == "Validation":
 #     # Clear files
