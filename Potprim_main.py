@@ -69,7 +69,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Hypercube"]
 options = get_args(modes)
 
 #%% set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Hypercube"
+mode_ = "Bayesian"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -753,7 +753,7 @@ if mode_ == "Bayesian":
     #%%--- Set number of tries
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 15000
+    NumberOfTries = 10000
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 
@@ -1146,7 +1146,7 @@ if mode_ == "Bayesian":
             np.log(stats.uniform.pdf(candidateValue, MinimalOption, MaximumOption))
         )
         # a good set has no 0 likelyhood so product is a value but can be negative
-        LikelyhoodTest = np.product(
+        LikelyhoodTest = np.prod(
             stats.uniform.pdf(candidateValue, MinimalOption, MaximumOption)
         )
         # print('loglikelihood_param1',loglikelihood_param1)
@@ -1654,7 +1654,7 @@ if mode_ == "Bayesian":
         
        #%% --- step 3: run normal run with best parameter set
         Plotting = True # needs to be set to True cuz for Bayesian it is automatically switched to False
-        mean_ef, metrics_df = normal_run(path_bayesian, 
+        mean_ef, metrics_df, final_results_df = normal_run(path_bayesian, 
                        duration, 
                        cols_measured_respSoil, 
                        cols_measured_respSubstrate,
@@ -1792,6 +1792,7 @@ if mode_ == "Hypercube":
     overall_results_df = pd.concat(
         df_list2, ignore_index=True
     ) 
+    #%% --- step 3: save output data into Simdata_Hypercube
     #save as csv file
     
     #make output directory (data)
