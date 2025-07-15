@@ -867,17 +867,17 @@ if mode_ == "Bayesian":
     """2) calculate the likelihood of the parameters chosen (for a flat distribution this will always be constant or 0)
     """
     # pdf=probability density function, the likelihood of the parameter set
-    loglikelihood_param = np.sum(
-        np.log(
-            stats.uniform.pdf(CalibratedParametersValues, MinimalOption, MaximumOption)
-        )
-    )
-    
     # loglikelihood_param = np.sum(
     #     np.log(
-    #         stats.uniform.pdf(CalibratedParametersValues, MinimalOption, MaximumOption - MinimalOption)
+    #         stats.uniform.pdf(CalibratedParametersValues, MinimalOption, MaximumOption)
     #     )
     # )
+    
+    loglikelihood_param = np.sum(
+        np.log(
+            stats.uniform.pdf(CalibratedParametersValues, MinimalOption, MaximumOption - MinimalOption)
+        )
+    )
 
     print(loglikelihood_param)
     """
@@ -1140,15 +1140,17 @@ if mode_ == "Bayesian":
 
         # 8) calculate the likelihood of these new parameters, assuming a uniform distribution
         # pdf=probability density function, the likelihood of the parameter set
-        test = stats.uniform.pdf(candidateValue, MinimalOption, MaximumOption)
-        test2 = np.log(test)
+        # test = stats.uniform.pdf(candidateValue, MinimalOption, MaximumOption - MinimalOption)
+        # test2 = np.log(test)
         loglikelihood_param1 = np.sum(
-            np.log(stats.uniform.pdf(candidateValue, MinimalOption, MaximumOption))
+            np.log(stats.uniform.pdf(candidateValue, MinimalOption, MaximumOption - MinimalOption))
         )
+
         # a good set has no 0 likelyhood so product is a value but can be negative
         LikelyhoodTest = np.prod(
-            stats.uniform.pdf(candidateValue, MinimalOption, MaximumOption)
+            stats.uniform.pdf(candidateValue, MinimalOption, MaximumOption - MinimalOption)
         )
+        
         # print('loglikelihood_param1',loglikelihood_param1)
         if LikelyhoodTest != 0:
             print("line 537 entered the next parameter set try yaay")
