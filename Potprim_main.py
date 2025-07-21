@@ -39,6 +39,7 @@ import numpy as np
 import pandas as pd
 from numpy import random as ra
 from scipy import stats
+from scipy.stats import qmc
 import BayesianFunctionsPotprim #needed in Bayesian mode
 import MainFunctionsPotprim #needed in other modes, plotting, validation etc.
 import sys
@@ -753,7 +754,7 @@ if mode_ == "Bayesian":
     #%%--- Set number of tries
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 5000
+    NumberOfTries = 20000
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 
@@ -1726,6 +1727,92 @@ if mode_ == "Bayesian":
         )
 #%% Latin Hypercube mode ###########################
 if mode_ == "Hypercube":
+    #%% --- step 0 combine all calibrations into one
+    #not sure why this is needed but somehow yes
+    os.chdir("C:/Users/Olga/Dropbox/git/KEYLINK")
+    #load all the accepted parameter sets and calculate minimum and maximum of each parameter
+    #list of all calibrations that I want to string:
+    calibrations = [
+    "250707_Bayesian",
+    "250708_Bayesian",
+    "250710_Bayesian",
+    "250715_Bayesian",
+    "250717_Bayesian",
+    "250717_Bayesian_1",
+    "250719_Bayesian"
+    ]
+    
+    df_list = []
+    df_all_list = []
+    
+    for i in calibrations:        
+        file_path1 = os.path.join("./logs/", i, "calibratedParameters.csv")
+        file_path2 = os.path.join("./logs/", i, "AllTestedParameters.csv")
+        # Load the CSV files into a DataFrame    
+        df = pd.read_csv(file_path1, header=None)
+        df_all = pd.read_csv(file_path2, header=None)
+        #append the dataframe to a list of dataframes
+        df_list.append(df)
+        df_all_list.append(df_all)
+        
+    #create dataset from all calibrations
+    acceptedParams_df = pd.concat(
+        df_list, ignore_index=True
+    )     
+    testedParams_df = pd.concat(
+        df_all_list, ignore_index=True
+    )     
+    
+    #calculate minimum and maximum values for each parameter
+    # Min and max per column
+    min_values = acceptedParams_df.min()
+    max_values = acceptedParams_df.max()
+    
+
+    
+    # Combine into a new DataFrame
+    summary_df = pd.DataFrame({
+        'min': min_values,
+        'max': max_values
+    })
+
+    #save summary to csv
+    summary_df.to_csv(
+        os.path.join("acceptedParams_MinMax.csv"),
+        index=False,
+        float_format="%.5f",
+    )
+    
+    #save All accepted params to csv
+    acceptedParams_df.to_csv(
+        os.path.join("acceptedParams.csv"),
+        index=False,
+        float_format="%.5f",
+    )
+    
+    #%% --- step 0.5 make hypercube sample and save them as jsons
+    # Number of samples
+    n_samples = 15
+    n_params = acceptedParams_df.shape[1]
+    n_grid = acceptedParams_df.shape[0]  # number of values per parameter
+    
+    # Latin Hypercube Sampling in [0,1]
+    sampler = qmc.LatinHypercube(d=n_params)
+    lhs_sample = sampler.random(n=n_samples)
+    
+    # Map to grid indices
+    indices = (lhs_sample * n_grid).astype(int)
+    indices = np.clip(indices, 0, n_grid - 1)
+    
+    # Sample from DataFrame using the LHS indices
+    sampled_df = pd.DataFrame({
+        i: acceptedParams_df[i].values[indices[:, i]] for i in range(n_params)
+    })
+    
+    print(sampled_df)
+    
+    #todo export as fifteen separate jsons that are then loaded in the next step or make another solution
+    
     #set the path to the calibration that you want to use
     logs_path =  "./logs/250707_Bayesian"
     #%% --- step 1 load the hypercube sample
