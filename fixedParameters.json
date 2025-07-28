@@ -1,6 +1,6 @@
 {
-    "availDOMtobulk": 0.002,
-    "fungi_rhiz_rel": 0.062,
+    "availDOMtobulk": 0.005,
+    "fungi_rhiz_rel": 0.061,
     "mRecrhiz":0.5,  
     "mRecbulk":0.5, 
     "recMAOM":0.9, 

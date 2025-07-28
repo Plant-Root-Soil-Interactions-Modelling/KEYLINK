@@ -1,6 +1,6 @@
 {
    "bact_rhiz_rel": 0.303,
-   "fungi_rhiz_rel": 0.062,
+   "fungi_rhiz_rel": 0.061,
    "DOM_EC": 12.779,
    "DEATHrhiz": 0.011,
    "DEATHbulk": 0.010,
@@ -23,7 +23,7 @@
    "RESPbulk": 0.073,
    "RESPrhiz": 0.027,
    "fSOM": 0.713,
-   "availDOMtobulk": 0.002,
+   "availDOMtobulk": 0.005, 
    "availDOMtorhiz": 0.926,
    "GMAXrhiz": 8.353,
    "GMAXbulk": 4.172,
