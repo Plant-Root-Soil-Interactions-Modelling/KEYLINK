@@ -19,7 +19,7 @@
         "MM_Mic_MAOM": 0.905,
         "MM_SA_MAOM": 0.001,
         "MM_DOM_MAOM": 0.006,
-        "Priming_max": 0.000,
+        "Priming_max": 0.000195,
         "RESPbulk": 0.067,
         "RESPrhiz": 0.028,
         "fSOM": 0.720,
