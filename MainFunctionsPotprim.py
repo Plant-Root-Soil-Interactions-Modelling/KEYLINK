@@ -247,4 +247,77 @@ def calculate_metrics(measured, modelled):
     
     return rmse, bias, ef
 
+#%% --- combines all calibrations we want to combine into one csv file and calculates min and max of the accepted parameters
+def compile_Bayesians():  
+    #not sure why this is needed but somehow yes
+    os.chdir("C:/Users/Olga/Dropbox/git/KEYLINK")
+    #load all the accepted parameter sets and calculate minimum and maximum of each parameter
+    #list of all calibrations that I want to string:
+    # calibrations = [
+    # "250707_Bayesian",
+    # "250708_Bayesian",
+    # "250710_Bayesian",
+    # "250715_Bayesian",
+    # "250717_Bayesian",
+    # "250717_Bayesian_1",
+    # "250719_Bayesian"
+    # ]
+    
+    calibrations = ["250725_Bayesian_2_saved_manually",
+                    "250727_Bayesian_2_saved_manually",
+                    "250726_Bayesian_saved_manually"
+        ]
+    
+
+    
+    df_list = []
+    df_all_list = []
+    
+    for i in calibrations:        
+        file_path1 = os.path.join("./logs/", i, "calibratedParameters.csv")
+        # file_path2 = os.path.join("./logs/", i, "AllTestedParameters.csv")
+        # Load the CSV files into a DataFrame    
+        df = pd.read_csv(file_path1, header=None)
+        # df_all = pd.read_csv(file_path2, header=None)
+        #append the dataframe to a list of dataframes
+        df_list.append(df)
+        # df_all_list.append(df_all)
+        
+    #create dataset from all calibrations
+    acceptedParams_df = pd.concat(
+        df_list, ignore_index=True
+    )     
+    # testedParams_df = pd.concat(
+        # df_all_list, ignore_index=True
+    # )     
+    
+    #calculate minimum and maximum values for each parameter
+    # Min and max per column
+    min_values = acceptedParams_df.min()
+    max_values = acceptedParams_df.max()
+    
+
+    
+    # Combine into a new DataFrame
+    summary_df = pd.DataFrame({
+        'min': min_values,
+        'max': max_values
+    })
+
+    #save summary to csv
+    summary_df.to_csv(
+        os.path.join("acceptedParams_MinMax.csv"),
+        index=False,
+        float_format="%.5f",
+    )
+    
+    #save All accepted params to csv
+    acceptedParams_df.to_csv(
+        os.path.join("acceptedParams.csv"),
+        header=False,
+        index=False,
+        float_format="%.5f",
+    )
+    
+    return
 
