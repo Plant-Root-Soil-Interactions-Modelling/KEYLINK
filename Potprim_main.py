@@ -70,7 +70,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Hypercube"]
 options = get_args(modes)
 
 #%% set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Bayesian"
+mode_ = "Normal"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -127,6 +127,8 @@ def normal_run(path_normal,
                cols_measured_respSoil, 
                cols_measured_respSubstrate,
                cols_data_measured,
+               cols_measured_PE,
+               timepoints,
                AllParam, 
                Plotting,
                results_path
@@ -175,6 +177,10 @@ def normal_run(path_normal,
             #filter out modelled values for all those variables and days for which we have measured values
             #first automatically extract for which data we have measured data
             data_measured = inputRun.iloc[:, cols_data_measured]  # get measured data
+            #separately get measured PE data, because these are not used to extract simulated values
+            measured_PE = inputRun.iloc[:, cols_measured_PE]
+            
+            #now proceed with working with the measured data used to get simulated data
             data_measured_names = []
             data_measured_days = []
             data_measured_colnames = data_measured.columns.tolist() #extract column names of measured data
@@ -284,16 +290,16 @@ def normal_run(path_normal,
             # print(data_modelled)
             # print(data_modelled.columns) # has the modelled data but also treatmentID and treatment
             # print(data_measured) 
-            # print(data_measured.columns) #has only the actual columns with data, 26 columns
-            
-            #calculate priming effects from modelled values            
+            # print(data_measured.columns) #has only the actual columns with data, 26 columns            
+           
             # Timepoints
-            timepoints = [1, 15, 29, 43, 71, 99, 127, 155]
+            # timepoints = [1, 15, 29, 43, 71, 99, 127, 155]
             
+            #calculate priming effects from modelled values 
             # Loop through each timepoint column
             for tp in timepoints:
                 col_name = f'respSoil{tp}'
-                pe_col_name = f'PE_{tp}'
+                pe_col_name = f'PE{tp}'
             
                 # Calculate baseline: average of first 5 rows
                 control_avg = data_modelled[col_name].iloc[:5].mean()
@@ -302,39 +308,39 @@ def normal_run(path_normal,
                 data_modelled[pe_col_name] = data_modelled[col_name] - control_avg
             # print(data_modelled)        
             
-            # add to measured data the measured PE
-            measured_pe = [
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0.193041078, 0.034985897, 0.100177875, 0.187664247, 0.041343569, 0.027769672, -0.017540581, 0.070629515],
-                [0.059753228, 0.10201344, 0.115680303, 0.162590543, -0.012185349, 0.076723786, 0.01050735, 0.060506018],
-                [0.099497507, 0.01044408, 0.025241125, 0.094215362, 0.044780416, 0.071090341, 0.036433529, 0.090674294],
-                [0.026888444, 0.062919305, 0.130671021, 0.172471442, 0.063210497, 0.090222066, 0.111911731, 0.085078498],
-                [0.144149032, 0.007398843, 0.084534788, 0.200350338, 0.069568713, 0.038685621, 0.080835147, 0.07273918],
-                [0.034625915, -0.018205728, 0.060185966, 0.155945407, -0.086027403, -0.045023589, 0.028171482, 0.025587571],
-                [0.070034344, -0.045407082, 0.020044714, 0.127214007, -0.173295563, 0.097918414, 0.050425069, 0.026631378],
-                [-0.026323323, 0.027147225, 0.079715453, 0.080597113, -0.141389744, 0.079355747, 0.040404642, 0.037954106],
-                [0.106536129, -0.015017946, -0.007737672, 0.029794373, -0.197526729, -0.017418134, 0.041796859, 0.043960747],
-                [0.099057599, -0.022678775, -0.083162234, 0.009434667, 0.026184499, 0.125183071, -0.001748618, 0.043497572],
-                [0.059863804, 0.011452457, 0.046593377, 0.154451368, -0.009167898, 0.069842926, 0.055206998, 0.046937418],
-                [0.020161335, -0.002327469, -0.049300577, 0.094731, 0.031896394, -0.086740938, 0.053491715, 0.049903813],
-                [0.067993333, 0.053323092, 0.060347253, 0.228011824, 0.111372456, 0.11455997, 0.07451269, 0.088998821],
-                [0.065692151, 0.020505789, -0.050876293, 0.155538873, 0.057494665, -0.10904691, 0.018337655, 0.031095371],
-                [0.076164907, 0.019990349, -0.030081478, 0.139523774, 0.029723779, -0.024061897, 0.065909517, 0.142481845],
-            ]
+            # # add to measured data the measured PE
+            # measured_pe = [
+            #     [0, 0, 0, 0, 0, 0, 0, 0],
+            #     [0, 0, 0, 0, 0, 0, 0, 0],
+            #     [0, 0, 0, 0, 0, 0, 0, 0],
+            #     [0, 0, 0, 0, 0, 0, 0, 0],
+            #     [0, 0, 0, 0, 0, 0, 0, 0],
+            #     [0.193041078, 0.034985897, 0.100177875, 0.187664247, 0.041343569, 0.027769672, -0.017540581, 0.070629515],
+            #     [0.059753228, 0.10201344, 0.115680303, 0.162590543, -0.012185349, 0.076723786, 0.01050735, 0.060506018],
+            #     [0.099497507, 0.01044408, 0.025241125, 0.094215362, 0.044780416, 0.071090341, 0.036433529, 0.090674294],
+            #     [0.026888444, 0.062919305, 0.130671021, 0.172471442, 0.063210497, 0.090222066, 0.111911731, 0.085078498],
+            #     [0.144149032, 0.007398843, 0.084534788, 0.200350338, 0.069568713, 0.038685621, 0.080835147, 0.07273918],
+            #     [0.034625915, -0.018205728, 0.060185966, 0.155945407, -0.086027403, -0.045023589, 0.028171482, 0.025587571],
+            #     [0.070034344, -0.045407082, 0.020044714, 0.127214007, -0.173295563, 0.097918414, 0.050425069, 0.026631378],
+            #     [-0.026323323, 0.027147225, 0.079715453, 0.080597113, -0.141389744, 0.079355747, 0.040404642, 0.037954106],
+            #     [0.106536129, -0.015017946, -0.007737672, 0.029794373, -0.197526729, -0.017418134, 0.041796859, 0.043960747],
+            #     [0.099057599, -0.022678775, -0.083162234, 0.009434667, 0.026184499, 0.125183071, -0.001748618, 0.043497572],
+            #     [0.059863804, 0.011452457, 0.046593377, 0.154451368, -0.009167898, 0.069842926, 0.055206998, 0.046937418],
+            #     [0.020161335, -0.002327469, -0.049300577, 0.094731, 0.031896394, -0.086740938, 0.053491715, 0.049903813],
+            #     [0.067993333, 0.053323092, 0.060347253, 0.228011824, 0.111372456, 0.11455997, 0.07451269, 0.088998821],
+            #     [0.065692151, 0.020505789, -0.050876293, 0.155538873, 0.057494665, -0.10904691, 0.018337655, 0.031095371],
+            #     [0.076164907, 0.019990349, -0.030081478, 0.139523774, 0.029723779, -0.024061897, 0.065909517, 0.142481845],
+            # ]
             
-            # Timepoints
-            timepoints = [1, 15, 29, 43, 71, 99, 127, 155]
-            column_names = [f'PE_{tp}' for tp in timepoints]
+            # # Timepoints
+            # timepoints = [1, 15, 29, 43, 71, 99, 127, 155]
+            # column_names = [f'PE_{tp}' for tp in timepoints]
             
-            # Create DataFrame with new columns
-            df_pe = pd.DataFrame(measured_pe, columns=column_names)
+            # # Create DataFrame with new columns
+            # df_pe = pd.DataFrame(measured_pe, columns=column_names)
             
             # Add this dataframe to the original DataFrame of measured values
-            data_measured = pd.concat([data_measured, df_pe], axis=1)
+            data_measured = pd.concat([data_measured, measured_PE], axis=1)
     
             #calculate total PE for each treatment/run
             # pe_tot = sum(pe_list)/len(pe_list) * 24 * 155#priming effect in microgramsC per g of soil over the whole incubation
@@ -420,6 +426,8 @@ if mode_ == "Normal":
         cols_measured_respSoil = slice(29, 37) #which columns contain measured soil derived respiration
         cols_measured_respSubstrate = slice(37, 45)  #which columns contain measured substrate derived respiration
         cols_data_measured = slice(21, 45)
+        cols_measured_PE = slice(69, 77)
+        timepoints = [1, 15, 29, 43, 71, 99, 127, 155] #timepoints for which to calculate the PE effect
         
     if dataset_ == "Jilkova2024":
         path_normal = "Normal_run_input_2024.csv"
@@ -437,6 +445,8 @@ if mode_ == "Normal":
                    cols_measured_respSoil, 
                    cols_measured_respSubstrate,
                    cols_data_measured,
+                   cols_measured_PE,
+                   timepoints,
                    AllParam, 
                    Plotting,
                    results_path
@@ -642,6 +652,9 @@ if mode_ == "Bayesian":
         duration = 155 #number of days of incubation
         cols_measured_respSoil = slice(29, 37) #which columns contain measured soil derived respiration
         cols_measured_respSubstrate = slice(37, 45)  #which columns contain measured substrate derived respiration
+        cols_measured_PE = slice(69, 77)
+        cols_measured_PE_errors = slice(77, 85)
+        timepoints = [1, 15, 29, 43, 71, 99, 127, 155] #timepoints for which to calculate the PE effect
     
     if dataset_ == "Jilkova2024":
         path_bayesian = "Bayesian_run_input_2024.csv"
@@ -754,7 +767,7 @@ if mode_ == "Bayesian":
     #%%--- Set number of tries
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 20000
+    NumberOfTries = 2
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 
@@ -795,9 +808,14 @@ if mode_ == "Bayesian":
     # "put the measured data and their errors in separate dataframes
     data_measured = pd.DataFrame()
     data_measured_errors = pd.DataFrame()
+
      
     data_measured = inputBayesianRun.iloc[:, cols_data_measured]    
     data_measured_errors = inputBayesianRun.iloc[:, cols_data_measured_errors]
+    #for PE make it into dictionaries for easier manipulation
+    measured_PE = inputBayesianRun.iloc[:, cols_measured_PE].to_dict(orient = "records")  
+    measured_PE_errors = inputBayesianRun.iloc[:, cols_measured_PE_errors].to_dict(orient = "records")
+
 
 
     # data_measured_errors.columns
@@ -994,55 +1012,23 @@ if mode_ == "Bayesian":
     # Step 2: Add PE values to each entry
     for entry in data_Simulated:
         for key in resp_keys:
-            pe_key = f"PE_{key[8:]}"  # Extract number from 'respSoilX'
+            pe_key = f"PE{key[8:]}"  # Extract number from 'respSoilX'
             entry[pe_key] = entry.get(key, 0) - averages[key]
    
     #then calculate likelihood connected to priming
-    #first load measured PE data, doing manually for now
-    # Timepoints (column headers)
-    timepoints = [1, 15, 29, 43, 71, 99, 127, 155]
     
-    # Measured PE values, as rows of lists
-    measured_pe_rows = [
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0.193041078, 0.034985897, 0.100177875, 0.187664247, 0.041343569, 0.027769672, -0.017540581, 0.070629515],
-        [0.059753228, 0.10201344, 0.115680303, 0.162590543, -0.012185349, 0.076723786, 0.01050735, 0.060506018],
-        [0.099497507, 0.01044408, 0.025241125, 0.094215362, 0.044780416, 0.071090341, 0.036433529, 0.090674294],
-        [0.026888444, 0.062919305, 0.130671021, 0.172471442, 0.063210497, 0.090222066, 0.111911731, 0.085078498],
-        [0.144149032, 0.007398843, 0.084534788, 0.200350338, 0.069568713, 0.038685621, 0.080835147, 0.07273918],
-        [0.034625915, -0.018205728, 0.060185966, 0.155945407, -0.086027403, -0.045023589, 0.028171482, 0.025587571],
-        [0.070034344, -0.045407082, 0.020044714, 0.127214007, -0.173295563, 0.097918414, 0.050425069, 0.026631378],
-        [-0.026323323, 0.027147225, 0.079715453, 0.080597113, -0.141389744, 0.079355747, 0.040404642, 0.037954106],
-        [0.106536129, -0.015017946, -0.007737672, 0.029794373, -0.197526729, -0.017418134, 0.041796859, 0.043960747],
-        [0.099057599, -0.022678775, -0.083162234, 0.009434667, 0.026184499, 0.125183071, -0.001748618, 0.043497572],
-        [0.059863804, 0.011452457, 0.046593377, 0.154451368, -0.009167898, 0.069842926, 0.055206998, 0.046937418],
-        [0.020161335, -0.002327469, -0.049300577, 0.094731, 0.031896394, -0.086740938, 0.053491715, 0.049903813],
-        [0.067993333, 0.053323092, 0.060347253, 0.228011824, 0.111372456, 0.11455997, 0.07451269, 0.088998821],
-        [0.065692151, 0.020505789, -0.050876293, 0.155538873, 0.057494665, -0.10904691, 0.018337655, 0.031095371],
-        [0.076164907, 0.019990349, -0.030081478, 0.139523774, 0.029723779, -0.024061897, 0.065909517, 0.142481845],
-    ]
-
-    # Transform into a list of dictionaries
-    measured_pe_dicts = [
-        {f"PE_{tp}": value for tp, value in zip(timepoints, row)}
-        for row in measured_pe_rows
-    ]
-        
     #now loop over both modelled and measured data and calculate likelihood of PE
-    for sim, meas in zip(data_Simulated, measured_pe_dicts):
+    for sim, meas, err in zip(data_Simulated, measured_PE, measured_PE_errors):
         pe_list = []
-        for tp in timepoints:
-            sim_key = f"PE_{tp}" #name of the column
-            pe_sim = sim.get(sim_key) #get simulated value
-            pe_measured = meas.get(sim_key) #get measured value
+        for key in meas.keys(): #loop over all measured PE timepoints, e.g.
+            err_key = f"{key}_error" #name of the column
+            pe_sim = sim.get(key) #get simulated value
+            pe_measured = meas.get(key) #get measured value
+            pe_measured_error = err.get(err_key) #get error
             likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
                 pe_sim,
                 pe_measured, #target value 
-                0.002, #guesstimated error (5% and then averaged)
+                pe_measured_error, #guesstimated error 0.002 (5% and then averaged)
             )
             # print("simkey, pe_sim, pe_measured, likelyhood", sim_key, pe_sim, pe_measured, likelyhood)
             likelihood_simulated +=  likelyhood  # and add it up
@@ -1273,55 +1259,23 @@ if mode_ == "Bayesian":
             # Step 2: Add PE values to each entry
             for entry in data_Simulated:
                 for key in resp_keys:
-                    pe_key = f"PE_{key[8:]}"  # Extract number from 'respSoilX'
+                    pe_key = f"PE{key[8:]}"  # Extract number from 'respSoilX'
                     entry[pe_key] = entry.get(key, 0) - averages[key]
            
             #then calculate likelihood connected to priming
-            #first load measured PE data, doing manually for now
-            # Timepoints (column headers)
-            timepoints = [1, 15, 29, 43, 71, 99, 127, 155]
-            
-            # Measured PE values, as rows of lists
-            measured_pe_rows = [
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0.193041078, 0.034985897, 0.100177875, 0.187664247, 0.041343569, 0.027769672, -0.017540581, 0.070629515],
-                [0.059753228, 0.10201344, 0.115680303, 0.162590543, -0.012185349, 0.076723786, 0.01050735, 0.060506018],
-                [0.099497507, 0.01044408, 0.025241125, 0.094215362, 0.044780416, 0.071090341, 0.036433529, 0.090674294],
-                [0.026888444, 0.062919305, 0.130671021, 0.172471442, 0.063210497, 0.090222066, 0.111911731, 0.085078498],
-                [0.144149032, 0.007398843, 0.084534788, 0.200350338, 0.069568713, 0.038685621, 0.080835147, 0.07273918],
-                [0.034625915, -0.018205728, 0.060185966, 0.155945407, -0.086027403, -0.045023589, 0.028171482, 0.025587571],
-                [0.070034344, -0.045407082, 0.020044714, 0.127214007, -0.173295563, 0.097918414, 0.050425069, 0.026631378],
-                [-0.026323323, 0.027147225, 0.079715453, 0.080597113, -0.141389744, 0.079355747, 0.040404642, 0.037954106],
-                [0.106536129, -0.015017946, -0.007737672, 0.029794373, -0.197526729, -0.017418134, 0.041796859, 0.043960747],
-                [0.099057599, -0.022678775, -0.083162234, 0.009434667, 0.026184499, 0.125183071, -0.001748618, 0.043497572],
-                [0.059863804, 0.011452457, 0.046593377, 0.154451368, -0.009167898, 0.069842926, 0.055206998, 0.046937418],
-                [0.020161335, -0.002327469, -0.049300577, 0.094731, 0.031896394, -0.086740938, 0.053491715, 0.049903813],
-                [0.067993333, 0.053323092, 0.060347253, 0.228011824, 0.111372456, 0.11455997, 0.07451269, 0.088998821],
-                [0.065692151, 0.020505789, -0.050876293, 0.155538873, 0.057494665, -0.10904691, 0.018337655, 0.031095371],
-                [0.076164907, 0.019990349, -0.030081478, 0.139523774, 0.029723779, -0.024061897, 0.065909517, 0.142481845],
-            ]
-
-            # Transform into a list of dictionaries
-            measured_pe_dicts = [
-                {f"PE_{tp}": value for tp, value in zip(timepoints, row)}
-                for row in measured_pe_rows
-            ]
-                
+   
             #now loop over both modelled and measured data and calculate likelihood of PE
-            for sim, meas in zip(data_Simulated, measured_pe_dicts):
+            for sim, meas, err in zip(data_Simulated, measured_PE, measured_PE_errors):
                 pe_list = []
-                for tp in timepoints:
-                    sim_key = f"PE_{tp}" #name of the column
-                    pe_sim = sim.get(sim_key) #get simulated value
-                    pe_measured = meas.get(sim_key) #get measured value
+                for key in meas.keys(): #loop over all measued PE timepoints, e.g.
+                    err_key = f"{key}_error" #name of the column
+                    pe_sim = sim.get(key) #get simulated value
+                    pe_measured = meas.get(key) #get measured value
+                    pe_measured_error = err.get(err_key) #get error
                     likelyhood = BayesianFunctionsPotprim.calc_sim_likelyhood(
                         pe_sim,
                         pe_measured, #target value 
-                        0.002, #guesstimated error (5% and then averaged)
+                        pe_measured_error, #guesstimated error 0.002 (5% and then averaged)
                     )
                     # print("simkey, pe_sim, pe_measured, likelyhood", sim_key, pe_sim, pe_measured, likelyhood)
                     likelihood_simulated +=  likelyhood  # and add it up
@@ -1662,6 +1616,8 @@ if mode_ == "Bayesian":
                        cols_measured_respSoil, 
                        cols_measured_respSubstrate,
                        cols_data_measured,
+                       cols_measured_PE,
+                       timepoints,
                        AllParam,
                        Plotting, 
                        sharable_path
@@ -1727,70 +1683,15 @@ if mode_ == "Bayesian":
         )
 #%% Latin Hypercube mode ###########################
 if mode_ == "Hypercube":
-    #%% --- step 0 combine all calibrations into one
-    #not sure why this is needed but somehow yes
-    os.chdir("C:/Users/Olga/Dropbox/git/KEYLINK")
-    #load all the accepted parameter sets and calculate minimum and maximum of each parameter
-    #list of all calibrations that I want to string:
-    calibrations = [
-    "250707_Bayesian",
-    "250708_Bayesian",
-    "250710_Bayesian",
-    "250715_Bayesian",
-    "250717_Bayesian",
-    "250717_Bayesian_1",
-    "250719_Bayesian"
-    ]
-    
-    df_list = []
-    df_all_list = []
-    
-    for i in calibrations:        
-        file_path1 = os.path.join("./logs/", i, "calibratedParameters.csv")
-        file_path2 = os.path.join("./logs/", i, "AllTestedParameters.csv")
-        # Load the CSV files into a DataFrame    
-        df = pd.read_csv(file_path1, header=None)
-        df_all = pd.read_csv(file_path2, header=None)
-        #append the dataframe to a list of dataframes
-        df_list.append(df)
-        df_all_list.append(df_all)
-        
-    #create dataset from all calibrations
-    acceptedParams_df = pd.concat(
-        df_list, ignore_index=True
-    )     
-    testedParams_df = pd.concat(
-        df_all_list, ignore_index=True
-    )     
-    
-    #calculate minimum and maximum values for each parameter
-    # Min and max per column
-    min_values = acceptedParams_df.min()
-    max_values = acceptedParams_df.max()
-    
+      
+    #%% --- step 0.5 make hypercube sample and save them as jsons    
+    #load csv of accepted params as dataframe
+    #path for overall calibration
+    file_path = os.path.join("acceptedParams.csv") #was created by code stored away in MainFunctionsPotprim in function compile_Bayesians
 
+    # Load the CSV files into a DataFrame    
+    acceptedParams_df = pd.read_csv(file_path, header=None)
     
-    # Combine into a new DataFrame
-    summary_df = pd.DataFrame({
-        'min': min_values,
-        'max': max_values
-    })
-
-    #save summary to csv
-    summary_df.to_csv(
-        os.path.join("acceptedParams_MinMax.csv"),
-        index=False,
-        float_format="%.5f",
-    )
-    
-    #save All accepted params to csv
-    acceptedParams_df.to_csv(
-        os.path.join("acceptedParams.csv"),
-        index=False,
-        float_format="%.5f",
-    )
-    
-    #%% --- step 0.5 make hypercube sample and save them as jsons
     # Number of samples
     n_samples = 15
     n_params = acceptedParams_df.shape[1]
@@ -1811,24 +1712,67 @@ if mode_ == "Hypercube":
     
     print(sampled_df)
     
+    
     #todo export as fifteen separate jsons that are then loaded in the next step or make another solution
+    #convert the dataframe to a list of dictionaries required further
+    # Your custom keys (column names)
+    keys = [
+    "bact_rhiz_rel",
+    "DOM_EC",
+    "DEATHrhiz",
+    "DEATHbulk",
+    "KSrhiz",
+    "KSbulk",
+    "kPOM_MAOM",
+    "kMAOMs_MAOMp",
+    "MAOMpmaxrate",
+    "MAOMsmaxrate",
+    "MAOMmaxrate",
+    "MAOMratioSP",
+    "maxEffectMicMAOM",
+    "maxEffectSA_MAOM",
+    "maxEffectN_MAOM",
+    "MM_N_MAOM",
+    "MM_Mic_MAOM",
+    "MM_SA_MAOM",
+    "MM_DOM_MAOM",
+    "Priming_max",
+    "RESPbulk",
+    "RESPrhiz",
+    "fSOM",
+    "availDOMtorhiz",
+    "GMAXrhiz",
+    "GMAXbulk",
+    "MBini",
+    "FBini",
+    "pCN",
+    "DOMini",
+    "CN_DOMini",
+    "setID"
+  ]  # replace with your actual keys
     
-    #set the path to the calibration that you want to use
-    logs_path =  "./logs/250707_Bayesian"
-    #%% --- step 1 load the hypercube sample
-    # Load the "AcceptedParams" json from output_Bayesian/, its name contains also a date, so search for file starting AcceptedParams
-    file_pattern = os.path.join(logs_path, "BestParamSetValidation*")
-    files = glob.glob(file_pattern)
+    # Convert to list of dictionaries
+    dict_list = sampled_df.to_dict(orient='records')
     
-    selected_sets = []
-    #load jsons into a list
-    for file_path in files:
-        with open(file_path, 'r') as f:
-            try:
-                params = json.load(f)
-                selected_sets.append(params)
-            except json.JSONDecodeError as e:
-                print(f"Error decoding JSON from {file_path}: {e}")
+    # Manually map keys to each row
+    selected_sets = [dict(zip(keys, row)) for row in sampled_df.values]
+
+    # #set the path to the calibration that you want to use
+    # logs_path =  "./logs/250707_Bayesian"
+    # #%% --- step 1 load the hypercube sample
+    # # Load the "AcceptedParams" json from output_Bayesian/, its name contains also a date, so search for file starting AcceptedParams
+    # file_pattern = os.path.join(logs_path, "BestParamSetValidation*")
+    # files = glob.glob(file_pattern)
+    
+    # selected_sets = []
+    # #load jsons into a list
+    # for file_path in files:
+    #     with open(file_path, 'r') as f:
+    #         try:
+    #             params = json.load(f)
+    #             selected_sets.append(params)
+    #         except json.JSONDecodeError as e:
+    #             print(f"Error decoding JSON from {file_path}: {e}")
                 
      
 
