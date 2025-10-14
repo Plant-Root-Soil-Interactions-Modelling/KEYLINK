@@ -70,7 +70,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Hypercube"]
 options = get_args(modes)
 
 #%% set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Bayesian"
+mode_ = "Normal"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -193,9 +193,9 @@ def normal_run(path_normal,
 
          
             unique_variables = list(set(data_measured_names)) 
-            # print(unique_variables)
+
             
-            # print(final_results_df)
+
             #then transform the modelled data from wide format into long, to be able to filter by combinations of variable and day
             df_long = pd.melt(
                 final_results_df,
@@ -211,7 +211,7 @@ def normal_run(path_normal,
             key = pd.DataFrame({'data_measured_names': data_measured_names, 
                           'data_measured_days': python_data_measured_days
                           })
-            # print(key)              
+           
             #filter the modelled data by the measured variables and days by inner join             
             merged_df = pd.merge(
             df_long, 
@@ -220,9 +220,7 @@ def normal_run(path_normal,
             right_on=['data_measured_names','data_measured_days'],
             how='inner'
             )
-            # print(merged_df)
- 
-            # print(merged_df)
+
             #average by day and treatment
             averages = merged_df.groupby(['day','treatment',"variable"])['value'].mean().reset_index() #averages for each variable across all replicates for each treatment
             
@@ -300,7 +298,7 @@ def normal_run(path_normal,
             
                 # Subtract baseline from all rows to get priming effect
                 data_modelled[pe_col_name] = data_modelled[col_name] - control_avg
-            # print(data_modelled)        
+    
             
             
             # Add this dataframe to the original DataFrame of measured values
@@ -319,7 +317,7 @@ def normal_run(path_normal,
             metrics_list = []
             # --- 3. Plot in 2x2 grids ---
             for i in range(0, len(columns_to_plot), 4):
-                # print(data_modelled['treatment'])
+
                 subset = columns_to_plot[i:i+4]
                 
                 fig, axes = plt.subplots(2, 2, figsize=(10, 10))
@@ -381,7 +379,7 @@ def normal_run(path_normal,
 if mode_ == "Normal":
         
     if dataset_ == "Jilkova2022":
-        path_normal = "Normal_run_input_2022.csv"
+        path_normal = "Normal_run_input_2022scenarios.csv"
         duration = 155 #number of days of incubation
         cols_measured_respSoil = slice(29, 37) #which columns contain measured soil derived respiration
         cols_measured_respSubstrate = slice(37, 45)  #which columns contain measured substrate derived respiration
@@ -436,101 +434,79 @@ if mode_ == "Normal":
 #%% Sensitivity ###########################
 if mode_ == "Sensitivity":
     t1 = time.perf_counter()
-    # load parameter values from AllParam
-    paramsToTestValues = (
-        AllParam["bact_DOM_rel"],
-        AllParam["DOM_EC"],
-        AllParam["kpriming"],
-        AllParam["KS"],
-        AllParam["KSfungi"],
-        AllParam["KSbact"],
-        AllParam["kPOM_MAOM"],
-        AllParam["kMAOMs_MAOMp"],
-        AllParam["MAOMpmaxrate"],
-        AllParam["MAOMsmaxrate"],
-        AllParam["MAOMratioSP"],
-        AllParam["maxEffectBactMAOM"],
-        AllParam["maxEffectSA_MAOM"],
-        AllParam["maxEffectN_MAOM"],
-        AllParam["MM_N_MAOM"],
-        AllParam["MM_Bact_MAOM"],
-        AllParam["MM_SA_MAOM"],
-        AllParam["MM_DOM_MAOM"],
-        AllParam["Priming_max"],
+    if dataset_ == "Jilkova2022":
+        path_sensitivity = "Sensitivity_run_input_2022.csv" #use simplified input with just 4 treatments (no replicates)
+        path_initial_values = "datalistCalibrationParam_start_overallJuly28.json"
+        # cols_data_measured = slice(21, 45) #range of the columns to be considered
+        # cols_data_measured_errors = slice(45, 69) #range of the columns to be considered
+        # #these extra ones are needed for validation step
+        duration = 155 #number of days of incubation
+        # cols_measured_respSoil = slice(29, 37) #which columns contain measured soil derived respiration
+        # cols_measured_respSubstrate = slice(37, 45)  #which columns contain measured substrate derived respiration
+        # cols_measured_PE = slice(69, 77)
+        # cols_measured_PE_errors = slice(77, 85)
+        # timepoints = [1, 15, 29, 43, 71, 99, 127, 155] #timepoints for which to calculate the PE effect
+    
+    if dataset_ == "Jilkova2024":
+        path_sensitivity = "Bayesian_run_input_2024.csv"
+        # cols_data_measured = slice(21, 65) #range of the columns to be considered
+        # cols_data_measured_errors = slice(65, 109) #range of the columns to be considered
+        # #these extra ones are needed for validation step
+        duration = 161 #number of days of incubation
+        # cols_measured_respSoil = slice(33, 53) #which columns contain measured soil derived respiration
+        # cols_measured_respSubstrate = slice(66, 77)  #which columns contain measured substrate derived respiration
+
+    # load parameter values fromthe calibration input file (from which the overall calibration started)    
+    #load 
+    with open(path_initial_values) as inputCalibrationParamfile:
+        (numParams,
+         CalibParamInit, #this will be the values at which other parameters are held constant
+         CalParameters,
+         CalParameterValues,
+         MaximumOption,
+         MinimalOption,
+         keys,
+         ) = BayesianFunctionsPotprim.read_parameter_data(inputCalibrationParamfile)
+        
+    # paramsToTestDict = CalibParamInit
+    paramsToTestNames = keys
+    
+    # AllParam.update(paramsToTestDict) #update the calibrated parameters with the initial values from calibration
+    Hypercube = pd.read_csv("Hypercube_sampled.csv", header=0, skiprows=0)
+    Hypercube.columns = keys
+    
+    #save the hypercube sample
+    Hypercube.to_csv(
+        os.path.join("Hypercube_sampled_head.csv"),
+        index=False,
+        float_format="%.5f",
     )
-
-    paramsToTestNames = (
-        "bact_DOM_rel",
-        "DOM_EC",
-        "kpriming",
-        "KS",
-        "KSfungi",
-        "KSbact",
-        "kPOM_MAOM",
-        "kMAOMs_MAOMp",
-        "MAOMpmaxrate",
-        "MAOMsmaxrate",
-        "MAOMratioSP",
-        "maxEffectBactMAOM",
-        "maxEffectSA_MAOM",
-        "maxEffectN_MAOM",
-        "MM_N_MAOM",
-        "MM_Bact_MAOM",
-        "MM_SA_MAOM",
-        "MM_DOM_MAOM",
-        "Priming_max",
-    )
-
-    paramsToTestDict = dict(zip(paramsToTestNames, paramsToTestValues))
-    origValues = copy.deepcopy(
-        paramsToTestDict
-    )  # need deepcopy to not have a pointer but really full copy of values
-    paramChanges = np.array([-50, 0, 100])  # % changes to try for each parameter
-    numParams = len(paramsToTestValues)
-    numValues = len(paramChanges)
-    # numRuns_total= len(paramChanges) * len(paramsToTestValues)  # number of sensitivity runs
-
+    # calculate medians of hypercube for each parameter
+    Median_dict = Hypercube.median().to_dict()  
+    AllParam.update(Median_dict)
+    
     # Treatments
-    inputRun = pd.read_csv("Bayesian_run_input.csv", header=0, skiprows=0)
+    inputRun = pd.read_csv(path_sensitivity, header=0, skiprows=0)
     numTreatments = len(inputRun)
+    df_list = []
     run_info_list = []
-
-    for param in paramsToTestNames:
+    # paramsToTestNames = ['bact_rhiz_rel', 'fungi_rhiz_rel']
+    # paramsToTestNames = ['bact_rhiz_rel']
+    for param in paramsToTestNames: #for each parameter
         # if param == 'DOM_EC':
         #     break
-        for paramChange in paramChanges:
-            # calculate by how much to change the parameter value, using a relative parameter change
-            delta = (
-                paramsToTestDict[param] * paramChange / 100
-            )  # I change 1 parameter value
-            # caculate new value of parameter
-            value = paramsToTestDict[param] + delta
+        i=0 #count which of the 15 variants is used
+        for paramValue in Hypercube.loc[:,param]: #loop over all 15 parameter values from the hypercube 
+            
+            # # calculate by how much to change the parameter value, using a relative parameter change
+            # delta = (
+            #     paramsToTestDict[param] * paramChange / 100
+            # )  # I change 1 parameter value
+            # # caculate new value of parameter
+            # value = paramsToTestDict[param] + delta
             # change the value directly in the parameter set then used by run_model
-            AllParam[param] = value
 
-            # for i in range(len(DOMinput_treatments)):
-            # numruns = numruns + 1
-            # I want to use thevalues from the dict, for sensitivity, so i put all of the values back in the variable (not the fastest way)
-            # needs to be changed ifyou change the parameters to test
-            # bact_DOM_rel = paramsToTestDict["bact_DOM_rel"]
-            # DOM_EC = paramsToTestDict["DOM_EC"]
-            # kpriming = paramsToTestDict["kpriming"]
-            # KS = paramsToTestDict["KS"]
-            # KSfungi = paramsToTestDict["KSfungi"]
-            # KSbact = paramsToTestDict["KSbact"]
-            # kPOM_MAOM = paramsToTestDict["kPOM_MAOM"]
-            # kMAOMs_MAOMp = paramsToTestDict["kMAOMs_MAOMp"]
-            # MAOMpmaxrate = paramsToTestDict["MAOMpmaxrate"]
-            # MAOMsmaxrate = paramsToTestDict["MAOMsmaxrate"]
-            # MAOMratioSP = paramsToTestDict["MAOMratioSP"]
-            # maxEffectBactMAOM = paramsToTestDict["maxEffectBactMAOM"]
-            # maxEffectSA_MAOM = paramsToTestDict["maxEffectSA_MAOM"]
-            # maxEffectN_MAOM = paramsToTestDict["maxEffectN_MAOM"]
-            # MM_N_MAOM = paramsToTestDict["MM_N_MAOM"]
-            # MM_Bact_MAOM = paramsToTestDict["MM_Bact_MAOM"]
-            # MM_SA_MAOM = paramsToTestDict["MM_SA_MAOM"]
-            # MM_DOM_MAOM = paramsToTestDict["MM_DOM_MAOM"]
-            # Priming_max = paramsToTestDict["Priming_max"]
+            AllParam[param] = paramValue
 
             for treatment in range(numTreatments):
                 treatmentVar = inputRun.iloc[treatment, 0:21]
@@ -538,21 +514,23 @@ if mode_ == "Sensitivity":
                 results_df = run_model(
                     AllParam,
                     treatmentVar,
-                    mode_="Sensitivity",
-                    Plotting=Plotting,
+                    mode_,
+                    Plotting,
                     numDays=duration,
-                    path=None,
+                    path=None
                 )
+
+                
                 # add to the simulated values information about the parameter, its change and value
                 # temp_df_list = [param, paramChange, value] + temp_df_list
-                # print("temp_df_list", temp_df_list)
+
                 length = len(results_df)
 
                 info_df = pd.DataFrame(
                     {
                         "param": np.full(length, param),
-                        "paramChange": np.full(length, paramChange),
-                        "value": np.full(length, value),
+                        "param_variant": np.full(length, i),
+                        "value": np.full(length, paramValue),
                     }
                 )
 
@@ -563,22 +541,21 @@ if mode_ == "Sensitivity":
                 # save parameter set for each run
                 All_param_series = pd.Series(AllParam)
                 info_series = pd.Series(
-                    [param, paramChange, value], index=["param", "paramChange", "value"]
+                    [param, i, paramValue], index=["param", "param_variant", "value"]
                 )
                 # Concatenate the three Series
-
                 run_info = pd.concat([info_series, treatmentVar, All_param_series])
                 run_info_list.append(run_info)
+            #after each variant tried for certain parameter, keep track of the no of variant    
+            i = i+1 
 
-            # after all runs with one parameter set, reset parameters to original, before next parameter value change
-            # paramsToTestDict = copy.deepcopy(origValues)
-        # after all changes tried for certain parameter, reset its value to original value
-        AllParam[param] = paramsToTestDict[param]
+        # after all changes tried for certain parameter, reset its value to original median value
+        AllParam[param] = Median_dict[param]
 
     final_results_df = pd.concat(
         df_list, ignore_index=True
     )  # add all the rows to the results_df
-    run_info_df = pd.concat(run_info_list, ignore_index=True)
+    run_info_df = pd.DataFrame(run_info_list)
 
     try:
         os.makedirs("./output/data")
@@ -663,11 +640,11 @@ if mode_ == "Bayesian":
     """
 
     # def run_model(inputData, results_path, num_treatments, data=None, parallel=False):
-    #     print("Start running model")
+
     #     start = time.perf_counter()
 
     #     for treatment in range(num_treatments):
-    #         print('treatment =', treatment)
+
     #         treatment, result = run_model_bayesian(inputData, results_path, treatment, data)
     #         data_Simulated[treatment] = result
 
@@ -806,7 +783,7 @@ if mode_ == "Bayesian":
     posteriorChain = np.zeros([NumberOfTries, numParams])
     # start the chain, will hold all accepted parameter sets, and 0 if not accepted
     posteriorChain[0, :] = list(CalibratedParameters.values())
-    # print(parameterlist_df)
+
     #start a count of accepted parameter sets (prior length)
     NumOfAccepted = 0
 
@@ -1584,127 +1561,124 @@ if mode_ == "Bayesian":
         )
 #%% Latin Hypercube mode ###########################
 if mode_ == "Hypercube":
-      
-    #%% --- step 0.5 make hypercube sample and save them as jsons    
-    #load csv of accepted params as dataframe
-    #path for overall calibration
-    file_path = os.path.join("acceptedParams.csv") #was created by code stored away in MainFunctionsPotprim in function compile_Bayesians
+    #manually set the path of the folder containing the accepted parameter csv and calibration input file
+    # logs_path = os.path.join("logs/250809_Bayesian_overall_saved_manually")
+    # for i in range(5):
+    #     i = i+1
+    #     print(i)
+    
+    #version for kfold validation
+    # i = 1
+    # foldername =f"set{i}"
+    # logs_path = os.path.join("logs/250809_Kfolds_v5_saved_manually",foldername,"output_Bayesian")
+    
+    #version for scenarios
+    logs_path = "logs/251003_Scenarios"
+    
+   
+    # #uncomment if in need to make the hypercube sample again
+    # #%% --- step 0.5 make hypercube sample and save them as csv and dictionary    
+    # #load csv of accepted params as dataframe
+    
+    # #path for overall calibration
+    # file_path = os.path.join(logs_path, "calibratedParameters.csv") #was created by code stored away in MainFunctionsPotprim in function compile_Bayesians
 
-    # Load the CSV files into a DataFrame    
-    acceptedParams_df = pd.read_csv(file_path, header=None)
     
-    # Number of samples
-    n_samples = 15
-    n_params = acceptedParams_df.shape[1]
-    n_grid = acceptedParams_df.shape[0]  # number of values per parameter
+    # # Load the CSV files into a DataFrame    
+    # acceptedParams_df = pd.read_csv(file_path, header=None)
     
-    # Latin Hypercube Sampling in [0,1]
-    sampler = qmc.LatinHypercube(d=n_params)
-    lhs_sample = sampler.random(n=n_samples)
+    # # Number of samples
+    # n_samples = 15
+    # n_params = acceptedParams_df.shape[1]
+    # n_grid = acceptedParams_df.shape[0]  # number of values per parameter
     
-    # Map to grid indices
-    indices = (lhs_sample * n_grid).astype(int)
-    indices = np.clip(indices, 0, n_grid - 1)
+    # # Latin Hypercube Sampling in [0,1]
+    # sampler = qmc.LatinHypercube(d=n_params)
+    # lhs_sample = sampler.random(n=n_samples)
     
-    # Sample from DataFrame using the LHS indices
-    sampled_df = pd.DataFrame({
-        i: acceptedParams_df[i].values[indices[:, i]] for i in range(n_params)
-    })
+    # # Map to grid indices
+    # indices = (lhs_sample * n_grid).astype(int)
+    # indices = np.clip(indices, 0, n_grid - 1)
     
-    print(sampled_df)
+    # # Sample from DataFrame using the LHS indices
+    # sampled_df = pd.DataFrame({
+    #     i: acceptedParams_df[i].values[indices[:, i]] for i in range(n_params)
+    # })
     
     
-    #todo export as fifteen separate jsons that are then loaded in the next step or make another solution
+    # #save the hypercube sample
+    # sampled_df.to_csv(
+    #     os.path.join(logs_path, "Hypercube_sampled.csv"),
+    #     index=False,
+    #     float_format="%.5f",
+    # )
+    #load hypercube sample from csv
+    #version for kfold validation
+    # path_hypercube = os.path.join(logs_path, "Hypercube_sampled.csv")
+    #version for scenarios, just use the overall hypercube
+    path_hypercube = "Hypercube_sampled.csv"
+    sampled_df = pd.read_csv(path_hypercube, header=0, skiprows=0)
     #convert the dataframe to a list of dictionaries required further
-    # Your custom keys (column names)
-    keys = [
-    "bact_rhiz_rel",
-    "DOM_EC",
-    "DEATHrhiz",
-    "DEATHbulk",
-    "KSrhiz",
-    "KSbulk",
-    "kPOM_MAOM",
-    "kMAOMs_MAOMp",
-    "MAOMpmaxrate",
-    "MAOMsmaxrate",
-    "MAOMmaxrate",
-    "MAOMratioSP",
-    "maxEffectMicMAOM",
-    "maxEffectSA_MAOM",
-    "maxEffectN_MAOM",
-    "MM_N_MAOM",
-    "MM_Mic_MAOM",
-    "MM_SA_MAOM",
-    "MM_DOM_MAOM",
-    "Priming_max",
-    "RESPbulk",
-    "RESPrhiz",
-    "fSOM",
-    "availDOMtorhiz",
-    "GMAXrhiz",
-    "GMAXbulk",
-    "MBini",
-    "FBini",
-    "pCN",
-    "DOMini",
-    "CN_DOMini",
-    "setID"
-  ]  # replace with your actual keys
     
-    # Convert to list of dictionaries
+    #to get the names of the parameters that were calibrated for
+    # read the calibration Parameter data, obtain keys      
+    #version fo kfold
+    # with open(os.path.join(logs_path, "datalistCalibrationParam.json")) as inputCalibrationParamfile:
+    #version for scenarios
+    with open( "datalistCalibrationParam_start_overallJuly28.json") as inputCalibrationParamfile:
+        (
+            numParams,
+            CalibParamInit,
+            CalParameters,
+            CalParameterValues,
+            MaximumOption,
+            MinimalOption,
+            keys,
+        ) = BayesianFunctionsPotprim.read_parameter_data(inputCalibrationParamfile)
+        
+    
+        
+    # Convert the dataframe with hypercube sample to list of dictionaries
     dict_list = sampled_df.to_dict(orient='records')
     
     # Manually map keys to each row
     selected_sets = [dict(zip(keys, row)) for row in sampled_df.values]
-
-    # #set the path to the calibration that you want to use
-    # logs_path =  "./logs/250707_Bayesian"
-    # #%% --- step 1 load the hypercube sample
-    # # Load the "AcceptedParams" json from output_Bayesian/, its name contains also a date, so search for file starting AcceptedParams
-    # file_pattern = os.path.join(logs_path, "BestParamSetValidation*")
-    # files = glob.glob(file_pattern)
+ 
     
-    # selected_sets = []
-    # #load jsons into a list
-    # for file_path in files:
-    #     with open(file_path, 'r') as f:
-    #         try:
-    #             params = json.load(f)
-    #             selected_sets.append(params)
-    #         except json.JSONDecodeError as e:
-    #             print(f"Error decoding JSON from {file_path}: {e}")
-                
-     
-
     #%% --- step 2: run for all parameter sets from hypercube sample
     #load input
-    path_normal = "Normal_run_input_2022.csv"
+    #version for cross-validation:
+    # filename = f"Normal_run_input_2022_subset{i}.csv"
+    # path_normal = os.path.join("input files crossvalidation 2022", "validation", filename)
+    #version for scenario anylsis
+    path_normal = "Normal_run_input_2022scenarios.csv"
     inputRun = pd.read_csv(path_normal, header=0, skiprows=0)    
     numTreatments = len(inputRun)
     duration = 155 #number of days of incubation
     Plotting = False # switch off for now
     
-    df_list1 = []
-    df_list2 = []
+    df_list1 = [] #list of dataframes, created again for each hypercube sample
+    df_list2 = [] #list of all dataframes that are finally joined together
     
-    #for each parameter set
+    #for each parameter set (this loop happens 15 times)
     for index, parset in enumerate(selected_sets): #ready for multiple parameter sets
+       
         # Combine the calibrated parameters and the fixed parameters into one variable
         AllParam.update(parset) #this overwrites part of the input parameters which are calibrated
-        print("index", index)
+        print("parameter set no.", index)
         print(AllParam)
-        #for each treatment (row in Normal_input)
+        #for each treatment (row in Normal_input) (happens ca 20 times)
         for treatment in range(numTreatments):
             treatmentVar = inputRun.iloc[treatment, 0:21] # select first 21 columns from the input file
-       
+            print("treatment", treatment)
+            print("main row 153treatmentVar", treatmentVar)
             results_df = run_model(
                 AllParam,
                 treatmentVar,
                 mode_="Normal",
                 Plotting=Plotting,
                 numDays=duration,
-                path=results_path
+                path=logs_path
             )
             #create treatment ID starting from 1
             results_df['treatmentID'] = treatment + 1
@@ -1718,6 +1692,8 @@ if mode_ == "Hypercube":
         final_results_df = pd.concat(
             df_list1, ignore_index=True
         ) 
+        #empty list to store the results of the next selected set of hypercube
+        df_list1 = [] 
         #store this dataframe in a second list of dataframes
         df_list2.append(final_results_df)
         
@@ -1740,10 +1716,11 @@ if mode_ == "Hypercube":
     #save all modelled data
     
     overall_results_df.to_csv(
-        os.path.join(logs_path, "data/Simdata_Hypercube.csv"),
+        os.path.join(logs_path, "data/Simdata_Hypercube_validation.csv"),
         index=False,
         float_format="%.5f",
     )
+    
 # # %%Old Validation run ###########################
 # if mode_ == "Validation":
 #     # Clear files

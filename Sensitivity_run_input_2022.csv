@@ -1,0 +1,5 @@
+﻿treatmentID,treatment,temperature,tree,substrate,horizon,DOMinput,CN_DOMinput,CN_MAOMp,CN_POM,pH,fClay,fSilt,temp,Mbini_fixed,Fbini_fixed,CN_MAOMsini,CN_DOMini_fixed,DOMini_fixed,POMini,MAOMini
+1,control,20,control,control,A,0,0,15,24,4.1,0.17,0.24,20,239,0.65,15,32,50,13032,25368
+2,leachates,20,spruce,leachates,A,9.76,40,15,24,4.1,0.17,0.24,20,239,0.65,15,32,50,13032,25368
+3,exudates,20,spruce,exudates,A,9.76,6,15,24,4.1,0.17,0.24,20,239,0.65,15,32,50,13032,25368
+4,exudates+leachates,20,spruce,exudates+leachates,A,9.76,23,15,24,4.1,0.17,0.24,20,239,0.65,15,32,50,13032,25368
