@@ -338,10 +338,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     bact_bulk = bact * (1 - bact_rhiz_rel)
     fungi_bulk = fungi * (1 - fungi_rhiz_rel)
     bulk = bact_bulk + fungi_bulk 
- #   print("line 308 rhiz, bulk", rhiz, bulk)
+
     bulk_sub = 0  # proportion of this carbon in microbes that is substrate derived in contrast to soil-derived / values 0 to 1/
-    # print('line 323 initial, bact, fungi, FB, bact_rhiz, bact_bulk, fungi_rhiz, fungi_bulk', bact, fungi, fungi/bact, bact_rhiz, bact_bulk, fungi_rhiz, fungi_bulk)
-    
+
     #CN ratio for rhiz and bulk based on the proportion of bacterial and fungal biomass
     CN_rhiz = (bact_rhiz*CN_bact + fungi_rhiz*CN_fungi)/rhiz
     CN_bulk = (bact_bulk*CN_bact + fungi_bulk*CN_fungi)/bulk
@@ -489,6 +488,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             rhiz + bulk
         )  # all microbes contribute to MAOM formation
 
+        
         if CN_DOM > 0:
             (
                 DOM,

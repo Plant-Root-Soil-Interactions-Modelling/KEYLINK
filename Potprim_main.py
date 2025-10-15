@@ -69,8 +69,8 @@ warnings.simplefilter("error", SyntaxWarning)
 modes = Literal["Normal", "Sensitivity", "Bayesian", "Hypercube"]
 options = get_args(modes)
 
-#%% set the mode to Normal, Sensitivity or Bayesian
-mode_ = "Normal"
+#%% set the mode to Normal, Sensitivity, Bayesian or Hypercube (Hypercube can be used for crossvalidation or scenarios simulation)
+mode_ = "Hypercube"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -1573,7 +1573,7 @@ if mode_ == "Hypercube":
     # logs_path = os.path.join("logs/250809_Kfolds_v5_saved_manually",foldername,"output_Bayesian")
     
     #version for scenarios
-    logs_path = "logs/251003_Scenarios"
+    logs_path = "logs/251015_Scenarios"
     
    
     # #uncomment if in need to make the hypercube sample again
