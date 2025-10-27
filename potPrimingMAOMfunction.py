@@ -258,7 +258,18 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             "bulk",
             "fungi",
             "bact",
-            "FB"
+            "FB",
+            "MAOMp",
+            "MAOMs",
+            "MAOMp_formation", 
+            "MAOMs_formation",
+            "MAOMp_decay_priming",
+            "MAOMs_decay_baseline",
+            "MAOMs_decay_priming",
+            "POM_decay_baseline",
+            "POM_decay_priming",
+            "rhiz_necromass",
+            "bulk_necromass"
         ]
 
         results_df = pd.DataFrame(columns=column_names)
@@ -358,6 +369,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     MAOMp = MAOM / (
         MAOMratioSP + 1
     )  # primary MAOM [gC/m3] initialised at the ratio of saturation
+    #safety check
+    if MAOMp > maxMAOMp or MAOM > maxMAOM:
+        raise ValueError("Error: MAOMp or MAOM exceeds their maximum allowed value.")
     MAOMp_sub = 0  # proportion of MAOMp that is substrate derived in contrast to soil-derived / values 0 to 1/
     MAOMs = MAOM - MAOMp  # secondary MAOM[gC/m3]
     MAOMs_sub = 0  # proportion of MAOMs that is substrate derived in contrast to soil-derived / values 0 to 1/
@@ -366,6 +380,16 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     resp = 0
     DOM_added = 0
     DOM_added_all = 0
+    MAOMp_formation = 0
+    MAOMs_formation = 0
+    MAOMp_decay_priming = 0
+    MAOMs_decay_baseline = 0
+    MAOMs_decay_priming = 0
+    POM_decay_baseline = 0
+    POM_decay_priming = 0
+    rhiz_necromass = 0
+    bulk_necromass = 0
+    
     # AllC = DOM + POM + MAOM + rhiz_total + fungi + resp - DOMadded
     # print(AllC)
 
@@ -412,7 +436,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         rRESPrhiz = mf.calcresp(temp, T_OPTrhiz, RESPrhiz, Q10rhiz) #respiration rate as modified by temperature
         rRESPbulk = mf.calcresp(temp, T_OPTbulk, RESPbulk, Q10bulk)
 
-
+        #save SOM pool sizes before priming to be able to back calculate decay by priming
+        POM_before = POM
+        MAOMp_before = MAOMp
+        MAOMs_before = MAOMs
+        
         # microbial growth on DOM and priming, only susing MAOMs
         if CN_DOM > 0:
             (
@@ -434,7 +462,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 CN_rhizini,
                 growth,
                 pCN,
-                mCN
+                mCN,
+                RhizTurnover
             ) = mf.calcRhizosphere(
                 treatmentID,
                 Priming,
@@ -477,18 +506,25 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             respDOM_sub = 0
             respPriming = 0
             respPriming_sub = 0
+            RhizTurnover = 0        
         
-
         resp = respDOM + respPriming
         MAOM = MAOMs + MAOMp
-
+        rhiz_necromass += RhizTurnover
 
         # MAOM formation
         MicrobialC = (
             rhiz + bulk
         )  # all microbes contribute to MAOM formation
 
-        
+        #calculate POM and MAOM decay by priming
+        MAOMp_decay_priming += MAOMp - MAOMp_before
+        MAOMs_decay_priming += MAOMs - MAOMs_before
+        POM_decay_priming += POM - POM_before
+
+
+        MAOMp_before = MAOMp
+        MAOMs_before = MAOMs
         if CN_DOM > 0:
             (
                 DOM,
@@ -531,7 +567,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
             
 
         MAOM = MAOMs + MAOMp
-
+        # calculate MAOM formation
+        MAOMp_formation += MAOMp - MAOMp_before
+        MAOMs_formation += MAOMs - MAOMs_before
         # bulk soil microbial growth on SOM (without substrate DOM additions)
         availability = mf.calcAvailPot(
             PV, PW
@@ -657,7 +695,13 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         DOM += - bulkDOMgrowth + bulkTurnover - respDOMbulk  # add dead bulk to DOM including death from no C to resp
         POM += -bulkPOMgrowth - respPOM  # subtract what has been eaten from POM to grow and to respire
         MAOMs += -bulkMAOMgrowth - respMAOMs   # and MAOMs
+        
+        #update cumulative POM and MAOMs decay
+        MAOMs_decay_baseline += -bulkMAOMgrowth - respMAOMs  
+        POM_decay_baseline += -bulkPOMgrowth - respPOM
+        bulk_necromass += bulkTurnover
 
+        
         # update CN DOM
         DOM_N += - bulkDOMgrowth / CN_bulk + bulkTurnover / CN_bulk
 
@@ -788,6 +832,8 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         #todo check when CN_MAOM changes, calculate CN MAOM
         CN_MAOM = (MAOMs * CN_MAOMs + MAOMp * CN_MAOMp)/MAOM
         
+
+        
         # if treatmentID == 5 or treatmentID == 1 or treatmentID == 3:
         #     print(
         #         treatmentID,
@@ -909,7 +955,18 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 bulk / 0.8,
                 fungi / 0.8,
                 bact / 0.8,
-                FB
+                FB,
+                MAOMp/ (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                MAOMs/ (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                MAOMp_formation / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                MAOMs_formation / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                MAOMp_decay_priming / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                MAOMs_decay_baseline / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                MAOMs_decay_priming / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                POM_decay_baseline / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                POM_decay_priming / (0.8 * 1000),  # change units from gC/m3 mgC/g soil
+                rhiz_necromass/ 0.8,# change units from gC/m3 µgC/g soil
+                bulk_necromass/ 0.8,# change units from gC/m3 µgC/g soil
                
             ]  
 

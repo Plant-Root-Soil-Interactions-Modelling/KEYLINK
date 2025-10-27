@@ -70,7 +70,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Hypercube"]
 options = get_args(modes)
 
 #%% set the mode to Normal, Sensitivity, Bayesian or Hypercube (Hypercube can be used for crossvalidation or scenarios simulation)
-mode_ = "Hypercube"
+mode_ = "Normal"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -379,7 +379,7 @@ def normal_run(path_normal,
 if mode_ == "Normal":
         
     if dataset_ == "Jilkova2022":
-        path_normal = "Normal_run_input_2022scenarios.csv"
+        path_normal = "Normal_run_input_2022scenarios_small.csv"
         duration = 155 #number of days of incubation
         cols_measured_respSoil = slice(29, 37) #which columns contain measured soil derived respiration
         cols_measured_respSubstrate = slice(37, 45)  #which columns contain measured substrate derived respiration
@@ -1573,7 +1573,7 @@ if mode_ == "Hypercube":
     # logs_path = os.path.join("logs/250809_Kfolds_v5_saved_manually",foldername,"output_Bayesian")
     
     #version for scenarios
-    logs_path = "logs/251015_Scenarios"
+    logs_path = "logs/251020_Scenarios"
     
    
     # #uncomment if in need to make the hypercube sample again

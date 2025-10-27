@@ -914,7 +914,8 @@ def calcRhizosphere(
         CN_rhizini,
         growth,
         pCN,
-        mCN
+        mCN,
+        BactTurnover
     )
 
 
