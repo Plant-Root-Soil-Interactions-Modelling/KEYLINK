@@ -1114,7 +1114,7 @@ def calcMAOM(
     # both MAOMp and MAOMs saturate, calculate fSatMAOMp that is 0 when reaches saturation
     # first calculate the potential current rate of formation as michaelis menten equation so depending on DOM concentration and going to a maximum
 
-    fSatMAOMp = 1 - (MAOMp / maxMAOMp)
+    fSatMAOMp = max(0, 1 - (MAOMp / maxMAOMp))
     dMAOMp = (
         DOM
         * fMic
@@ -1127,26 +1127,27 @@ def calcMAOM(
     )
 
     # then the same for MAOMs, not influenced by fN, based on the study of Koppitke et al.2020
-    fSatMAOMs = 1 - (MAOMs / maxMAOMs)
+    #if MAOMs bigger than maxMAOMs
+    fSatMAOMs = max(0, 1 - (MAOMs / maxMAOMs))
 
     dMAOMs = (
         DOM * fMic * fRhizosphere * fSatMAOMs * MAOMsmaxrate * DOM / (DOM + MM_DOM_MAOM)
     )
 
-    # if dMAOMs < 0:
-    #     print(
-    #         "dMAOMs: ",
-    #         dMAOMs,
-    #         "fSatMAOMs: ",
-    #         fSatMAOMs,
-    #         "MAOMs: ",
-    #         MAOMs,
-    #         "maxMAOMs: ",
-    #         maxMAOMs,
-    #         "MAOMp: ",
-    #         MAOMp,
-    #     )
-    #     exit()
+    if dMAOMs < 0:
+        print(
+            "dMAOMs: ",
+            dMAOMs,
+            "fSatMAOMs: ",
+            fSatMAOMs,
+            "MAOMs: ",
+            MAOMs,
+            "maxMAOMs: ",
+            maxMAOMs,
+            "MAOMp: ",
+            MAOMp,
+        )
+        # exit()
     # if not yet saturated so there is still some potential rate of MAOM formation
     # MAOMs takes over CN of DOM, so CN of MAOMs changes but that of DOM does not
     # if dMAOMs <= 0 or dMAOMp <= 0: print("calcMAOM line 591", dMAOMs, dMAOMp)
@@ -1160,8 +1161,8 @@ def calcMAOM(
     DOM = DOM - dMAOMs
     DOM_N -= dMAOMs / CN_DOM
     # CN_DOM = DOM/DOM_N # calculate new CN of DOM pool
-    #print("(MAOMs + dMAOMs)",(MAOMs + dMAOMs), "(MAOMs / CN_MAOMs)", MAOMs / CN_MAOMs, "dMAOMs / CN_DOM", dMAOMs / CN_DOM)
-    #print("dMAOMs", dMAOMs, "CN_DOM", CN_DOM)
+    # print("(MAOMs + dMAOMs)",(MAOMs + dMAOMs), "(MAOMs / CN_MAOMs)", MAOMs / CN_MAOMs, "dMAOMs / CN_DOM", dMAOMs / CN_DOM)
+    # print("dMAOMs", dMAOMs, "CN_DOM", CN_DOM)
     CN_MAOMs = (MAOMs + dMAOMs) / (MAOMs / CN_MAOMs + dMAOMs / CN_DOM)
     MAOMs = MAOMs + dMAOMs
 

@@ -525,6 +525,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
 
         MAOMp_before = MAOMp
         MAOMs_before = MAOMs
+        # print(" line 528 before maom formation, CN maoms", CN_MAOMs)
         if CN_DOM > 0:
             (
                 DOM,
@@ -565,7 +566,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         else: #CN_DOM negative
                 CN_DOM=CN_DOM  
             
-
+        # print(" line 569 after maom formation, CN maoms", CN_MAOMs)
         MAOM = MAOMs + MAOMp
         # calculate MAOM formation
         MAOMp_formation += MAOMp - MAOMp_before
@@ -616,8 +617,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
    
         #then to ensure that the sum of gmaxes from different substrates does not exceed GMAX, 
         #reduce GMAX accordingly by what growth was already realized from previous substrates
+        # gmaxbPOM = (
+        #     mf.calcgmaxmod(CN_bulk, CN_POM, pCN, 0.0, 0, pH, 1) * (GMAXbulk - bulkDOMgrowth)
+        # )  # gmax for rhiz on POM
         gmaxbPOM = (
-            mf.calcgmaxmod(CN_bulk, CN_POM, pCN, 0.0, 0, pH, 1) * (GMAXbulk - bulkDOMgrowth)
+            mf.calcgmaxmod(CN_bulk, CN_POM, pCN, 0.0, 0, pH, 1) * (GMAXbulk - bulkDOMgrowth/bulk)
         )  # gmax for rhiz on POM
         
         #if the supply covers the need for basal respiration
@@ -639,8 +643,11 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         # we assume MAOMp can only be lost through priming, so normal growth uses MAOMs
         #also reduce gmax by what was already grown on DOM and POM
 
+        # gmaxbMAOM = (
+        #     mf.calcgmaxmod(CN_bulk, CN_MAOMs, pCN, recMAOM, mRecbulk, pH, 1) * (GMAXbulk - bulkDOMgrowth - bulkPOMgrowth)
+        # )  # gmax for rhiz on MAOM
         gmaxbMAOM = (
-            mf.calcgmaxmod(CN_bulk, CN_MAOMs, pCN, recMAOM, mRecbulk, pH, 1) * (GMAXbulk - bulkDOMgrowth - bulkPOMgrowth)
+            mf.calcgmaxmod(CN_bulk, CN_MAOMs, pCN, recMAOM, mRecbulk, pH, 1) * (GMAXbulk - bulkDOMgrowth/bulk - bulkPOMgrowth/bulk)
         )  # gmax for rhiz on MAOM
         
         if availability[0]* MAOMs > respRest:

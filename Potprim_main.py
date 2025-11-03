@@ -70,7 +70,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Hypercube"]
 options = get_args(modes)
 
 #%% set the mode to Normal, Sensitivity, Bayesian or Hypercube (Hypercube can be used for crossvalidation or scenarios simulation)
-mode_ = "Normal"
+mode_ = "Bayesian"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -150,7 +150,7 @@ def normal_run(path_normal,
 
         for treatment in range(numTreatments):
             treatmentVar = inputRun.iloc[treatment, 0:21] # select first 21 columns from the input file
-
+            # print(treatment)
             results_df = run_model(
                 AllParam,
                 treatmentVar,
@@ -175,6 +175,7 @@ def normal_run(path_normal,
         
         
         #%%--- validation plots
+        #if plotting wanted, calculate also performance metrics
         if Plotting:
             #filter out modelled values for all those variables and days for which we have measured values
             #first automatically extract for which data we have measured data
@@ -372,14 +373,17 @@ def normal_run(path_normal,
                 metrics_df.to_csv(csv_file, mode='a', header=False, index=False)
             else:
                 metrics_df.to_csv(csv_file, index=False) 
-                
-            return mean_ef, metrics_df, final_results_df #return mean EF as overall performance metric
+        else:
+            mean_ef = []
+            metrics_df = []
+        return mean_ef, metrics_df, final_results_df #return mean EF as overall performance metric
+        # end of normal run function
         
 #%% Normal run with validation #####################################################################
 if mode_ == "Normal":
         
     if dataset_ == "Jilkova2022":
-        path_normal = "Normal_run_input_2022scenarios_small.csv"
+        path_normal = "Normal_run_input_2022.csv"
         duration = 155 #number of days of incubation
         cols_measured_respSoil = slice(29, 37) #which columns contain measured soil derived respiration
         cols_measured_respSubstrate = slice(37, 45)  #which columns contain measured substrate derived respiration
@@ -396,7 +400,7 @@ if mode_ == "Normal":
    
                              
 
-# end of normal run function
+
 #run it now
     mean_ef, metrics_df, final_results_df = normal_run(path_normal, 
                    duration, 
@@ -704,7 +708,7 @@ if mode_ == "Bayesian":
     #%%--- Set number of tries
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 3
+    NumberOfTries = 20
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 
@@ -1573,7 +1577,7 @@ if mode_ == "Hypercube":
     # logs_path = os.path.join("logs/250809_Kfolds_v5_saved_manually",foldername,"output_Bayesian")
     
     #version for scenarios
-    logs_path = "logs/251020_Scenarios"
+    logs_path = "logs/251030_Negpriming_availDOMtobulk"
     
    
     # #uncomment if in need to make the hypercube sample again
@@ -1616,7 +1620,9 @@ if mode_ == "Hypercube":
     #version for kfold validation
     # path_hypercube = os.path.join(logs_path, "Hypercube_sampled.csv")
     #version for scenarios, just use the overall hypercube
-    path_hypercube = "Hypercube_sampled.csv"
+    # path_hypercube = "Hypercube_sampled.csv"
+    path_hypercube = "Negativepriming_availDOMtobulk.csv"
+
     sampled_df = pd.read_csv(path_hypercube, header=0, skiprows=0)
     #convert the dataframe to a list of dictionaries required further
     
@@ -1651,7 +1657,7 @@ if mode_ == "Hypercube":
     # filename = f"Normal_run_input_2022_subset{i}.csv"
     # path_normal = os.path.join("input files crossvalidation 2022", "validation", filename)
     #version for scenario anylsis
-    path_normal = "Normal_run_input_2022scenarios.csv"
+    path_normal = "Normal_run_input_2022baseline_only.csv"
     inputRun = pd.read_csv(path_normal, header=0, skiprows=0)    
     numTreatments = len(inputRun)
     duration = 155 #number of days of incubation
