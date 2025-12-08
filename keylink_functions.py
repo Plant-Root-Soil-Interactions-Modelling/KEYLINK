@@ -751,7 +751,6 @@ def calcRhizosphere(
     KS,
     DOM_EC,
     Priming_max,
-    kpriming,
     kPOM_MAOM,
     kMAOMs_MAOMp,
     modtBact,
@@ -837,7 +836,6 @@ def calcRhizosphere(
             DOM_sub,
             DOM_EC,
             Priming_max,
-            kpriming,
             kPOM_MAOM,
             kMAOMs_MAOMp,
             fSOM
@@ -934,7 +932,6 @@ def calcPriming(
     DOM_sub,
     DOM_EC,
     Priming_max,
-    kpriming,
     kPOM_MAOM,
     kMAOMs_MAOMp,
     fSOM
@@ -1044,8 +1041,7 @@ def calcPriming(
     #         MAOMp,
     #         "MAOMpprimed: ",
     #         MAOMpprimed,
-    #         "kpriming: ",
-    #         kpriming,
+
     #         "SOMprimed: ",
     #         SOMprimed,
     #         "SOMprimable: ",

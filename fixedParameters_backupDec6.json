@@ -1,4 +1,8 @@
 {
+    "availDOMtobulk": 0.0000972554,
+    "mRecrhiz":0.5,  
+    "mRecbulk":0.5, 
+    "recMAOM":0.9, 
     "T_OPTrhiz": 25,
     "T_MINrhiz": 0,
     "T_MAXrhiz": 40,
@@ -6,10 +10,5 @@
     "T_MINbulk": 0,
     "T_MAXbulk": 40,
     "Q10bulk":2.5,  
-    "Q10rhiz":2.5,
-    "pCN": 0.55,
-    "RESPrhiz": 0.05,
-    "RESPbulk": 0.05,
-    "GMAXrhiz": 23.1,
-    "GMAXbulk": 3.65
+    "Q10rhiz":2.5
 }

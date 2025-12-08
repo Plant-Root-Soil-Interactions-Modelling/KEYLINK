@@ -14,11 +14,12 @@ import os
 
 
 def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
-    # output dataframe list
+    #****************************************************************************
+    #%% calibrated parameters
+    #****************************************************************************
     bact_rhiz_rel = AllParam["bact_rhiz_rel"]
     fungi_rhiz_rel = AllParam["fungi_rhiz_rel"]
-    DOM_EC = AllParam["DOM_EC"] #
-    # kpriming = AllParam["kpriming"]
+    DOM_EC = AllParam["DOM_EC"]
     KSrhiz = AllParam["KSrhiz"]
     KSbulk = AllParam["KSbulk"]
     kPOM_MAOM = AllParam["kPOM_MAOM"]
@@ -34,56 +35,18 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     MM_SA_MAOM = AllParam["MM_SA_MAOM"]
     MM_DOM_MAOM = AllParam["MM_DOM_MAOM"]
     Priming_max = AllParam["Priming_max"]
-    kpriming = 0
-    # the ones we use from other calibration
-
-    mRecbulk = AllParam["mRecbulk"]  # how sensitive rhiz are to recalcitrance
-    # resp=0.01 #respiration rate for rhizeria growing on DOM / ??do we really need a different one? it was set to 0 decided to ditch it and just the next one
-    # =0.05  #respiration rate resp, [gC/(gC day)], KEYLINK
-    DEATH = AllParam["DEATHrhiz"]  # death rate for rhizeria [gC/(gC day)], KEYLINK
-    DEATHbulk = AllParam["DEATHbulk"]  # death rate for fungi [gC/(gC day)], KEYLINK
-    pCN = AllParam[
-        "pCN"
-    ]  # sensitivity to CN ratio of consumed substrate, values 0-1, taken from KEYLINK (value for bacteria)
-    recMAOM = AllParam[
-        "recMAOM"
-    ]  # recalcitrance of MAOM, (recalcitrance of POM assumed 0)
-    RESPrhiz = AllParam[
-        "RESPrhiz"
-    ]  # respiration rate of rhizeria, [gC/(gC day)], was 0.05 KEYLINK
-    RESPbulk = AllParam[
-        "RESPbulk"
-    ]  # respiration rate of fungi, [gC/(gC day)], was 0.03 KEYLINK
     fSOM = AllParam["fSOM"] # what part of PrimingGrowth uses primed SOM as opposed to DOM, fraction 0-1
     availDOMtobulk = AllParam["availDOMtobulk"]
     availDOMtorhiz = AllParam["availDOMtorhiz"]
-    GMAXrhiz = AllParam[
-        "GMAXrhiz"
-    ]  # maximal growth rate for rhizeria [gC/(gC day)], KEYLINK was 1.24
-    GMAXbulk = AllParam[
-        "GMAXbulk"
-    ]  # maximal growth rate for fungi [gC/(gC day)], KEYLINK
-    BD = 800  # bulk density [kg/m³]
-    
-    MB = BD/1000 * AllParam[
-        "MBini"]
-    #if there is MBini in input file, use that preferably
-    if "MBini" in treatmentVar:
-        MB = BD/1000 * treatmentVar["MBini"]
-    #initial total microbial biomass in gC/m3 converting from microgramsC/g soil on input
-    FB = AllParam[
-        "FBini"
-    ]
-    #if there is FBini in input file, use that preferably
-    if "FBini" in treatmentVar:
-        FB = treatmentVar["FBini"]
-    DOM = BD/1000 * AllParam["DOMini"]   # DOM in gC/m3 converting from microgramsC/g soil on input
+    BD = 800  # bulk density [kg/m³] # to be able to convert MB
+    MB = BD/1000 * AllParam["MBini"] #initial total microbial biomass in gC/m3 converting from microgramsC/g soil on input
+    FB = AllParam["FBini"] #FB ratio
     CN_DOM = AllParam["CN_DOMini"] #initial CN of DOM
-
-    bact = MB/(1+FB) #initial bact biomass in gC/m3 converting from microgramsC/g soil on input
-    fungi = MB - bact      #initial fungal biomass in gC/m3 
-    # print("fungi", fungi)
-    # print("bacteria", bact)
+    recMAOM = AllParam["recMAOM"]  # recalcitrance of MAOM, (recalcitrance of POM assumed 0)
+    
+    #****************************************************************************
+    #%% fixed parameters = the ones we use from literatue or other calibrations
+    #****************************************************************************
     T_MAXrhiz = AllParam["T_MAXrhiz"]
     T_MINrhiz = AllParam["T_MINrhiz"]
     T_OPTrhiz = AllParam["T_OPTrhiz"]
@@ -92,10 +55,27 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     T_OPTbulk = AllParam["T_OPTbulk"]
     Q10rhiz = AllParam["Q10rhiz"]
     Q10bulk = AllParam["Q10bulk"]
-
-    # input parameters that do not change (=measurable) and are not calibrated, just 'start situation"
-
-    # those which will change for different runs
+    pCN = AllParam[
+        "pCN"
+    ]  # sensitivity to CN ratio of consumed substrate, values 0-1, taken from KEYLINK (average for bacteria and fungi)
+    RESPrhiz = AllParam[
+        "RESPrhiz"
+    ]  # respiration rate of rhizosphere microbes, [gC/(gC day)], 0.05 based on Spohn
+    RESPbulk = AllParam[
+        "RESPbulk"
+    ]  # respiration rate of fungi, [gC/(gC day)], 0.05 based on Spohn
+    GMAXrhiz = AllParam[
+        "GMAXrhiz"
+    ]  # maximal growth rate for rhizosphere microbes [gC/(gC day)], Foley et al. 2024
+    GMAXbulk = AllParam[
+        "GMAXbulk"
+    ]  # maximal growth rate for bulk soil microbes [gC/(gC day)], Foley et al. 2024
+    
+    #****************************************************************************
+    #%% initial parameters that do not change (=measurable) and are not calibrated, just 'start situation"
+    #****************************************************************************   
+    # those which will be different for different runs
+    #********************************
     DOMinput = treatmentVar[
         "DOMinput"
     ]  # 10 #DOM added in each addition [gC/m3], Jílková2022 >> in Jilkova2024, it was 0.5 mgC, therefore it is 5 gC/m3
@@ -116,13 +96,17 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # if there is d_freq in input file, use that instead
     if d_freq in treatmentVar:
         d_freq = treatmentVar["d_freq"]  
-    # numDays = 161  # number of days of incubation experiment/how long to run the model, 155 in Jílková2022, 161 in Jílková 2024
 
+    #********************************
     # those that will be the same for all 16 runs
-
+    #********************************
     claySA = 800000  # surface area of clay [m²/kg] was 8000000 cm²/g
     CN_bact = 4  # CN of rhizosphere microbes, from KEYLINK, in Jílková2022 initial CN of microbial biomass is 10
     CN_fungi = 8  # KEYLINK
+    DEATH_bact = 0.05 # KEYLINK
+    DEATH_fungi = 0.01  # KEYLINK    
+    mRec_bact = 0.9  # KEYLINK
+    mRec_fungi = 0.75  # KEYLINK
    
     maxMAOM = (
         0.86 * (fClay + fSilt) * 100 * BD
@@ -131,21 +115,7 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     siltSA = 45.4  # m²/kg
     maxSurfaceArea = (
         claySA * BD * fClay + siltSA * BD * fSilt
-    )  # total surface area of clay and silt in m²/m³
-    
-    # PV = np.array(
-    #     [45, 37, 37, 200, 6]
-    # )  # pore volume for each pore size class [l/m3]
-    # PRadius = np.array(
-    #     [0.05, 0.525, 8, 382.5, 875]
-    # )  # average radius of each pore size class [µm], defined by KEYLINK
-    # PSA = np.zeros(5)
-    # PSA = mf.calcPoreSurfaceArea(
-    #     PV, PRadius, PSA
-    # )  # pore surface area for each pore size class, calculated from  KEYLINK function
-    # PW = np.divide(
-    #     PV, 2
-    # )  # pore water volume, assume all pores half filled , but water is in m³ while volume was in l
+    )  # total surface area of clay and silt in m²/m³    
     RootHyphaeSurface = 71  # surface area of all roots/hyphae [m2/m3] ??unit correct / look up roots surface area equivalent to that amount of DOM input
     fractionSA = (
         RootHyphaeSurface / maxSurfaceArea
@@ -159,26 +129,10 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     if mode_ == "Sensitivity" or mode_ == "Bayesian":  # safety
         Plotting = False
 
-
-    # define different output for different modes
+    #****************************************************************************
+    #%% define different output for different modes
+    #****************************************************************************
     if mode_ == "Sensitivity":
-        # column_names = [
-        #     "treatment",
-        #     "day",
-        #     "DOMaddition",
-        #     "DOM",
-        #     "rhiz_DOM",
-        #     "rhiz",
-        #     "fungi",
-        #     "resp_substrate",
-        #     "resp_soil_baseline",
-        #     "resp_soil",
-        #     "POM",
-        #     "MAOMs",
-        #     "MAOMp",
-        #     "MAOM",
-        # ]
-
         column_names = [
             "treatment",
             "day",
@@ -204,7 +158,6 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     # print("initial", paramsToTestDict)  # check
 
     if mode_ == "Bayesian":
-
         # variables for which we have measured data
         # treatment, d, resp, resp_sub, POM, MAOM, rhiz_total, fungi, POM_sub, MAOM_sub, rhiz_total_sub, fungi_sub]
         column_names = [
@@ -298,23 +251,16 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
         outResp_sub = []
 
     # *************************************************************************
-    # initializing variables (what changes during run)
-
+    #%% initializing variables (what changes during run)
+    # *************************************************************************
+    DOM = BD/1000 * treatmentVar["DOMini"]  # DOM in gC/m3 converting from microgramsC/g soil on input
+    bact = MB/(1+FB) #initial bact biomass in gC/m3 converting from microgramsC/g soil on input
+    fungi = MB - bact      #initial fungal biomass in gC/m3
+    
     # variables that will be initialized differently for different runs
-    # bact = BD/1000 * treatmentVar[
-    #     "bact"
-    # ]  # total biomass of bacteria [gC/m3], multiplied by BD in g/cm3 to convert from microgramsC/g-1 (on input), was 6 final noadd average from PLFA from Jílková2022
     CN_MAOMs = treatmentVar[
         "CN_MAOMsini"
     ]  # estimated but we don't know the true value, assumed to vary with CN_DOM
-    # print(treatmentVar["treatment"])
-    # if treatmentVar["treatmentID"] == 2:
-    #     return
-    
-    # print(CN_MAOMs, "CN_MAOMs")
-    # fungi = BD/1000 * treatmentVar[
-    #     "fungi"
-    # ]  # biomass of fungi [gC/m3] based on final noadd in Jílková et al. 2022
 
     POM = treatmentVar[
         "POMini"
@@ -355,6 +301,13 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     #CN ratio for rhiz and bulk based on the proportion of bacterial and fungal biomass
     CN_rhiz = (bact_rhiz*CN_bact + fungi_rhiz*CN_fungi)/rhiz
     CN_bulk = (bact_bulk*CN_bact + fungi_bulk*CN_fungi)/bulk
+    
+    #death rate for rhiz and bulk based on the proportion of bacterial and fungal biomass
+    DEATH = (bact_rhiz*DEATH_bact + fungi_rhiz*DEATH_fungi)/rhiz 
+    DEATHbulk = (bact_bulk*DEATH_bact + fungi_bulk*DEATH_fungi)/bulk
+    # print("DEATHrhiz", "DEATHbulk", DEATHrhiz, DEATHbulk)
+    
+    mRecbulk = (bact_bulk*mRec_bact + fungi_bulk*mRec_fungi)/bulk
 
     FB_rhiz = fungi_rhiz/bact_rhiz
     FB_bulk = fungi_bulk/bact_bulk
@@ -390,11 +343,9 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
     rhiz_necromass = 0
     bulk_necromass = 0
     
-    # AllC = DOM + POM + MAOM + rhiz_total + fungi + resp - DOMadded
-    # print(AllC)
-
+    # *************************************************************************
     # function coreMAOM
-    # def coreMAOM (Bayesian, Sensitivity):
+    # *************************************************************************
 
     for d in range(numDays):
         # print("day", d)
@@ -490,7 +441,6 @@ def run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path):
                 KSrhiz,
                 DOM_EC,
                 Priming_max,
-                kpriming,
                 kPOM_MAOM,
                 kMAOMs_MAOMp,
                 modtrhiz,
