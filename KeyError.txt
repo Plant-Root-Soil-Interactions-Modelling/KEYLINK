@@ -1,0 +1,57 @@
+finished 11)
+log_likelihood_sim1 -6192.005896692966
+log_likelihood_sim0 -3304.8396066154696
+random: 0.9546629502423654 logalpha -2887.166290077497 lograndom -0.04639693247983812
+383 parameter sets accepted out of 250000 tries
+best parameter set likelihood -3299.930765563172
+best parameter set [{'bact_rhiz_rel': 0.7768561716229053, 'fungi_rhiz_rel': 0.0020699854173738, 'DOM_EC': 29.87155581514758, 'KSrhiz': 162.40806068791767, 'KSbulk': 4820.010932355384, 'kPOM_MAOM': 6.72221728820033, 'kMAOMs_MAOMp': 13.170790541607111, 'MAOMpmaxrate': 0.2875533913036373, 'MAOMsmaxrate': 0.2599524614879548, 'MAOMratioSP': 2.099861276575277, 'maxEffectMicMAOM': 0.5452089453004394, 'maxEffectSA_MAOM': 0.8659299378208175, 'maxEffectN_MAOM': 0.7774162480929314, 'MM_N_MAOM': 1.1593318184829338, 'MM_Mic_MAOM': 1.011663841859321, 'MM_SA_MAOM': 0.000458163848128, 'MM_DOM_MAOM': 0.0046778696739685, 'Priming_max': 0.0001783365118772, 'fSOM': 0.7655117327234527, 'availDOMtobulk': 9.80649630811e-06, 'availDOMtorhiz': 0.246154799203341, 'MBini': 161.4408115747987, 'FBini': 0.2162522867127473, 'CN_DOMini': 29.0862940128668, 'recalcMAOM': 0.9539416224585666}]
+
+---------------------------------------------------------------------------
+KeyError                                  Traceback (most recent call last)
+File c:\users\student\documents\github\keylink\potprim_main.py:1496
+   1494    #%% --- step 3: run normal run with best parameter set
+   1495     Plotting = True # needs to be set to True cuz for Bayesian it is automatically switched to False
+-> 1496     mean_ef, metrics_df, final_results_df = normal_run(path_bayesian, 
+   1497                    duration, 
+   1498                    cols_measured_respSoil, 
+   1499                    cols_measured_respSubstrate,
+   1500                    cols_data_measured,
+   1501                    cols_measured_PE,
+   1502                    timepoints,
+   1503                    AllParam,
+   1504                    Plotting, 
+   1505                    sharable_path
+   1506                    )
+   1509 #%% --- Final reports of calibration + validation
+   1510 # save metadata of the calibration
+   1511 content = f"""        
+   1512     {NumOfAccepted} parameter sets accepted out of {c+1} tries
+   1513     converged = {converged}
+   (...)
+   1517     {metrics_df}
+   1518     """
+
+File c:\users\student\documents\github\keylink\potprim_main.py:154, in normal_run(path_normal, duration, cols_measured_respSoil, cols_measured_respSubstrate, cols_data_measured, cols_measured_PE, timepoints, AllParam, Plotting, results_path)
+    152 treatmentVar = inputRun.iloc[treatment, 0:21] # select first 21 columns from the input file
+    153 # print(treatment)
+--> 154 results_df = run_model(
+    155     AllParam,
+    156     treatmentVar,
+    157     mode_="Normal",
+    158     Plotting=Plotting,
+    159     numDays=duration,
+    160     path=results_path
+    161 )
+    162 results_df['treatmentID'] = treatment + 1
+    163 df_list.append(results_df)         
+
+File ~\Documents\GitHub\KEYLINK\potPrimingMAOMfunction.py:45, in run_model(AllParam, treatmentVar, mode_, Plotting, numDays, path)
+     43 FB = AllParam["FBini"] #FB ratio
+     44 CN_DOM = AllParam["CN_DOMini"] #initial CN of DOM
+---> 45 recMAOM = AllParam["recMAOM"]  # recalcitrance of MAOM, (recalcitrance of POM assumed 0)
+     47 #****************************************************************************
+     48 #%% fixed parameters = the ones we use from literatue or other calibrations
+     49 #****************************************************************************
+     50 T_MAXrhiz = AllParam["T_MAXrhiz"]
+
+KeyError: 'recMAOM'
