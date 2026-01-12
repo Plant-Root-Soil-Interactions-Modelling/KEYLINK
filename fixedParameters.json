@@ -11,5 +11,6 @@
     "RESPrhiz": 0.05,
     "RESPbulk": 0.05,
     "GMAXrhiz": 23.1,
-    "GMAXbulk": 3.65
+    "GMAXbulk": 3.65,
+    "recMAOM": 0.9
 }
