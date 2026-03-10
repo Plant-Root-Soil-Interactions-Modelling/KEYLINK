@@ -1,0 +1,1 @@
+manually copied from Accepted_parameter_sets_kfold_prior.xslx, sheet final_acceptedJanuary, without the burn in of 50 values  (so now 522 in the posterior)

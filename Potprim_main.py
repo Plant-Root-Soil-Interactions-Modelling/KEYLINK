@@ -1566,72 +1566,82 @@ if mode_ == "Bayesian":
 #%% Latin Hypercube mode ###########################
 if mode_ == "Hypercube":
     #manually set the path of the folder containing the accepted parameter csv and calibration input file
-    # logs_path = os.path.join("logs/250809_Bayesian_overall_saved_manually")
+    logs_path = os.path.join("logs/250809_Bayesian_overall_saved_manually")
     # for i in range(5):
     #     i = i+1
     #     print(i)
     
     #version for kfold validation
-    # i = 1
+    # i = 3
     # foldername =f"set{i}"
     # logs_path = os.path.join("logs/250809_Kfolds_v5_saved_manually",foldername,"output_Bayesian")
-    
+    #newer system
+    # logs_path = "logs/260123_Bayesian_kfold1"
+    # logs_path = "logs/260123_Bayesian_kfold2"
+    # logs_path = "logs/260124_Bayesian_kfold3"
+    # logs_path = "logs/260124_Bayesian_kfold4"
+    # logs_path = "logs/260125_Bayesian_kfold5"
     #version for scenarios
-    logs_path = "logs/251030_Negpriming_availDOMtobulk"
+    # logs_path = "logs/251030_Negpriming_availDOMtobulk"
     
    
     # #uncomment if in need to make the hypercube sample again
     # #%% --- step 0.5 make hypercube sample and save them as csv and dictionary    
     # #load csv of accepted params as dataframe
     
-    # #path for overall calibration
-    # file_path = os.path.join(logs_path, "calibratedParameters.csv") #was created by code stored away in MainFunctionsPotprim in function compile_Bayesians
-
+    # path for accepted params
+    file_path = os.path.join(logs_path, "calibratedParameters.csv") #wcan be created by code stored away in MainFunctionsPotprim in function compile_Bayesians
     
+  
     # # Load the CSV files into a DataFrame    
-    # acceptedParams_df = pd.read_csv(file_path, header=None)
+    acceptedParams_df = pd.read_csv(file_path, header=None)
+    length_before = len(acceptedParams_df)
+    # acceptedParams_df = acceptedParams_df.iloc[500:].reset_index(drop=True)  #will drop first 500 sets, for kfold
+    acceptedParams_df = acceptedParams_df.iloc[350:].reset_index(drop=True) #will drop still first 300 sets, for overall
+    length_after=len(acceptedParams_df)
     
-    # # Number of samples
-    # n_samples = 15
-    # n_params = acceptedParams_df.shape[1]
-    # n_grid = acceptedParams_df.shape[0]  # number of values per parameter
+    # Number of samples
+    n_samples = 15
+    n_params = acceptedParams_df.shape[1]
+    n_grid = acceptedParams_df.shape[0]  # number of values per parameter
     
-    # # Latin Hypercube Sampling in [0,1]
-    # sampler = qmc.LatinHypercube(d=n_params)
-    # lhs_sample = sampler.random(n=n_samples)
+    # Latin Hypercube Sampling in [0,1]
+    sampler = qmc.LatinHypercube(d=n_params)
+    lhs_sample = sampler.random(n=n_samples)
     
-    # # Map to grid indices
-    # indices = (lhs_sample * n_grid).astype(int)
-    # indices = np.clip(indices, 0, n_grid - 1)
+    # Map to grid indices
+    indices = (lhs_sample * n_grid).astype(int)
+    indices = np.clip(indices, 0, n_grid - 1)
     
-    # # Sample from DataFrame using the LHS indices
-    # sampled_df = pd.DataFrame({
-    #     i: acceptedParams_df[i].values[indices[:, i]] for i in range(n_params)
-    # })
+    # Sample from DataFrame using the LHS indices
+    sampled_df = pd.DataFrame({
+        i: acceptedParams_df[i].values[indices[:, i]] for i in range(n_params)
+    })
     
     
-    # #save the hypercube sample
-    # sampled_df.to_csv(
-    #     os.path.join(logs_path, "Hypercube_sampled.csv"),
-    #     index=False,
-    #     float_format="%.5f",
-    # )
+    #save the hypercube sample
+    sampled_df.to_csv(
+        os.path.join(logs_path, "Hypercube_sampled.csv"),
+        index=False,
+        float_format="%.5f",
+    )
+    
     #load hypercube sample from csv
-    #version for kfold validation
-    # path_hypercube = os.path.join(logs_path, "Hypercube_sampled.csv")
+    #version for kfold validation or overall calibration
+    path_hypercube = os.path.join(logs_path, "Hypercube_sampled.csv")
     #version for scenarios, just use the overall hypercube
     # path_hypercube = "Hypercube_sampled.csv"
-    path_hypercube = "Negativepriming_availDOMtobulk.csv"
+    # path_hypercube = "Negativepriming_availDOMtobulk.csv"
 
     sampled_df = pd.read_csv(path_hypercube, header=0, skiprows=0)
     #convert the dataframe to a list of dictionaries required further
     
     #to get the names of the parameters that were calibrated for
     # read the calibration Parameter data, obtain keys      
-    #version fo kfold
-    # with open(os.path.join(logs_path, "datalistCalibrationParam.json")) as inputCalibrationParamfile:
+    #version fo kfold or overall
+    with open(os.path.join(logs_path, "datalistCalibrationParam.json")) as inputCalibrationParamfile:
     #version for scenarios
-    with open( "datalistCalibrationParam_start_overallJuly28.json") as inputCalibrationParamfile:
+    # with open( "datalistCalibrationParam_startoverall_updateDec28.json") as inputCalibrationParamfile:
         (
             numParams,
             CalibParamInit,
@@ -1653,11 +1663,13 @@ if mode_ == "Hypercube":
     
     #%% --- step 2: run for all parameter sets from hypercube sample
     #load input
+    #version for overall calibration:
+    path_normal = "Normal_run_input_2022.csv"
     #version for cross-validation:
     # filename = f"Normal_run_input_2022_subset{i}.csv"
     # path_normal = os.path.join("input files crossvalidation 2022", "validation", filename)
     #version for scenario anylsis
-    path_normal = "Normal_run_input_2022baseline_only.csv"
+    # path_normal = "Normal_run_input_2022baseline_only.csv"
     inputRun = pd.read_csv(path_normal, header=0, skiprows=0)    
     numTreatments = len(inputRun)
     duration = 155 #number of days of incubation
@@ -1677,7 +1689,7 @@ if mode_ == "Hypercube":
         for treatment in range(numTreatments):
             treatmentVar = inputRun.iloc[treatment, 0:21] # select first 21 columns from the input file
             print("treatment", treatment)
-            print("main row 153treatmentVar", treatmentVar)
+            print("main row 1686 treatmentVar", treatmentVar)
             results_df = run_model(
                 AllParam,
                 treatmentVar,
@@ -1726,6 +1738,10 @@ if mode_ == "Hypercube":
         index=False,
         float_format="%.5f",
     )
+    
+    #print length of posterior before and after reducing by 500
+    print("length_before, length_after", length_before, length_after)
+    
     
 # # %%Old Validation run ###########################
 # if mode_ == "Validation":
