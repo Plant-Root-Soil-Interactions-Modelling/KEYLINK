@@ -70,7 +70,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Hypercube"]
 options = get_args(modes)
 
 #%% set the mode to Normal, Sensitivity, Bayesian or Hypercube (Hypercube can be used for crossvalidation or scenarios simulation)
-mode_ = "Bayesian"
+mode_ = "Hypercube"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -1566,7 +1566,7 @@ if mode_ == "Bayesian":
 #%% Latin Hypercube mode ###########################
 if mode_ == "Hypercube":
     #manually set the path of the folder containing the accepted parameter csv and calibration input file
-    logs_path = os.path.join("logs/250809_Bayesian_overall_saved_manually")
+    logs_path = os.path.join("logs/260309_Bayesian_overall_saved_manually")
     # for i in range(5):
     #     i = i+1
     #     print(i)
@@ -1576,7 +1576,7 @@ if mode_ == "Hypercube":
     # foldername =f"set{i}"
     # logs_path = os.path.join("logs/250809_Kfolds_v5_saved_manually",foldername,"output_Bayesian")
     #newer system
-    # logs_path = "logs/260123_Bayesian_kfold1"
+    # logs_path = "logs/260310_Bayesian_kfold1"
     # logs_path = "logs/260123_Bayesian_kfold2"
     # logs_path = "logs/260124_Bayesian_kfold3"
     # logs_path = "logs/260124_Bayesian_kfold4"
@@ -1597,7 +1597,7 @@ if mode_ == "Hypercube":
     acceptedParams_df = pd.read_csv(file_path, header=None)
     length_before = len(acceptedParams_df)
     # acceptedParams_df = acceptedParams_df.iloc[500:].reset_index(drop=True)  #will drop first 500 sets, for kfold
-    acceptedParams_df = acceptedParams_df.iloc[350:].reset_index(drop=True) #will drop still first 300 sets, for overall
+    acceptedParams_df = acceptedParams_df.iloc[300:].reset_index(drop=True) #will drop still first 300 sets, for overall
     length_after=len(acceptedParams_df)
     
     # Number of samples
@@ -1665,11 +1665,14 @@ if mode_ == "Hypercube":
     #load input
     #version for overall calibration:
     path_normal = "Normal_run_input_2022.csv"
+    
     #version for cross-validation:
     # filename = f"Normal_run_input_2022_subset{i}.csv"
     # path_normal = os.path.join("input files crossvalidation 2022", "validation", filename)
+    
     #version for scenario anylsis
     # path_normal = "Normal_run_input_2022baseline_only.csv"
+    
     inputRun = pd.read_csv(path_normal, header=0, skiprows=0)    
     numTreatments = len(inputRun)
     duration = 155 #number of days of incubation
