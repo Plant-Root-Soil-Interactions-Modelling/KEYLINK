@@ -70,7 +70,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Hypercube"]
 options = get_args(modes)
 
 #%% set the mode to Normal, Sensitivity, Bayesian or Hypercube (Hypercube can be used for crossvalidation or scenarios simulation)
-mode_ = "Hypercube"
+mode_ = "Bayesian"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -586,7 +586,7 @@ if mode_ == "Sensitivity":
 #%% Bayesian optimization ###########################
 if mode_ == "Bayesian":
     if dataset_ == "Jilkova2022":
-        path_bayesian = "Bayesian_run_input_2022.csv"
+        # path_bayesian = "Bayesian_run_input_2022.csv"
         cols_data_measured = slice(21, 45) #range of the columns to be considered
         cols_data_measured_errors = slice(45, 69) #range of the columns to be considered
         #these extra ones are needed for validation step
@@ -708,7 +708,7 @@ if mode_ == "Bayesian":
     #%%--- Set number of tries
     # number of parameter sets to try, including the start, set very high for calibration (10000)
     NumberOfTries = args.tries
-    NumberOfTries = 15000
+    NumberOfTries = 6
     print("Number of Tries", NumberOfTries)
     t1 = time.perf_counter()
 
@@ -742,6 +742,12 @@ if mode_ == "Bayesian":
 
     # # read the measured data (towards which to calibrate) and the treatment definitions
     inputBayesianRun = pd.read_csv(path_bayesian, header=0, skiprows=0)
+    #save input file into output_Bayesian, preserving original file name
+    # preserve original filename
+    filename = os.path.basename(path_bayesian)    
+    # copy file to output folder
+    shutil.copy(path_bayesian, os.path.join(sharable_path, filename))
+    #number of treatments
     numTreatments = len(inputBayesianRun)
     #how many rows contain control treatments (these should come first in the input file), needed for PE calculation
     numControls = inputBayesianRun['treatment'].str.contains('control', case=False, na=False).sum()
