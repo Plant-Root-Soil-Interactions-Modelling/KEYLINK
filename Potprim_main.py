@@ -70,7 +70,7 @@ modes = Literal["Normal", "Sensitivity", "Bayesian", "Hypercube"]
 options = get_args(modes)
 
 #%% set the mode to Normal, Sensitivity, Bayesian or Hypercube (Hypercube can be used for crossvalidation or scenarios simulation)
-mode_ = "Bayesian"
+mode_ = "Hypercube"
 
 # check if mode was set correctly, if not stop the run
 assert mode_ in options, f'"{mode_}" is not in "{options}"'
@@ -1572,7 +1572,7 @@ if mode_ == "Bayesian":
 #%% Latin Hypercube mode ###########################
 if mode_ == "Hypercube":
     #manually set the path of the folder containing the accepted parameter csv and calibration input file
-    logs_path = os.path.join("logs/260309_Bayesian_overall_saved_manually")
+    # logs_path = os.path.join("logs/260309_Bayesian_overall_saved_manually")
     # for i in range(5):
     #     i = i+1
     #     print(i)
@@ -1582,11 +1582,11 @@ if mode_ == "Hypercube":
     # foldername =f"set{i}"
     # logs_path = os.path.join("logs/250809_Kfolds_v5_saved_manually",foldername,"output_Bayesian")
     #newer system
-    # logs_path = "logs/260310_Bayesian_kfold1"
-    # logs_path = "logs/260123_Bayesian_kfold2"
-    # logs_path = "logs/260124_Bayesian_kfold3"
-    # logs_path = "logs/260124_Bayesian_kfold4"
-    # logs_path = "logs/260125_Bayesian_kfold5"
+    logs_path = "logs/260310_Bayesian_kfold1"
+    # logs_path = "logs/260312_Bayesian_1_kfold2"
+    # logs_path = "logs/260313_Bayesian_kfold3"
+    # logs_path = "logs/260313_Bayesian_1_kfold4"
+    # logs_path = "logs/260313_Bayesian_kfold5"
     #version for scenarios
     # logs_path = "logs/251030_Negpriming_availDOMtobulk"
     
@@ -1602,8 +1602,9 @@ if mode_ == "Hypercube":
     # # Load the CSV files into a DataFrame    
     acceptedParams_df = pd.read_csv(file_path, header=None)
     length_before = len(acceptedParams_df)
-    # acceptedParams_df = acceptedParams_df.iloc[500:].reset_index(drop=True)  #will drop first 500 sets, for kfold
-    acceptedParams_df = acceptedParams_df.iloc[300:].reset_index(drop=True) #will drop still first 300 sets, for overall
+    # acceptedParams_df = acceptedParams_df.iloc[1000:].reset_index(drop=True)  #will drop first 1000 sets, for kfold
+    acceptedParams_df = acceptedParams_df.iloc[2500:].reset_index(drop=True)  #will drop first 2500 sets, for kfold
+    # acceptedParams_df = acceptedParams_df.iloc[300:].reset_index(drop=True) #will drop still first 300 sets, for overall 350 burn in
     length_after=len(acceptedParams_df)
     
     # Number of samples
@@ -1627,14 +1628,15 @@ if mode_ == "Hypercube":
     
     #save the hypercube sample
     sampled_df.to_csv(
-        os.path.join(logs_path, "Hypercube_sampled.csv"),
+        # os.path.join(logs_path, "Hypercube_sampled.csv"),
+        os.path.join(logs_path, "Hypercube_sampled2500.csv"),
         index=False,
         float_format="%.5f",
     )
     
     #load hypercube sample from csv
     #version for kfold validation or overall calibration
-    path_hypercube = os.path.join(logs_path, "Hypercube_sampled.csv")
+    path_hypercube = os.path.join(logs_path, "Hypercube_sampled2500.csv")
     #version for scenarios, just use the overall hypercube
     # path_hypercube = "Hypercube_sampled.csv"
     # path_hypercube = "Negativepriming_availDOMtobulk.csv"
@@ -1743,7 +1745,8 @@ if mode_ == "Hypercube":
     #save all modelled data
     
     overall_results_df.to_csv(
-        os.path.join(logs_path, "data/Simdata_Hypercube_validation.csv"),
+        # os.path.join(logs_path, "data/Simdata_Hypercube_validation.csv"),
+        os.path.join(logs_path, "data/Simdata_Hypercube_validation2500.csv"),
         index=False,
         float_format="%.5f",
     )
