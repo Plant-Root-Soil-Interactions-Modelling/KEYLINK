@@ -1582,11 +1582,11 @@ if mode_ == "Hypercube":
     # foldername =f"set{i}"
     # logs_path = os.path.join("logs/250809_Kfolds_v5_saved_manually",foldername,"output_Bayesian")
     #newer system
-    logs_path = "logs/260310_Bayesian_kfold1"
+    # logs_path = "logs/260310_Bayesian_kfold1"
     # logs_path = "logs/260312_Bayesian_1_kfold2"
     # logs_path = "logs/260313_Bayesian_kfold3"
     # logs_path = "logs/260313_Bayesian_1_kfold4"
-    # logs_path = "logs/260313_Bayesian_kfold5"
+    logs_path = "logs/260313_Bayesian_kfold5"
     #version for scenarios
     # logs_path = "logs/251030_Negpriming_availDOMtobulk"
     
