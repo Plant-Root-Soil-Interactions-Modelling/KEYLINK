@@ -11,4 +11,18 @@ flux of each functional group is `d * B * (B/Bref)**(beta-1)` (Georgiou et al. 2
 equation (microbial peaks far above plausible values followed by collapse) while leaving the
 turnover at the observed biomass unchanged.
 
-Tests: `python -m unittest discover -p "test_*.py"`
+
+## Installation and tests
+
+Dependencies: `pip install -r requirements.txt` (numpy, scipy, matplotlib; pytest is optional).
+
+To check that everything still works after a change, run from the model directory
+
+    python run_tests.py          # add -v to list every test, -k NAME to select tests
+
+(equivalent: `python -m unittest discover -s tests -t .` or `pytest tests`). The suite
+(`tests/`) covers the water modifier, the daily derivative functions, the carbon and nitrogen
+budgets and the density-dependent turnover; it runs on a two-year climate fixture
+(`tests/fixtures/climate_1999_2000.txt`) and takes well under a minute. Shared set-up lives in
+`tests/helpers.py`; `keylink_core.set_run_length(ndays, climatefile)` selects run length and
+climate file without editing the parameter files.

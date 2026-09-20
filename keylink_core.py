@@ -69,15 +69,28 @@ SOMCNini=SOMCN
 Bini = B
 PWini = PW
 
-PVt = np.zeros(int(tStop))
-PWt = np.zeros(int(tStop))
-# daily nitrogen diagnostics: mineral N, total N, SOM C:N, litter C:N, net N mineralisation by bacteria
-Nmint = np.zeros(int(tStop))
-Ntott = np.zeros(int(tStop))
-SOMCNt = np.zeros(int(tStop))
-litterCNt = np.zeros(int(tStop))
-mineralisationt = np.zeros(int(tStop))
-psoln = np.zeros((int(tStop), NrGroups+14))
+climatefile_name = 'PrecipKMIBrass.txt' #daily climate record (DOY year month DOM P Temperature), one line per simulated day
+
+def set_run_length(ndays, climatefile=None):
+    """Set the number of simulated days (default: from KL_runparams) and optionally another climate
+    file, and (re)allocate the daily output arrays accordingly. Used e.g. by the tests to run on a
+    short climate fixture."""
+    global tStop, t, PVt, PWt, Nmint, Ntott, SOMCNt, litterCNt, mineralisationt, psoln, climatefile_name
+    tStop = int(ndays)
+    if climatefile is not None:
+        climatefile_name = climatefile
+    t = np.arange(0., tStop)
+    PVt = np.zeros(tStop)
+    PWt = np.zeros(tStop)
+    # daily nitrogen diagnostics: mineral N, total N, SOM C:N, litter C:N, net N mineralisation by bacteria
+    Nmint = np.zeros(tStop)
+    Ntott = np.zeros(tStop)
+    SOMCNt = np.zeros(tStop)
+    litterCNt = np.zeros(tStop)
+    mineralisationt = np.zeros(tStop)
+    psoln = np.zeros((tStop, NrGroups+14))
+
+set_run_length(tStop)
 avail = np.zeros(NrGroups+3)
 modt = np.zeros(NrGroups+1)
 rRESP = np.zeros(NrGroups+1)
@@ -92,8 +105,6 @@ gr = np.array([4000,2000,500,50,0.1]) #graph ranges, for five biomass graphs wit
 popname = np.array(['Bacteria','Fungi','Mycorrhiza','bacterivores','fungivores','saprotrophs','engineers','herbivores','predators','litter','SOM','roots','CO2'])
 #graph colours for the populations and C pools
 popcolour = np.array(['blue','red','darkcyan','cyan','orange','purple','darkgreen','magenta','black','brown','grey','chartreuse','yellow'])
-t = np.arange(0., tStop)
-
 
 
 # function to be integrated daily solving the carbon pools 'B' ifo time
@@ -232,7 +243,7 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
 
 def KeylinkModel(Val):
 
-    climatefile=open('PrecipKMIBrass.txt')
+    climatefile=open(climatefile_name)
     titls=climatefile.readline() # first line are titles
     
     std=0 #we are using here dates from climate input file, so there is no need in create a starting date

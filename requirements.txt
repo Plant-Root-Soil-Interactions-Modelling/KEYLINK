@@ -1,0 +1,7 @@
+# Runtime dependencies of the KEYLINK model
+numpy>=1.20
+scipy>=1.6
+matplotlib>=3.3
+# Optional: the test suite runs with the standard library (python run_tests.py),
+# but can also be run with pytest (pytest tests)
+# pytest>=6

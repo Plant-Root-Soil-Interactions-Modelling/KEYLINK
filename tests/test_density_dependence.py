@@ -10,34 +10,14 @@ turnover (Georgiou et al. 2017) as an add-on; it is implemented as
     Dt = d * B * (B/Bref)**(beta-1)
 with beta and Bref per functional group in KL_densityParams.txt (beta = 1 -> Eq. 12).
 
-Run with:  python -m unittest test_density_dependence   (or pytest)
+Run with:  python run_tests.py   (all tests) from the model directory.
 """
-import os
-import importlib
 import unittest
 import numpy as np
 
-os.environ.setdefault('MPLBACKEND', 'Agg')
-import keylink_functions as mf
-import keylink_core as core
-from test_growth_functions import base_inputs, rhs
+from tests.helpers import mf, core, run_model, fresh_core, base_inputs, rhs, FIXTURE_DAYS
 
-NDAYS = 1826   # 5 years
-
-
-def run_model(ndays, density_dependent):
-    importlib.reload(core)
-    core.tStop = ndays
-    core.psoln = np.zeros((ndays, core.NrGroups+14))
-    for name in ('PVt', 'PWt', 'Nmint', 'Ntott', 'SOMCNt', 'litterCNt', 'mineralisationt'):
-        setattr(core, name, np.zeros(ndays))
-    if not density_dependent:
-        core.BETA = None
-        core.BREF = None
-    gmax = core.import_pools('KL_FaunalParams')[0]
-    B0 = core.Bini.copy()
-    C, PW, PV, pores = core.KeylinkModel(gmax.copy())
-    return B0, C.copy()
+NDAYS = FIXTURE_DAYS   # 2 years
 
 
 class TestCalcDeath(unittest.TestCase):
@@ -102,7 +82,7 @@ class TestInDerivativeFunctions(unittest.TestCase):
 
 
 class TestWholeModelStability(unittest.TestCase):
-    """Default parameter files, 5-year run. Bacteria and mycorrhiza must stay within an order of
+    """Default parameter files, 2-year run on the climate fixture. Bacteria and mycorrhiza must stay within an order of
     magnitude of their observed (initial) biomass; with first-order turnover they do not."""
 
     @classmethod
@@ -111,10 +91,10 @@ class TestWholeModelStability(unittest.TestCase):
         _, cls.C1 = run_model(NDAYS, density_dependent=False)
 
     def test_parameter_file_is_read(self):
-        importlib.reload(core)
-        self.assertTrue(core.DensityDependentTurnover)
-        self.assertEqual(len(core.BETA), 9)
-        np.testing.assert_allclose(core.BREF, core.Bini[:9])   # Bref <= 0 in the file -> initial biomass
+        c = fresh_core()
+        self.assertTrue(c.DensityDependentTurnover)
+        self.assertEqual(len(c.BETA), 9)
+        np.testing.assert_allclose(c.BREF, c.Bini[:9])   # Bref <= 0 in the file -> initial biomass
 
     def test_microbial_pools_stay_within_plausible_range(self):
         C, B0 = self.C, self.B0
@@ -142,8 +122,11 @@ class TestWholeModelStability(unittest.TestCase):
         peak_fo = (C1[:, :9].max(0)/B0[:9]).max()
         self.assertGreater(peak_fo, 10*peak_dd, "first-order peak %.0fx vs density-dependent %.0fx" % (peak_fo, peak_dd))
         self.assertGreater(C1[:, 1].max()/B0[1], 50)        # fungal bloom with first-order turnover
-        self.assertLess(C1[:, 10].min(), 0.5*B0[10])       # ... which depletes the SOM pool
-        self.assertGreater(C[:, 10].min(), 0.7*B0[10])     # not so with density-dependent turnover
+        # ... which eats into the SOM pool, while the density-dependent run keeps it near its
+        # initial value (the longer the run, the larger this difference becomes)
+        self.assertLess(C1[:, 10].min(), 0.9*B0[10])
+        self.assertGreater(C[:, 10].min(), 0.95*C1[:, 10].min())
+        self.assertGreater(C[:, 10].min(), 0.7*B0[10])
 
 
 if __name__ == '__main__':

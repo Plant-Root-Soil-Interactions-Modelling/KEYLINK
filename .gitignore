@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+# model output
+keylinkoutput.txt
+keylinkBayesian*.txt
+KL_statistics_*.txt
+KL_soil_matrix.txt
+KL_raw_data.txt

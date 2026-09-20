@@ -17,32 +17,14 @@ rebuilds the expected budget day by day from the model output and checks that
 the pools close to solver precision. It fails if CtoMyc is added twice (once in
 the ODE and once more in the daily loop), which was the case before.
 
-Run with:  python -m unittest test_carbon_budget   (or pytest)
+Run with:  python run_tests.py   (all tests) from the model directory.
 """
-import os
-import importlib
 import unittest
 import numpy as np
 
-os.environ.setdefault('MPLBACKEND', 'Agg')
-import keylink_functions as mf
-import keylink_core as core
+from tests.helpers import mf, core, run_model, POOLS
 
-NDAYS = 200          # long enough to include wet/dry periods and pool clamps
-POOLS = slice(0, 13)  # 9 biota + litter + SOM + roots + CO2
-
-
-def run_model(ndays):
-    """Fresh import (initial state is mutated by a run), shortened run length."""
-    importlib.reload(core)
-    core.tStop = ndays
-    core.psoln = np.zeros((ndays, core.NrGroups+14))
-    core.PVt = np.zeros(ndays)
-    core.PWt = np.zeros(ndays)
-    gmax = core.import_pools('KL_FaunalParams')[0]
-    B0 = core.Bini.copy()
-    C, PW, PV, pores = core.KeylinkModel(gmax.copy())
-    return B0, C.copy()
+NDAYS = 200          # days of the climate fixture used
 
 
 def between_days(B_after_ode):

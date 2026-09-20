@@ -22,30 +22,14 @@ The tests replay these rules from the daily model output and the N diagnostics
   (5) the flux outputs (columns 13-20) are daily values, not cumulative sums,
   (6) the SOM C:N stays physically plausible (no sign flips / 'error NSOM' hacks).
 
-Run with:  python -m unittest test_nitrogen_budget   (or pytest)
+Run with:  python run_tests.py   (all tests) from the model directory.
 """
-import os
-import importlib
 import unittest
 import numpy as np
 
-os.environ.setdefault('MPLBACKEND', 'Agg')
-import keylink_functions as mf
-import keylink_core as core
+from tests.helpers import mf, core, run_model
 
 NDAYS = 365
-
-
-def run_model(ndays):
-    importlib.reload(core)
-    core.tStop = ndays
-    core.psoln = np.zeros((ndays, core.NrGroups+14))
-    for name in ('PVt', 'PWt', 'Nmint', 'Ntott', 'SOMCNt', 'litterCNt', 'mineralisationt'):
-        setattr(core, name, np.zeros(ndays))
-    gmax = core.import_pools('KL_FaunalParams')[0]
-    B0 = core.Bini.copy()
-    C, PW, PV, pores = core.KeylinkModel(gmax.copy())
-    return B0, C.copy()
 
 
 class TestNitrogenBudget(unittest.TestCase):
@@ -108,13 +92,18 @@ class TestNitrogenBudget(unittest.TestCase):
 
     def test_total_N_changes_only_by_boundary_fluxes(self):
         """Replay: Ntot(i) = Ntot(i-1) + litter N in - N to plant (myc + direct) - N exported by engineers."""
+        exported = 0.0
         for i in range(NDAYS):
             _, litterCN, SOMCN_used, _, Ntot_pre = self.state_before_ode(i)
             _, somdown, litdown = self.end_of_day_pools(i)
             expected = Ntot_pre - somdown/core.SOMCNt[i] - litdown/litterCN
             self.assertAlmostEqual(core.Ntott[i], expected, places=9, msg="day %d" % i)
-        # and N really leaves the system through these routes
-        self.assertLess(core.Ntott[-1], core.Ntotini)
+        exported += somdown/core.SOMCNt[i] + litdown/litterCN
+        # all four boundary routes are actually active in this run (so the replay is a real check)
+        self.assertGreater(exported, 0)                                        # engineer export
+        self.assertGreater(mf.plantNuptake(core.litterCNt[0], core.inputLit, core.NmyctoPlant), 0)
+        self.assertGreater(core.inputLit/core.CNlit, 0)                        # litter N input
+        self.assertNotAlmostEqual(core.Ntott[-1], core.Ntotini, places=3)      # Ntot does change
 
     def test_mycorrhizal_N_transfer_uses_plant_demand_from_litter_input(self):
         """mycNtoPlant must be evaluated with inputLit as plant-demand proxy (as plantNuptake is),

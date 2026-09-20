@@ -8,12 +8,12 @@ Reference: Flores et al. (2021) PeerJ 9:e10707, Eqs. 14-16:
 with PvolW the water filled and PvolA the aerated pore volume of the class. All other
 classes (completely dry or completely flooded) have mH2O = 0.
 
-Run with:  python -m unittest test_calcAvail   (or pytest)
+Run with:  python run_tests.py   (all tests) from the model directory.
 """
 import unittest
 import numpy as np
 
-import keylink_functions as mf
+from tests.helpers import mf
 
 # pore volumes (l/m3) of the five classes: inaccessible, bacterial, micro, meso, macro
 PV = np.array([45., 37., 37., 200., 6.])

@@ -10,59 +10,12 @@ They guard against two bugs found in both functions:
   * mycorrhiza grew with the fungal gmax / C:N / recalcitrance parameters
     (GMAX[1], CN[1], MCN[1], MREC[1]); its own parameters (index 2) were unused.
 
-Run with:  python -m unittest test_growth_functions   (or pytest)
+Run with:  python run_tests.py   (all tests) from the model directory.
 """
-import os
 import unittest
 import numpy as np
 
-os.environ.setdefault('MPLBACKEND', 'Agg')  # keylink_core imports pyplot
-import keylink_functions as mf
-import keylink_core as core
-
-# pool indices: 0=bact, 1=fungi, 2=myc, 3=bvores, 4=fvores, 5=sap (detritivores),
-# 6=eng, 7=hvores, 8=pred, 9=litter, 10=SOM, 11=roots, 12=CO2
-# output indices: 13=bactResp, 14=funResp, 15=EMresp, 16=bactGrowthSOM,
-# 17=bactGrowthLit, 18=SOMeaten, 19=LITeaten, 20=LITeatenEng, 21=0
-NPOOL = 22
-SOMINI = 11470.
-
-
-def base_inputs():
-    """A plausible, fully 'active' state (all biomasses > 0, all availabilities > 0,
-    no temperature limitation) built from the parameter files of the repository."""
-    P = np.loadtxt('KL_FaunalParams.txt', encoding='latin1')
-    GMAX, KS, DEATH, RESP, FAEC, CN, REC, MCN, MREC = P[:9]
-    B = np.zeros(NPOOL)
-    B[:12] = [15.1, 15.1, 160., 0.1, 0.8, 0.6, 0.2, 0.2, 0.4, 2680., SOMINI, 320.]
-    SOMunavail = 45./325.*SOMINI
-    avail = np.array([0.30, 0.25, 0.30, 0.20, 0.25, 0.30, 0.20, 0.20, 0.20, 0.20, 1.0, SOMunavail])
-    modt = np.ones(9)
-    kw = dict(avail=avail, modt=modt, GMAX=GMAX.copy(), litterCN=38.6, SOMCN=18., mf=mf,
-              CN=CN.copy(), MCN=MCN.copy(), MREC=MREC.copy(), pH=3.9, recLit=40., FAEC=FAEC,
-              pfaec=np.array([0, 0, 0, 0, 0, 0.3, 0.2]), rRESP=RESP.copy(), KS=KS, DEATH=DEATH,
-              CtoMyc=0.54)
-    return B, kw
-
-
-def rhs(B, kw):
-    return np.array(mf.fCompSpecies(B.copy(), 0., **kw), dtype=float)
-
-
-def growth_of(B, kw, consumer, source_idx, avail_idx, gmax, SOM=False):
-    """Independent re-computation of one Monod consumption term (Eq. 9)."""
-    S = B[source_idx] - kw['avail'][11] if SOM else B[source_idx]
-    return kw['modt'][consumer]*mf.calcgrowth(B[consumer], S, kw['avail'][avail_idx], gmax, kw['KS'][consumer])
-
-
-def gmax_on(kw, group, source):
-    """gmax of bacteria(0)/fungi(1)/mycorrhiza(2) on 'litter' or 'SOM' incl. C:N/rec/pH modifiers."""
-    pH_id = 1 if group == 0 else 2
-    if source == 'litter':
-        return mf.calcgmaxmod(kw['CN'][group], kw['litterCN'], kw['MCN'][group], kw['recLit'],
-                              kw['MREC'][group], kw['pH'], pH_id)*kw['GMAX'][group]
-    return mf.calcgmaxmod(kw['CN'][group], kw['SOMCN'], kw['MCN'][group], 0.0,
-                          kw['MREC'][group], kw['pH'], pH_id)*kw['GMAX'][group]
+from tests.helpers import mf, core, base_inputs, rhs, growth_of, gmax_on
 
 
 class TestSummedConsumptionOutputs(unittest.TestCase):
