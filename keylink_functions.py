@@ -25,9 +25,13 @@ def calcAvail(PV, PW, SOMini):
         if PW[i]/PV[i] == 1:   # pore size that is filled
             mwater[i] = 0
         elif PW[i]/PV[i] > 0:
-            mwater[i] = mwatertot*PV[i]/(PV[i]+PW[i])
+            # Flores et al. (2021) Eqs. 15-16: PvolA = aerated pore volume,
+            # PvolW = water filled pore volume, PvolA + PvolW = PV[i]
+            PvolW = PW[i]
+            PvolA = PV[i]-PW[i]
+            mwater[i] = mwatertot*PvolA/(PvolA+PvolW)      # Eq. 15, partially filled class
             if i == 3:
-                mwater[i+1] = mwatertot*PW[i]/(PV[i]+PW[i])
+                mwater[i+1] = mwatertot*PvolW/(PvolA+PvolW)  # Eq. 16, class one above
                 
     availSOMbact    = np.sum([1, 1, 1, 1]*PV[1:]*mwater[1:]/sum(PV[1:])) #SOM availability to bact
     availSOMfungi   = np.sum([0, 1, 1, 1]*PV[1:]*mwater[1:]/sum(PV[1:])) #SOM availability to fung
