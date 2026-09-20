@@ -34,7 +34,7 @@ B = import_pools('KL_initC_Pools') #initial biomass in each C pool
  MREC, T_MIN, T_OPT, T_MAX, Q10) = import_pools('KL_FaunalParams') #parameters for each functional group, beware GMAX is
 #in this version overwritten when calling (depending on the runmode)
 
-iniSOM=B[NrGroups] #initial SOM in g C/m3
+iniSOM=B[10] #initial SOM in g C/m3 (pool index 10; B[NrGroups] would be the predators)
 
 B = np.concatenate([B, np.zeros(14+NrGroups-len(B))]) #extend with zeros for the flux outputs
 
@@ -48,7 +48,7 @@ PW = initWater/100*PVstruct #fraction of pore volume filled with water
 
 Nfauna=sum(B[:NrGroups+1]/CN) #N in food web functional groups
 
-Ntot=Nfauna+Nmin+B[NrGroups]/SOMCN+B[NrGroups+1]/litterCN #initial total N of the system
+Ntot=Nfauna+Nmin+B[10]/SOMCN+B[9]/litterCN #initial total N of the system: biota + mineral + SOM + litter
 
 Nminini=Nmin
 Ntotini=Ntot
@@ -60,6 +60,12 @@ PWini = PW
 
 PVt = np.zeros(int(tStop))
 PWt = np.zeros(int(tStop))
+# daily nitrogen diagnostics: mineral N, total N, SOM C:N, litter C:N, net N mineralisation by bacteria
+Nmint = np.zeros(int(tStop))
+Ntott = np.zeros(int(tStop))
+SOMCNt = np.zeros(int(tStop))
+litterCNt = np.zeros(int(tStop))
+mineralisationt = np.zeros(int(tStop))
 psoln = np.zeros((int(tStop), NrGroups+14))
 avail = np.zeros(NrGroups+3)
 modt = np.zeros(NrGroups+1)
@@ -87,7 +93,6 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
 
     # Default '10 groups': 0=bact, 1=fungi, 2=myc, 3=bvores, 4=fvores, 5=sap,
     # 6=eng, 7=hvores, 8=pred, 9=litter, 10=SOM, 11=roots, 12=CO2
-    B[13:22]=0 #uesed for aditional output, but if not set to 0 is cummulative (change DB/dt is calculated)
     # update GMAX for bacteria, fung and myc GMAX is modified for SOM
     # and litter seperately depending on CN (and possibly recalcitrance)
     #for bact if CN source too high they can't grow   
@@ -283,15 +288,19 @@ def KeylinkModel(Val):
     
         #update soil C and N in soil
         CNsoil=(B[9]+B[10])/(B[9]/litterCN+B[10]/SOMCN)
-        Ntot=Ntot-mf.mycNtoPlant(NmyctoPlant, CtoMyc, litterCN, CtoMyc, CNsoil)    
-        if mf.mycNtoPlant(NmyctoPlant, CtoMyc, litterCN, CtoMyc, CNsoil)<Nmin:   #mycorrhisae take up mineral N first
-            Nmin=Nmin-mf.mycNtoPlant(NmyctoPlant, CtoMyc, litterCN, CtoMyc, CNsoil)
+        NviaMyc=mf.mycNtoPlant(NmyctoPlant, inputLit, litterCN, CtoMyc, CNsoil) #N delivered by mycorrhiza to the plant
+        Ntot=Ntot-NviaMyc
+        if NviaMyc<Nmin:   #mycorrhisae take up mineral N first
+            Nmin=Nmin-NviaMyc
         else:
-            Nmin=0  #it will need to come from SOM in this case
+            Nmin=0  #the rest comes from SOM (SOM N is the residual of the N budget, see NSOM below)
         #plant N uptake    
         Ntot=Ntot-min(mf.plantNuptake(litterCN, inputLit, NmyctoPlant), Nmin)
         Nmin=Nmin-min(mf.plantNuptake(litterCN, inputLit, NmyctoPlant), Nmin)
     
+        # entries 13..21 integrate flux outputs (respiration, growth, consumption); reset them so that
+        # after the ODE call they hold the flux of THIS day and not the cumulative value since the start
+        B[13:22]=0
         # Call the ODE solver for day i
         if CompetingSpecies==True: 
             day = odeint(mf.fCompSpecies, B, [i, i+1], args=(avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP,
@@ -307,20 +316,19 @@ def KeylinkModel(Val):
         et = ee*pet #evapotranspiration (rate of effective evapotranspiration * potential evapotranspiration)
         PW = mf.wl(PW,et) # water lost by evapotranspiration: we do this at the end of the day (otherwise soil is always dry)
 
-               # close N for bact: (bactgrowthsom/CNsom, bactgrowthlit/CNlit = 'gain' goes into min if not needed to grow 
-        mineralisation=(B[16]/litterCN+B[17]/SOMCN-(B[16]+B[17]-B[13])/CN[0])  # adding bact resp - growth /CN for lit and SOM
+        # net N mineralisation by bacteria (daily fluxes of this day): N taken up with the consumed SOM
+        # (B[16]=growth on SOM, C:N of SOM) and litter (B[17]=growth on litter, C:N of litter) minus the N
+        # built into new biomass, plus the N released by respiration (B[13]) at the bacterial C:N
+        mineralisation=(B[16]/SOMCN+B[17]/litterCN-(B[16]+B[17]-B[13])/CN[0])
         Nmin=Nmin+mineralisation
- 
-        if Nmin<0:   #Bact use more N then they 'eat' this needs to come from somewhere so from SOM (but needs to be corrected)
-            Nneg=Nmin
-            Nmin=0
-        else:
-            Nneg=0
+        if Nmin<0:   #bacteria immobilise more N than available as mineral N: the deficit is taken from SOM
+            Nmin=0   #(SOM N is the residual of the budget below, so the deficit automatically ends up there)
+        # N budget closure: total N = biota N (fixed C:N) + mineral N + litter N + SOM N
         Nfauna=sum(B[0:9]/CN)
-        NSOM=Ntot-Nfauna-Nmin+Nneg
-        if NSOM<0:   #Bact use more N then they 'eat' this needs to come from somewhere so from SOM (but needs to be corrected)
-            NSOM=-NSOM
-            print('error NSOM<0')
+        NSOM=Ntot-Nfauna-Nmin-B[9]/litterCN
+        if NSOM<=0:
+            print('error NSOM<=0 on day', i, NSOM)
+            NSOM=abs(NSOM)
         SOMCN=B[10]/NSOM
 
     
@@ -333,6 +341,13 @@ def KeylinkModel(Val):
         Litdown=mf.calcLittermove(B[6], moveRate, B[9])
         B[9]=B[9]-Litdown
         Ntot=Ntot-Litdown/litterCN
+
+        #daily nitrogen diagnostics (end of day, after the engineers moved SOM and litter out of the layer)
+        Nmint[i-std]=Nmin
+        Ntott[i-std]=Ntot
+        SOMCNt[i-std]=SOMCN
+        litterCNt[i-std]=litterCN
+        mineralisationt[i-std]=mineralisation
     
         #fragmentation    
         B[9]=B[9]-frag*psoln[i,21]
