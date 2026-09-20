@@ -16,7 +16,7 @@ import string
 
 def import_pools(filename):
     """Load array from text file"""
-    return np.loadtxt(filename + '.txt')
+    return np.loadtxt(filename + '.txt', encoding='latin1')
 
 def export_pools(filename, array):
     """Save an array in a readable format, compatible with R"""
@@ -36,7 +36,7 @@ B = import_pools('KL_initC_Pools') #initial biomass in each C pool
 
 iniSOM=B[NrGroups] #initial SOM in g C/m3
 
-B.resize(14+NrGroups,refcheck=False)
+B = np.concatenate([B, np.zeros(14+NrGroups-len(B))]) #extend with zeros for the flux outputs
 
 (TEMP, SUNH) = import_pools('KL_climateParams') #monthly climate data
 d, BD, alpha, n, m, Ksat, pH, litterCN, SOMCN, drainmax, PVstruct[0], PVstruct[1], PVstruct[2], PVstruct[3], PVstruct[4] = import_pools('KL_initSoil') #soil parameters
@@ -95,6 +95,9 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
     gmaxbSOM = mf.calcgmaxmod(CN[0], SOMCN, MCN[0], 0.0, MREC[0], pH, 1)*GMAX[0] #gmax for bact on SOM
     gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
     gmaxfSOM = mf.calcgmaxmod(CN[1], SOMCN, MCN[1], 0.0, MREC[1], pH, 2)* GMAX[1] #gmax for fung on SOM
+    # mycorrhiza: same pH response as fungi (id=2) but its own gmax, CN and recalcitrance parameters
+    gmaxmlit = mf.calcgmaxmod(CN[2], litterCN, MCN[2], recLit, MREC[2], pH, 2)* GMAX[2] #gmax for myc on litter
+    gmaxmSOM = mf.calcgmaxmod(CN[2], SOMCN, MCN[2], 0.0, MREC[2], pH, 2)* GMAX[2] #gmax for myc on SOM
     gmaxEng = min(mf.calcgmaxEng(GMAX[6],pH),GMAX[6]) #gmax for engineers
     
     #update faeces for  SAP and engineers
@@ -113,11 +116,11 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
              - modt[4]*mf.calcgrowth(B[4], B[1], availffvores, GMAX[4], KS[4]))
 
     myc = (mf.inputCtoMyc(CtoMyc)
-           + modt[2]*(mf.calcgrowth(B[2], B[9], availSOMbact, gmaxflit, KS[2])
-           + mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[2]))
+           + modt[2]*(mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2])
+           + mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxmSOM, KS[2]))
            - DEATH[2]*B[2] - rRESP[2]*B[2]
            - modt[4]*mf.calcgrowth(B[4], B[2], availffvores, GMAX[4], KS[4]))
-           # myc (being a fungi) has the same availability and gmax than fungi
+           # myc (being a fungi) has the same availability as fungi, but its own gmax
     bvores = (modt[3]*mf.calcgrowth(B[3], B[0], availbbvores, GMAX[3], KS[3])
               - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
               - DEATH[3]*B[3] - rRESP[3]*B[3])
@@ -152,7 +155,7 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
     litter = (           
               -modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #eaten by bact
               -modt[1]*mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]) #eaten by fungi
-              -modt[2]*mf.calcgrowth(B[2], B[9], availSOMbact, gmaxflit, KS[2]) #eaten by myc
+              -modt[2]*mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2]) #eaten by myc
               -modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
               -modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) # eaten by engineers
               + DEATH[5]*B[5] + DEATH[6]*B[6]+ DEATH[7]*B[7] + DEATH[8]*B[8])
@@ -160,7 +163,7 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
     som = (mf.exudation() 
            - modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
            - modt[1]*mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1])
-           - modt[2]*mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[2])
+           - modt[2]*mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxmSOM, KS[2])
            - modt[5]*mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]) #eaten by SAP
            - modt[6]*mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6]) # eaten by engineers
            + modt[8]*FAEC[8] * (mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
@@ -183,16 +186,18 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
     EMresp=rRESP[2]*B[2] #respiration of mycorrhizal fungi
     bactGrowthSOM=modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0]) #growth of bact from eaten SOM
     bactGrowthLit=modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #growth of bact from eaten litter
-    SOMeaten=modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0]) #SOM eaten by bact
-    + modt[1]*mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1]) #eaten by fungi
-    + modt[2]*mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[2]) #eaten by myc
-    + modt[5]*mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]) #eaten by SAP
-    + modt[6]*mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6]) # eaten by engineers
-    LITeaten=modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #Litter eaten by bact
-    +modt[1]*mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]) #eaten by fungi
-    +modt[2]*mf.calcgrowth(B[2], B[9], availSOMbact, gmaxflit, KS[2]) #eaten by myc
-    +modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
-    +modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) # eaten by engineers      
+    # total SOM and litter consumption: the sums MUST be enclosed in parentheses,
+    # otherwise the continuation lines are separate statements and only the bacterial term is kept
+    SOMeaten=(modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0]) #SOM eaten by bact
+              + modt[1]*mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1]) #eaten by fungi
+              + modt[2]*mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxmSOM, KS[2]) #eaten by myc
+              + modt[5]*mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]) #eaten by SAP
+              + modt[6]*mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6])) # eaten by engineers
+    LITeaten=(modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #Litter eaten by bact
+              + modt[1]*mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]) #eaten by fungi
+              + modt[2]*mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2]) #eaten by myc
+              + modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
+              + modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])) # eaten by engineers
     LITeatenEng=modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) #only litter eaten by enginners
  
     return [bact, fungi, myc, bvores, fvores, sap,
