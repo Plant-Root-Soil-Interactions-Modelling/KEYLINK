@@ -278,8 +278,8 @@ def KeylinkModel(Val):
         #root growth
         B[11]=B[11]+mf.rootgrowth(rrg)-mf.rootTurnover(B[11],rootTO)
     
-        #interaction between mycorrhizal fungi and plants
-        B[2]=B[2]+mf.inputCtoMyc(CtoMyc)
+        #interaction between mycorrhizal fungi and plants: the plant C input to mycorrhiza (CtoMyc)
+        #is added inside the ODE (fEight / fCompSpecies); adding it here as well double-counts it
     
         #update soil C and N in soil
         CNsoil=(B[9]+B[10])/(B[9]/litterCN+B[10]/SOMCN)
