@@ -21,17 +21,22 @@ def calcAvail(PV, PW, SOMini):
         mwatertot = 4*sum(PW)/sum(PV)*(1-sum(PW)/sum(PV))
     else:
         mwatertot = 1
-    for i in range(4):
-        if PW[i]/PV[i] == 1:   # pore size that is filled
-            mwater[i] = 0
-        elif PW[i]/PV[i] > 0:
-            # Flores et al. (2021) Eqs. 15-16: PvolA = aerated pore volume,
-            # PvolW = water filled pore volume, PvolA + PvolW = PV[i]
-            PvolW = PW[i]
-            PvolA = PV[i]-PW[i]
-            mwater[i] = mwatertot*PvolA/(PvolA+PvolW)      # Eq. 15, partially filled class
-            if i == 3:
-                mwater[i+1] = mwatertot*PvolW/(PvolA+PvolW)  # Eq. 16, class one above
+    # Flores et al. (2021) Eqs. 15-16: activity is in the pores that are neither water-logged nor dry,
+    # i.e. in the highest pore class that holds water (the 'partially filled' class, Eq. 15) and in the
+    # class one above it, which is assumed not yet completely dry (Eq. 16). Pores are filled from the
+    # smallest class upwards, so this is the largest class k with PW[k] > 0. A class that is exactly
+    # full counts as partially filled with water fraction 1: all activity is then in the class above
+    # (e.g. at field capacity: micropores full, mesopores active). This makes the modifier continuous
+    # when the water level crosses a class boundary.
+    # (water in the macropores only defines the level when the mesopores below them are full)
+    filled = [i for i in range(5) if PW[i] > 0 and (i < 4 or PW[3] >= PV[3])]
+    if filled:
+        k = max(filled)
+        PvolW = PW[k]                  # water filled pore volume of that class
+        PvolA = PV[k]-PW[k]            # aerated pore volume of that class
+        mwater[k] = mwatertot*PvolA/(PvolA+PvolW)          # Eq. 15
+        if k < 4:
+            mwater[k+1] = mwatertot*PvolW/(PvolA+PvolW)    # Eq. 16
                 
     availSOMbact    = np.sum([1, 1, 1, 1]*PV[1:]*mwater[1:]/sum(PV[1:])) #SOM availability to bact
     availSOMfungi   = np.sum([0, 1, 1, 1]*PV[1:]*mwater[1:]/sum(PV[1:])) #SOM availability to fung
@@ -250,6 +255,17 @@ def calcresp(temp, T1, R1, Q10): #calculate respiration ifo temperature
     value = R1*(Q10**((temp-T1)/10))
     return value
 
+def calcDeath(biomass, d, beta=1.0, Bref=1.0):
+    '''Turnover (death) flux, g C m-3 day-1. With beta == 1 this is the first-order term d*B of
+    Flores et al. (2021) Eq. 12. With beta > 1 the turnover is density dependent following
+    Georgiou et al. (2017), Dt = d*B*(B/Bref)**(beta-1): at the reference biomass Bref (e.g. the
+    observed biomass) the specific turnover equals d, above it the turnover increases and below
+    it decreases. This self-limitation damps the boom-bust behaviour of the exponential growth
+    equation (suggested as an add-on in Flores et al. 2021, 'Simulating the variability in gmax').'''
+    if beta == 1.0:
+        return d*biomass
+    return d*biomass*(max(biomass, 0.0)/Bref)**(beta-1.0)
+
 def calcFaec(gmax, faec, pfaec, CNsource, CNbiomass, R): #calculate faeces
     faecm = faec+pfaec*(CNsource-CNbiomass)/CNsource*faec # ffaecEff in paper
     faecshort = CNsource/CNbiomass+R/gmax-1 # ffaecCN in paper
@@ -298,7 +314,8 @@ def wl(PW, et): # water lost by evapotranspiration
     return PW
 
 def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP,
-         KS, DEATH, CtoMyc):
+         KS, DEATH, CtoMyc, BETA=None, BREF=None):
+    # BETA, BREF: optional density-dependent turnover parameters per group (see calcDeath); None = first order
     (availSOMbact, availSOMfungi, availSOMeng, availSOMsap, availbbvores,
      availffvores, availfvorespred, availbvorespred, availhvorespred,
      availsappred, availengpred ,SOMunavail) = avail
@@ -322,53 +339,59 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
     faeclitEng = min(1,mf.calcFaec(gmaxEng, FAEC[6], pfaec[6], litterCN, CN[6], rRESP[6]))
     faeclitSAP = min(1,mf.calcFaec(GMAX[5], FAEC[5], pfaec[5], litterCN, CN[5], rRESP[5]))
 
+    #turnover (death) flux of each group; density dependent if BETA/BREF are given
+    if BETA is None:
+        dead = [DEATH[k]*B[k] for k in range(9)]
+    else:
+        dead = [mf.calcDeath(B[k], DEATH[k], BETA[k], BREF[k]) for k in range(9)]
+
     #growth equations for each functional group and for variations in C pools
     bact = (modt[0]*(mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
             + mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]))
-            - DEATH[0]*B[0] - rRESP[0]*B[0]
+            - dead[0] - rRESP[0]*B[0]
             - modt[3]*mf.calcgrowth(B[3], B[0], availbbvores, GMAX[3], KS[3]))
 
     fungi = (modt[1]*(mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1])
              + mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]))
-             - DEATH[1]*B[1] - rRESP[1]*B[1]
+             - dead[1] - rRESP[1]*B[1]
              - modt[4]*mf.calcgrowth(B[4], B[1], availffvores, GMAX[4], KS[4]))
 
     myc = (mf.inputCtoMyc(CtoMyc)
            + modt[2]*(mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2])
            + mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxmSOM, KS[2]))
-           - DEATH[2]*B[2] - rRESP[2]*B[2]
+           - dead[2] - rRESP[2]*B[2]
            - modt[4]*mf.calcgrowth(B[4], B[2], availffvores, GMAX[4], KS[4]))
            # myc (being a fungi) has the same availability as fungi, but its own gmax
     bvores = (modt[3]*mf.calcgrowth(B[3], B[0], availbbvores, GMAX[3], KS[3])
               - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
-              - DEATH[3]*B[3] - rRESP[3]*B[3])
+              - dead[3] - rRESP[3]*B[3])
 
     fvores = (modt[4]*(mf.calcgrowth(B[4], B[1], availffvores, GMAX[4], KS[4])
               + mf.calcgrowth(B[4], B[2], availffvores, GMAX[4], KS[4]))
               - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[4], availfvorespred, GMAX[8], KS[8])
-              - DEATH[4]*B[4] - rRESP[4]*B[4])
+              - dead[4] - rRESP[4]*B[4])
 
     sap = (modt[5]*(mf.calcgrowth(B[5], B[9],availSOMbact, GMAX[5], KS[5])
            + mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]))
            -modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[5], availsappred, GMAX[8], KS[8])
-           - DEATH[5]*B[5] - rRESP[5]*B[5])
+           - dead[5] - rRESP[5]*B[5])
 
     eng = (modt[6]*(mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])
            + mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6]))
            - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
-           - DEATH[6]*B[6] - rRESP[6]*B[6])
+           - dead[6] - rRESP[6]*B[6])
 
     #roots are avaialble because larger than herbivores
     hvores = (modt[7]*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7])
               - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[7], availhvorespred, GMAX[8], KS[8])
-              - DEATH[7]*B[7] - rRESP[7]*B[7])
+              - dead[7] - rRESP[7]*B[7])
 
     pred = (modt[8]*(mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
             + mf.calcgrowth(B[8], B[4], availfvorespred, GMAX[8], KS[8])
             + mf.calcgrowth(B[8], B[5], availsappred, GMAX[8], KS[8])
             + mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
             + mf.calcgrowth(B[8], B[7], availhvorespred, GMAX[8], KS[8]))
-            - DEATH[8]*B[8] - rRESP[8]*B[8])
+            - dead[8] - rRESP[8]*B[8])
 
     litter = (           
               -modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #eaten by bact
@@ -376,7 +399,7 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
               -modt[2]*mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2]) #eaten by myc
               -modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
               -modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) # eaten by engineers
-              + DEATH[5]*B[5] + DEATH[6]*B[6]+ DEATH[7]*B[7] + DEATH[8]*B[8])
+              + dead[5] + dead[6]+ dead[7] + dead[8])
 
     som = (mf.exudation() 
            - modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
@@ -392,7 +415,7 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
            + modt[5]*faeclitSAP*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5])
            + modt[6]*faeclitEng*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])
            + modt[7]*FAEC[7]*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7])
-           + DEATH[0]*B[0]+DEATH[1]*B[1]+DEATH[2]*B[2]+DEATH[3]*B[3]+DEATH[4]*B[4])
+           + dead[0]+dead[1]+dead[2]+dead[3]+dead[4])
 
     roots = (- modt[7]*(1+FAEC[7])*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7]))
    

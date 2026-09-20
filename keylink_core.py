@@ -24,6 +24,10 @@ def export_pools(filename, array):
 
 NrGroups=8
 CompetingSpecies=True
+# Density dependent turnover of the biota (Georgiou et al. 2017; suggested add-on in Flores et al. 2021):
+# death = d*B*(B/Bref)**(beta-1), parameters per group in KL_densityParams.txt (beta = 1 -> first order).
+# Set to False to run with the first-order turnover d*B of Flores et al. (2021) Eq. 12.
+DensityDependentTurnover=True
 pfaec = np.zeros(NrGroups-1)
 PVstruct=np.zeros(5)
 drainage = 0
@@ -35,6 +39,13 @@ B = import_pools('KL_initC_Pools') #initial biomass in each C pool
 #in this version overwritten when calling (depending on the runmode)
 
 iniSOM=B[10] #initial SOM in g C/m3 (pool index 10; B[NrGroups] would be the predators)
+
+if DensityDependentTurnover:
+    BETA, BREF = import_pools('KL_densityParams') #per group: exponent beta, reference biomass Bref (<=0: initial biomass)
+    BREF = np.where(BREF > 0, BREF, B[:NrGroups+1])
+else:
+    BETA = None
+    BREF = None
 
 B = np.concatenate([B, np.zeros(14+NrGroups-len(B))]) #extend with zeros for the flux outputs
 
@@ -109,53 +120,59 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
     faeclitEng = min(1,mf.calcFaec(gmaxEng, FAEC[6], pfaec[6], litterCN, CN[6], rRESP[6]))
     faeclitSAP = min(1,mf.calcFaec(GMAX[5], FAEC[5], pfaec[5], litterCN, CN[5], rRESP[5]))
 
+    #turnover (death) flux of each group; density dependent if BETA/BREF are given
+    if BETA is None:
+        dead = [DEATH[k]*B[k] for k in range(9)]
+    else:
+        dead = [mf.calcDeath(B[k], DEATH[k], BETA[k], BREF[k]) for k in range(9)]
+
     #growth equations (dB/dt) for each functional group and for variations in C pools
     bact = (modt[0]*(mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
             + mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]))
-            - DEATH[0]*B[0] - rRESP[0]*B[0]
+            - dead[0] - rRESP[0]*B[0]
             - modt[3]*mf.calcgrowth(B[3], B[0], availbbvores, GMAX[3], KS[3]))
 
     fungi = (modt[1]*(mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1])
              + mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]))
-             - DEATH[1]*B[1] - rRESP[1]*B[1]
+             - dead[1] - rRESP[1]*B[1]
              - modt[4]*mf.calcgrowth(B[4], B[1], availffvores, GMAX[4], KS[4]))
 
     myc = (mf.inputCtoMyc(CtoMyc)
            + modt[2]*(mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2])
            + mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxmSOM, KS[2]))
-           - DEATH[2]*B[2] - rRESP[2]*B[2]
+           - dead[2] - rRESP[2]*B[2]
            - modt[4]*mf.calcgrowth(B[4], B[2], availffvores, GMAX[4], KS[4]))
            # myc (being a fungi) has the same availability as fungi, but its own gmax
     bvores = (modt[3]*mf.calcgrowth(B[3], B[0], availbbvores, GMAX[3], KS[3])
               - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
-              - DEATH[3]*B[3] - rRESP[3]*B[3])
+              - dead[3] - rRESP[3]*B[3])
 
     fvores = (modt[4]*(mf.calcgrowth(B[4], B[1], availffvores, GMAX[4], KS[4])
               + mf.calcgrowth(B[4], B[2], availffvores, GMAX[4], KS[4]))
               - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[4], availfvorespred, GMAX[8], KS[8])
-              - DEATH[4]*B[4] - rRESP[4]*B[4])
+              - dead[4] - rRESP[4]*B[4])
 
     sap = (modt[5]*(mf.calcgrowth(B[5], B[9],availSOMbact, GMAX[5], KS[5])
            + mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]))
            -modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[5], availsappred, GMAX[8], KS[8])
-           - DEATH[5]*B[5] - rRESP[5]*B[5])
+           - dead[5] - rRESP[5]*B[5])
 
     eng = (modt[6]*(mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])
            + mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6]))
            - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
-           - DEATH[6]*B[6] - rRESP[6]*B[6])
+           - dead[6] - rRESP[6]*B[6])
 
     #roots are avaialble because larger than herbivores
     hvores = (modt[7]*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7])
               - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[7], availhvorespred, GMAX[8], KS[8])
-              - DEATH[7]*B[7] - rRESP[7]*B[7])
+              - dead[7] - rRESP[7]*B[7])
 
     pred = (modt[8]*(mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
             + mf.calcgrowth(B[8], B[4], availfvorespred, GMAX[8], KS[8])
             + mf.calcgrowth(B[8], B[5], availsappred, GMAX[8], KS[8])
             + mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
             + mf.calcgrowth(B[8], B[7], availhvorespred, GMAX[8], KS[8]))
-            - DEATH[8]*B[8] - rRESP[8]*B[8])
+            - dead[8] - rRESP[8]*B[8])
 
     litter = (           
               -modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #eaten by bact
@@ -163,7 +180,7 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
               -modt[2]*mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2]) #eaten by myc
               -modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
               -modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) # eaten by engineers
-              + DEATH[5]*B[5] + DEATH[6]*B[6]+ DEATH[7]*B[7] + DEATH[8]*B[8])
+              + dead[5] + dead[6]+ dead[7] + dead[8])
 
     som = (mf.exudation() 
            - modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
@@ -179,7 +196,7 @@ def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
            + modt[5]*faeclitSAP*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5])
            + modt[6]*faeclitEng*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])
            + modt[7]*FAEC[7]*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7])
-           + DEATH[0]*B[0]+DEATH[1]*B[1]+DEATH[2]*B[2]+DEATH[3]*B[3]+DEATH[4]*B[4])
+           + dead[0]+dead[1]+dead[2]+dead[3]+dead[4])
 
     roots = (- modt[7]*(1+FAEC[7])*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7]))
    
@@ -304,7 +321,7 @@ def KeylinkModel(Val):
         # Call the ODE solver for day i
         if CompetingSpecies==True: 
             day = odeint(mf.fCompSpecies, B, [i, i+1], args=(avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP,
-         KS, DEATH, CtoMyc))
+         KS, DEATH, CtoMyc, BETA, BREF))
         else:    
             day = odeint(fEight, B, [i, i+1], args=(avail, modt, GMAX, litterCN, SOMCN))
         

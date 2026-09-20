@@ -1,0 +1,3 @@
+#bact   fung	EM 	bacVor	funVor 	detrVor engin	herbVor pred
+2	2	2	2	2	2	2	2	2	# beta, exponent of density dependent turnover (death = d*B*(B/Bref)^(beta-1)); 1 = first order
+0	0	0	0	0	0	0	0	0	# Bref, reference biomass g C/m3 at which the specific turnover equals d; <=0: use initial biomass
