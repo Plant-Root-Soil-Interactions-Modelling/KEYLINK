@@ -2,7 +2,6 @@
 Shared helpers for the KEYLINK tests: a short climate fixture, a model runner that starts from a
 clean module state, and a reference state for the daily derivative functions.
 """
-import importlib
 import os
 import numpy as np
 
@@ -22,28 +21,20 @@ POOLS = slice(0, 13)
 SOMINI = 11470.
 
 
-def fresh_core(ndays=FIXTURE_DAYS, density_dependent=True):
-    """Reload keylink_core (its initial state is mutated by a run), set the run length and the
-    climate fixture, and return the module."""
+def make_config(ndays=FIXTURE_DAYS, density_dependent=True, **changes):
+    """KeylinkConfig from the parameter files of the model directory, on the climate fixture."""
     if ndays > FIXTURE_DAYS:
         raise ValueError('fixture climate file has only %d days' % FIXTURE_DAYS)
-    importlib.reload(core)
-    core.set_run_length(ndays, FIXTURE_CLIMATE)
-    if not density_dependent:
-        core.BETA = None
-        core.BREF = None
-    return core
+    cfg = core.KeylinkConfig.from_files('.', climatefile=FIXTURE_CLIMATE,
+                                        density_dependent_turnover=density_dependent, tStop=ndays)
+    return cfg.replace(**changes) if changes else cfg
 
 
-def run_model(ndays=FIXTURE_DAYS, density_dependent=True, gmax=None):
-    """Run KeylinkModel on the fixture climate. Returns (B0, C) with B0 the initial pools and C a
-    private copy of the daily output (the module reuses its output array between runs)."""
-    c = fresh_core(ndays, density_dependent)
-    if gmax is None:
-        gmax = c.import_pools('KL_FaunalParams')[0]
-    B0 = c.Bini.copy()
-    C, PW, PV, pores = c.KeylinkModel(np.array(gmax, dtype=float).copy())
-    return B0, C.copy()
+def run_model(ndays=FIXTURE_DAYS, density_dependent=True, gmax=None, **changes):
+    """Run KeylinkModel on the fixture climate and return the KeylinkResults
+    (results.B0 = initial pools, results.pools = daily output)."""
+    cfg = make_config(ndays, density_dependent, **changes)
+    return core.KeylinkModel(cfg).run(cfg.gmax if gmax is None else gmax)
 
 
 def base_inputs():

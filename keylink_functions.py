@@ -139,10 +139,14 @@ def hydraulic_conductivity(h, R, S, alpha, n, m, Ksat):
     return K
 
 def calcPW(PV, precip, PW, drainmax, d, R, S, alpha, n, m, Ksat): #PV=pore volume in l/m3 (absolute value)
+    '''Daily water balance of the layer (Flores et al. 2021, Eqs. 4-8): infiltration into the matrix and
+    the macropores, runoff, drainage; PW (water per pore class, l/m3) is updated in place and returned.
+    ImaxMat is the maximal infiltration rate of the soil matrix ('measured or derived', Eq. 5 ff.); here
+    the saturated conductivity Ksat (mm/day) is used. '''
     SWtot = sum(PW)    # total soil water, assume in absolute values so m3 water per m2 soil in that layer
     h=pressure_head(SWtot, R, S, alpha, n, m)
     ImaxMat = hydraulic_conductivity(h, R, S, alpha, n, m, Ksat) #maximal infriltration in matrix (mm/day), excluding macropores
-        
+
     SAmacro = PV[4]/(1000*d) #surface area of the macropores
     ImaxTot = ImaxMat+PV[4]+drainmax #assume burrow depth = soil layer depth d (maximal infriltrarion/day)
     if precip > min(ImaxTot, sum(PV)-SWtot+drainmax): #more rain than space below including drainage

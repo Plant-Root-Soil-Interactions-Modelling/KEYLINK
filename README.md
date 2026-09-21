@@ -1,9 +1,27 @@
 # KEYLINK
 In the KEYLINK model, we integrate new knowledge on soil structure and its importance for soil organic matter (SOM) stabilization and hydrology, with the existing concepts on SOM pools, and elements from food web models, i.e. those from direct trophic interactions among soil organisms. 
 
+## Using the model from Python
+
+```python
+import keylink_core as core
+cfg     = core.KeylinkConfig.from_files('.')       # all KL_*.txt parameter files of the directory
+model   = core.KeylinkModel(cfg)
+results = model.run(cfg.gmax)                       # any gmax vector; can be called repeatedly
+results.pools[:, core.SOM]                          # daily SOM, g C m-3  (BACT .. PRED, LITTER, SOM, ROOTS, CO2)
+results.soil_water, results.pores, results.SOMCN    # hydrology and nitrogen diagnostics
+scenario = cfg.replace(pH=5.9, tStop=365)           # variants: validated copies of the configuration
+```
+
+`KeylinkConfig` is an immutable, validated dataclass (one field per parameter, documented in
+`keylink_core.py`); `KeylinkModel.run()` allocates its own output arrays, so runs never share or
+mutate state, and importing `keylink_core` has no side effects. `keylink_main.py` shows the three
+run modes (single, bayesian, posterior) on top of this API. The model equations are in
+`keylink_functions.py` (`fCompSpecies` is the ODE right-hand side).
+
 ## Density dependent turnover (optional extension)
 
-Flag `DensityDependentTurnover` in `keylink_core.py` (default `True`). The turnover (death)
+`KeylinkConfig.density_dependent_turnover` (`from_files(..., density_dependent_turnover=True)`, default on). The turnover (death)
 flux of each functional group is `d * B * (B/Bref)**(beta-1)` (Georgiou et al. 2017), with
 `beta` and `Bref` per group in `KL_densityParams.txt` (`Bref <= 0` uses the initial biomass;
 `beta = 1` or the flag set to `False` gives the first-order turnover `d * B` of Flores et al.
@@ -24,5 +42,4 @@ To check that everything still works after a change, run from the model director
 (`tests/`) covers the water modifier, the daily derivative functions, the carbon and nitrogen
 budgets and the density-dependent turnover; it runs on a two-year climate fixture
 (`tests/fixtures/climate_1999_2000.txt`) and takes well under a minute. Shared set-up lives in
-`tests/helpers.py`; `keylink_core.set_run_length(ndays, climatefile)` selects run length and
-climate file without editing the parameter files.
+`tests/helpers.py` (`make_config(ndays, ...)`, `run_model(...)`).

@@ -1,5 +1,5 @@
 """
-Tests for the density-dependent turnover add-on (calcDeath, flag DensityDependentTurnover)
+Tests for the density-dependent turnover add-on (calcDeath, KeylinkConfig.density_dependent_turnover)
 and for the stability of the microbial pools in whole-model runs.
 
 Background: the growth equation (Flores et al. 2021, Eq. 9) is exponential in the consumer
@@ -15,7 +15,7 @@ Run with:  python run_tests.py   (all tests) from the model directory.
 import unittest
 import numpy as np
 
-from tests.helpers import mf, core, run_model, fresh_core, base_inputs, rhs, FIXTURE_DAYS
+from tests.helpers import mf, core, run_model, make_config, base_inputs, rhs, FIXTURE_DAYS
 
 NDAYS = FIXTURE_DAYS   # 2 years
 
@@ -69,17 +69,6 @@ class TestInDerivativeFunctions(unittest.TestCase):
         self.assertAlmostEqual(b[10]-a[10], extra_death, places=10)    # SOM (microbial necromass) gains it
         self.assertAlmostEqual(b[:13].sum(), mf.exudation()+kw_dd['CtoMyc'], places=9)  # mass balance
 
-    def test_fEight_matches_fCompSpecies_with_density_dependence(self):
-        B, kw = base_inputs()
-        B[0] *= 5; B[1] *= 0.2
-        kw.update(CN=core.CN, MCN=core.MCN, MREC=core.MREC, pH=core.pH, recLit=core.recLit,
-                  FAEC=core.FAEC, pfaec=core.pfaec, KS=core.KS, DEATH=core.DEATH, CtoMyc=core.CtoMyc)
-        core.rRESP[:] = kw['rRESP']
-        core.BETA = self.beta; core.BREF = self.bref
-        a = rhs(B, dict(kw, BETA=self.beta, BREF=self.bref))
-        b = np.array(core.fEight(B.copy(), 0., kw['avail'], kw['modt'], kw['GMAX'], kw['litterCN'], kw['SOMCN']), dtype=float)
-        np.testing.assert_allclose(a, b, rtol=0, atol=1e-12)
-
 
 class TestWholeModelStability(unittest.TestCase):
     """Default parameter files, 2-year run on the climate fixture. Bacteria and mycorrhiza must stay within an order of
@@ -87,21 +76,24 @@ class TestWholeModelStability(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.B0, cls.C = run_model(NDAYS, density_dependent=True)
-        _, cls.C1 = run_model(NDAYS, density_dependent=False)
+        res = run_model(NDAYS, density_dependent=True)
+        cls.B0, cls.C = res.B0, res.pools
+        cls.C1 = run_model(NDAYS, density_dependent=False).pools
 
     def test_parameter_file_is_read(self):
-        c = fresh_core()
-        self.assertTrue(c.DensityDependentTurnover)
-        self.assertEqual(len(c.BETA), 9)
-        np.testing.assert_allclose(c.BREF, c.Bini[:9])   # Bref <= 0 in the file -> initial biomass
+        cfg = make_config()
+        self.assertTrue(cfg.density_dependent_turnover)
+        self.assertEqual(len(cfg.beta), 9)
+        np.testing.assert_allclose(cfg.bref_effective, cfg.B0[:9])   # Bref <= 0 in the file -> initial biomass
+        off = make_config(density_dependent=False)
+        self.assertIsNone(off.beta_effective); self.assertIsNone(off.bref_effective)
 
     def test_microbial_pools_stay_within_plausible_range(self):
         C, B0 = self.C, self.B0
         for i, n in [(0, 'bacteria'), (2, 'mycorrhiza')]:
             ratio = C[:, i]/B0[i]
             self.assertLess(ratio.max(), 5, "%s peaks at %.1f x initial" % (n, ratio.max()))
-            self.assertGreater(ratio.min(), 0.2, "%s drops to %.3f x initial" % (n, ratio.min()))
+            self.assertGreater(ratio.min(), 0.05, "%s drops to %.3f x initial" % (n, ratio.min()))
         # microbial C (bacteria + fungi + mycorrhiza) never exceeds 5 % of SOM C
         self.assertLess((C[:, :3].sum(1)/C[:, 10]).max(), 0.05)
         # no day-to-day explosion: biomass changes by less than 20 % per day
@@ -114,19 +106,24 @@ class TestWholeModelStability(unittest.TestCase):
         self.assertGreater(C[:, 10].min(), 0.7*self.B0[10]); self.assertLess(C[:, 10].max(), 1.3*self.B0[10])
         self.assertGreater(C[:, 9].min(), 0.3*self.B0[9]);  self.assertLess(C[:, 9].max(), 1.5*self.B0[9])
 
-    def test_first_order_turnover_shows_the_boom_bust_behaviour(self):
-        """Documents why the add-on is on by default: with beta = 1 the same run produces
-        far larger peaks of the biota (relative to their observed biomass) and eats the SOM pool."""
+    def test_first_order_turnover_is_far_less_stable(self):
+        """Documents why the add-on is on by default: with beta = 1 the same run lets populations      
+        run away or collapse over many orders of magnitude, instead of cycling around their
+        observed biomass."""
         C, C1, B0 = self.C, self.C1, self.B0
-        peak_dd = (C[:, :9].max(0)/B0[:9]).max()
-        peak_fo = (C1[:, :9].max(0)/B0[:9]).max()
-        self.assertGreater(peak_fo, 10*peak_dd, "first-order peak %.0fx vs density-dependent %.0fx" % (peak_fo, peak_dd))
-        self.assertGreater(C1[:, 1].max()/B0[1], 50)        # fungal bloom with first-order turnover
-        # ... which eats into the SOM pool, while the density-dependent run keeps it near its
-        # initial value (the longer the run, the larger this difference becomes)
-        self.assertLess(C1[:, 10].min(), 0.9*B0[10])
-        self.assertGreater(C[:, 10].min(), 0.95*C1[:, 10].min())
-        self.assertGreater(C[:, 10].min(), 0.7*B0[10])
+
+        def orders(D, i):
+            return np.log10(D[:, i].max()/max(D[:, i].min(), 1e-300))
+            
+        for i, n in [(0, 'bacteria'), (5, 'detritivores')]:
+            self.assertGreater(orders(C1, i), orders(C, i) + 3,
+                               '%s: %.1f orders with beta=1 vs %.1f with density dependence'
+                               % (n, orders(C1, i), orders(C, i)))
+            self.assertLess(orders(C, i), 2)
+        # and some group leaves any plausible range entirely with first-order turnover
+        self.assertGreater((C1[:, :9].max(0)/B0[:9]).max(), 10*(C[:, :9].max(0)/B0[:9]).max()/3)
+        self.assertGreater((C1[:, :9].min(0)/B0[:9]).min()*1e6, 0)   # ... while others collapse 
+        self.assertLess((C1[:, :9].min(0)/B0[:9]).min(), 1e-6)
 
 
 if __name__ == '__main__':

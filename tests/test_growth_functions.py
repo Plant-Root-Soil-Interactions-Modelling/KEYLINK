@@ -1,9 +1,8 @@
 """
-Regression tests for the daily C-pool derivative functions
-    keylink_functions.fCompSpecies   (used when CompetingSpecies == True)
-    keylink_core.fEight              (used when CompetingSpecies == False)
+Regression tests for the daily C-pool derivative function keylink_functions.fCompSpecies
+(the ODE right-hand side; the former duplicate keylink_core.fEight has been removed).
 
-They guard against two bugs found in both functions:
+They guard against two bugs found in it:
   * the summed flux outputs SOMeaten / LITeaten silently dropped the fungal,
     mycorrhizal, detritivore and engineer terms (continuation lines were not
     enclosed in parentheses, so only the bacterial term was assigned);
@@ -15,7 +14,7 @@ Run with:  python run_tests.py   (all tests) from the model directory.
 import unittest
 import numpy as np
 
-from tests.helpers import mf, core, base_inputs, rhs, growth_of, gmax_on
+from tests.helpers import mf, base_inputs, rhs, growth_of, gmax_on
 
 
 class TestSummedConsumptionOutputs(unittest.TestCase):
@@ -168,27 +167,6 @@ class TestMassBalanceAndEquivalence(unittest.TestCase):
         B, kw = base_inputs()
         out = rhs(B, kw)
         self.assertAlmostEqual(out[:13].sum(), mf.exudation() + kw['CtoMyc'], places=9)
-
-    def test_fEight_equals_fCompSpecies(self):
-        """Both right-hand sides must give identical derivatives for identical inputs
-        (fEight reads parameters from keylink_core globals, fCompSpecies gets them as arguments)."""
-        B, kw = base_inputs()
-        kw.update(CN=core.CN, MCN=core.MCN, MREC=core.MREC, pH=core.pH, recLit=core.recLit,
-                  FAEC=core.FAEC, pfaec=core.pfaec, KS=core.KS, DEATH=core.DEATH, CtoMyc=core.CtoMyc)
-        core.rRESP[:] = kw['rRESP']
-        a = rhs(B, kw)
-        b = np.array(core.fEight(B.copy(), 0., kw['avail'], kw['modt'], kw['GMAX'], kw['litterCN'], kw['SOMCN']), dtype=float)
-        np.testing.assert_allclose(a, b, rtol=0, atol=1e-12)
-        self.assertGreater(b[18], 0); self.assertGreater(b[19], 0)
-
-    def test_fEight_myc_uses_own_gmax(self):
-        B, kw = base_inputs()
-        core.rRESP[:] = kw['rRESP']
-        def f(g):
-            return np.array(core.fEight(B.copy(), 0., kw['avail'], kw['modt'], g, kw['litterCN'], kw['SOMCN']), dtype=float)
-        g = kw['GMAX'].copy(); ref = f(g)
-        g2 = g.copy(); g2[2] *= 2; self.assertGreater(f(g2)[2], ref[2])
-        g1 = g.copy(); g1[1] *= 2; self.assertAlmostEqual(f(g1)[2], ref[2], places=12)
 
 
 if __name__ == '__main__':

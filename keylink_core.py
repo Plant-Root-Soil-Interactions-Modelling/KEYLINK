@@ -1,473 +1,404 @@
 '''
-Created on 27.07.2016 last write 11/11/2021
+KEYLINK core: configuration, daily time loop and results.
 
+Created on 27.07.2016 (A. Schnepf - G. Deckmyn - G. Cauwenberg - O. Flores)
 
-@author: a.schnepf - G Deckmyn - G Cauwenberg - O Flores
+Usage
+-----
+    import keylink_core as core
+    cfg     = core.KeylinkConfig.from_files()          # reads the KL_*.txt parameter files of the cwd
+    model   = core.KeylinkModel(cfg)
+    results = model.run(cfg.gmax)                      # or any other gmax vector (calibration)
+    results.pools[:, core.SOM]                          # daily values, g C m-3
+
+Importing this module has no side effects: nothing is read and no state is kept between runs.
+All parameters live in a KeylinkConfig (a frozen dataclass; use cfg.replace(...) for variants),
+every run allocates its own output arrays and returns them in a KeylinkResults object.
+The model equations themselves are in keylink_functions (fCompSpecies is the ODE right-hand side).
 '''
+import dataclasses
+from dataclasses import dataclass, field
+import os
 
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.integrate import odeint
+
 import keylink_functions as mf
-import random
-import matplotlib
-import math
-import string
 
-def import_pools(filename):
-    """Load array from text file"""
-    return np.loadtxt(filename + '.txt', encoding='latin1')
+# ---------------------------------------------------------------------------------------------
+# pool indices of the state vector B / the daily output (Flores et al. 2021, Fig. 2)
+BACT, FUNGI, MYC, BVORES, FVORES, SAP, ENG, HVORES, PRED = range(9)   # the nine functional groups
+LITTER, SOM, ROOTS, CO2 = 9, 10, 11, 12                                # organic matter pools, cumulative CO2
+# daily flux outputs carried along in the state vector (reset every day)
+BACT_RESP, FUN_RESP, MYC_RESP, BACT_GROWTH_SOM, BACT_GROWTH_LIT, SOM_EATEN, LIT_EATEN, LIT_EATEN_ENG = range(13, 21)
+NGROUPS = 9          # functional groups
+NPOOLS = 13          # groups + litter, SOM, roots, CO2
+NSTATE = 22          # pools + 8 flux outputs + 1 spare (always 0)
 
-def export_pools(filename, array):
-    """Save an array in a readable format, compatible with R"""
-    np.savetxt(filename + '.txt', array)
+POOL_NAMES = np.array(['Bacteria', 'Fungi', 'Mycorrhiza', 'bacterivores', 'fungivores', 'saprotrophs',
+                       'engineers', 'herbivores', 'predators', 'litter', 'SOM', 'roots', 'CO2'])
+POOL_COLOURS = np.array(['blue', 'red', 'darkcyan', 'cyan', 'orange', 'purple', 'darkgreen', 'magenta',
+                         'black', 'brown', 'grey', 'chartreuse', 'yellow'])
 
-NrGroups=8
-CompetingSpecies=True
-# Density dependent turnover of the biota (Georgiou et al. 2017; suggested add-on in Flores et al. 2021):
-# death = d*B*(B/Bref)**(beta-1), parameters per group in KL_densityParams.txt (beta = 1 -> first order).
-# Set to False to run with the first-order turnover d*B of Flores et al. (2021) Eq. 12.
-DensityDependentTurnover=True
-pfaec = np.zeros(NrGroups-1)
-PVstruct=np.zeros(5)
-drainage = 0
-runoff = 0
-mineralisation=0
-B = import_pools('KL_initC_Pools') #initial biomass in each C pool
-(GMAXtemp, KS, DEATH, RESP, FAEC, CN, REC, MCN,
- MREC, T_MIN, T_OPT, T_MAX, Q10) = import_pools('KL_FaunalParams') #parameters for each functional group, beware GMAX is
-#in this version overwritten when calling (depending on the runmode)
+DAYS_IN_MONTH = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
 
-iniSOM=B[10] #initial SOM in g C/m3 (pool index 10; B[NrGroups] would be the predators)
 
-if DensityDependentTurnover:
-    BETA, BREF = import_pools('KL_densityParams') #per group: exponent beta, reference biomass Bref (<=0: initial biomass)
-    BREF = np.where(BREF > 0, BREF, B[:NrGroups+1])
-else:
-    BETA = None
-    BREF = None
+def import_pools(filename, directory='.'):
+    """Load an array from a KL_*.txt parameter file (the '.txt' is added)."""
+    return np.loadtxt(os.path.join(directory, filename + '.txt'), encoding='latin1')
 
-B = np.concatenate([B, np.zeros(14+NrGroups-len(B))]) #extend with zeros for the flux outputs
 
-(TEMP, SUNH) = import_pools('KL_climateParams') #monthly climate data
-d, BD, alpha, n, m, Ksat, pH, litterCN, SOMCN, drainmax, PVstruct[0], PVstruct[1], PVstruct[2], PVstruct[3], PVstruct[4] = import_pools('KL_initSoil') #soil parameters
-ratioPVBeng, fPVB, tPVB,  PVBmax, frag, pfaec[5], pfaec[6], bioturbRate, moveRate= import_pools('KL_engineerParams') #parameters for engineer activity
+def export_pools(filename, array, directory='.'):
+    """Save an array in a readable format, compatible with R."""
+    np.savetxt(os.path.join(directory, filename + '.txt'), array)
 
-# Parameters CNlit=of daily litter, litterCN=total litter pool
-tStop, initWater, Nmin, rrg, rootTO, inputLit, CNlit, recLit, CtoMyc, NmyctoPlant, ee = import_pools('KL_runparams')
-PW = initWater/100*PVstruct #fraction of pore volume filled with water
 
-Nfauna=sum(B[:NrGroups+1]/CN) #N in food web functional groups
+def _is_leap_year(year):
+    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
-Ntot=Nfauna+Nmin+B[10]/SOMCN+B[9]/litterCN #initial total N of the system: biota + mineral + SOM + litter
 
-Nminini=Nmin
-Ntotini=Ntot
-litterCNini=litterCN
-SOMCNini=SOMCN
+# ---------------------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class KeylinkConfig:
+    """All parameters and inputs of one KEYLINK set-up. Arrays indexed by functional group have
+    length 9 in the order bact, fungi, myc, bacterivores, fungivores, detritivores, engineers,
+    herbivores, predators. Build it with KeylinkConfig.from_files() and derive variants with
+    cfg.replace(field=value, ...)."""
+    # --- functional groups (KL_FaunalParams.txt)
+    gmax: np.ndarray          # maximal growth rate, g C g C-1 day-1 (usually the calibrated vector)
+    ks: np.ndarray            # half saturation constant, g C m-3
+    death: np.ndarray         # turnover rate d, g C g C-1 day-1
+    resp: np.ndarray          # respiration rate at Topt, g C g C-1 day-1
+    faec: np.ndarray          # fraction of consumed C to faeces
+    cn: np.ndarray            # C:N of the biomass
+    rec: np.ndarray           # recalcitrance of the biomass (unused in the equations)
+    mcn: np.ndarray           # sensitivity of gmax to the C:N of the food, pmC:N (Eqs. 21-22)
+    mrec: np.ndarray          # sensitivity of gmax to litter recalcitrance, pmRec (Eqs. 23-24)
+    tmin: np.ndarray          # temperature response (Eq. 17), degC
+    topt: np.ndarray
+    tmax: np.ndarray
+    q10: np.ndarray           # Q10 of respiration
+    # --- soil (KL_initSoil.txt)
+    d: float                  # depth of the soil layer, m
+    BD: float                 # bulk density, kg m-3 (not used by the equations)
+    alpha: float              # van Genuchten parameters of the matrix
+    n: float
+    m: float
+    Ksat: float
+    pH: float
+    litterCN0: float          # initial C:N of the litter pool
+    SOMCN0: float             # initial C:N of SOM
+    drainmax: float           # infiltration capacity of the layer below, mm day-1
+    PVstruct: np.ndarray      # textural pore volume of the 5 classes (inaccessible, bact, micro, meso, macro), l m-3
+    # --- engineers (KL_engineerParams.txt)
+    ratioPVBeng: float        # burrow volume per engineer biomass, l g C-1
+    fPVB: float               # fraction of burrow volume that is additional porosity
+    tPVB: float               # daily turnover of burrows
+    PVBmax: float             # maximal burrow volume, l m-3
+    frag: float               # fragmentation: fraction of litter eaten by engineers that becomes SOM
+    pfaec: np.ndarray         # sensitivity of faeces fraction to C:N (index 5 detritivores, 6 engineers)
+    bioturbRate: float        # % of SOM mixed downwards per g C engineer per day
+    moveRate: float           # % of litter moved downwards per g C engineer per day
+    # --- run parameters (KL_runparams.txt)
+    tStop: int                # number of simulated days
+    initWater: float          # initial water content, % of pore volume
+    Nmin0: float              # initial mineral N, g N m-3
+    rrg: float                # daily root growth, g C m-3 day-1
+    rootTO: float             # root turnover, day-1
+    inputLit: float           # daily litter input, g C m-3 day-1
+    CNlit: float              # C:N of the litter input
+    recLit: float             # recalcitrance of the litter input, %
+    CtoMyc: float             # plant C input to mycorrhiza, g C m-3 day-1
+    NmyctoPlant: float        # fraction of plant N uptake delivered by mycorrhiza
+    ee: float                 # effective / potential evapotranspiration
+    # --- climate (KL_climateParams.txt, daily climate record)
+    TEMP: np.ndarray          # monthly mean temperature, degC
+    SUNH: np.ndarray          # monthly sunshine hours
+    climatefile: str          # daily record: DOY year month DOM P Temperature (one line per simulated day)
+    # --- initial pools (KL_initC_Pools.txt), g C m-3: 9 groups, litter, SOM, roots, CO2
+    B0: np.ndarray
+    # --- density dependent turnover (KL_densityParams.txt), death = d*B*(B/Bref)**(beta-1)
+    density_dependent_turnover: bool = True
+    beta: np.ndarray = None   # exponent per group (1 = first order)
+    bref: np.ndarray = None   # reference biomass per group, g C m-3 (<= 0: initial biomass)
 
-Bini = B
-PWini = PW
+    @classmethod
+    def from_files(cls, directory='.', climatefile='PrecipKMIBrass.txt', density_dependent_turnover=True,
+                   tStop=None):
+        """Read the KL_*.txt parameter files from `directory`. `tStop` overrides the run length of
+        KL_runparams.txt; the climate file must have at least tStop lines after its header."""
+        P = import_pools('KL_FaunalParams', directory)
+        (gmax, ks, death, resp, faec, cn, rec, mcn, mrec, tmin, topt, tmax, q10) = P
+        soil = import_pools('KL_initSoil', directory)
+        eng = import_pools('KL_engineerParams', directory)
+        run = import_pools('KL_runparams', directory)
+        TEMP, SUNH = import_pools('KL_climateParams', directory)
+        B0 = import_pools('KL_initC_Pools', directory)
+        pfaec = np.zeros(7)
+        pfaec[5], pfaec[6] = eng[5], eng[6]
+        beta = bref = None
+        if density_dependent_turnover:
+            beta, bref = import_pools('KL_densityParams', directory)
+        cfg = cls(gmax=gmax, ks=ks, death=death, resp=resp, faec=faec, cn=cn, rec=rec, mcn=mcn, mrec=mrec,
+                  tmin=tmin, topt=topt, tmax=tmax, q10=q10,
+                  d=soil[0], BD=soil[1], alpha=soil[2], n=soil[3], m=soil[4], Ksat=soil[5], pH=soil[6],
+                  litterCN0=soil[7], SOMCN0=soil[8], drainmax=soil[9], PVstruct=np.array(soil[10:15]),
+                  ratioPVBeng=eng[0], fPVB=eng[1], tPVB=eng[2], PVBmax=eng[3], frag=eng[4], pfaec=pfaec,
+                  bioturbRate=eng[7], moveRate=eng[8],
+                  tStop=int(run[0] if tStop is None else tStop), initWater=run[1], Nmin0=run[2], rrg=run[3],
+                  rootTO=run[4], inputLit=run[5], CNlit=run[6], recLit=run[7], CtoMyc=run[8],
+                  NmyctoPlant=run[9], ee=run[10],
+                  TEMP=TEMP, SUNH=SUNH, climatefile=os.path.join(directory, climatefile) if directory != '.' else climatefile,
+                  B0=np.array(B0[:NPOOLS], dtype=float),
+                  density_dependent_turnover=density_dependent_turnover, beta=beta, bref=bref)
+        cfg.validate()
+        return cfg
 
-climatefile_name = 'PrecipKMIBrass.txt' #daily climate record (DOY year month DOM P Temperature), one line per simulated day
+    def replace(self, **changes):
+        """A copy of the configuration with some fields changed (validated)."""
+        cfg = dataclasses.replace(self, **changes)
+        cfg.validate()
+        return cfg
 
-def set_run_length(ndays, climatefile=None):
-    """Set the number of simulated days (default: from KL_runparams) and optionally another climate
-    file, and (re)allocate the daily output arrays accordingly. Used e.g. by the tests to run on a
-    short climate fixture."""
-    global tStop, t, PVt, PWt, Nmint, Ntott, SOMCNt, litterCNt, mineralisationt, psoln, climatefile_name
-    tStop = int(ndays)
-    if climatefile is not None:
-        climatefile_name = climatefile
+    def validate(self):
+        for name in ('gmax', 'ks', 'death', 'resp', 'faec', 'cn', 'mcn', 'mrec', 'tmin', 'topt', 'tmax', 'q10'):
+            if np.shape(getattr(self, name)) != (NGROUPS,):
+                raise ValueError('%s must have %d values (one per functional group)' % (name, NGROUPS))
+        if np.shape(self.PVstruct) != (5,) or np.any(self.PVstruct <= 0):
+            raise ValueError('PVstruct must hold 5 positive pore volumes')
+        if np.shape(self.B0) != (NPOOLS,):
+            raise ValueError('B0 must hold %d initial pools' % NPOOLS)
+        if self.tStop < 1:
+            raise ValueError('tStop must be at least 1 day')
+        if self.density_dependent_turnover:
+            if np.shape(self.beta) != (NGROUPS,) or np.shape(self.bref) != (NGROUPS,):
+                raise ValueError('beta and bref must have %d values' % NGROUPS)
+            if np.any(self.beta < 1):
+                raise ValueError('beta must be >= 1')
+
+    @property
+    def bref_effective(self):
+        """Reference biomass for the density dependent turnover: bref, or the initial biomass where bref <= 0."""
+        if not self.density_dependent_turnover:
+            return None
+        return np.where(self.bref > 0, self.bref, self.B0[:NGROUPS])
+
+    @property
+    def beta_effective(self):
+        return self.beta if self.density_dependent_turnover else None
+
+
+# ---------------------------------------------------------------------------------------------
+@dataclass
+class KeylinkResults:
+    """Daily output of one run. Rows are days; all pools in g C m-3, water and pore volumes in l m-3,
+    nitrogen in g N m-3."""
+    gmax: np.ndarray                 # the gmax vector the run was made with
+    pools: np.ndarray                # (tStop, 22): 13 pools (see BACT .. CO2) and the daily fluxes 13-20
+    soil_water: np.ndarray           # (tStop,) total soil water
+    porosity: np.ndarray             # (tStop,) total pore volume
+    pores: np.ndarray                # (tStop, 5) pore volume per size class
+    Nmin: np.ndarray                 # (tStop,) mineral N at the end of the day
+    Ntot: np.ndarray                 # (tStop,) total N of the layer at the end of the day
+    SOMCN: np.ndarray                # (tStop,) C:N of SOM
+    litterCN: np.ndarray             # (tStop,) C:N of the litter pool
+    mineralisation: np.ndarray       # (tStop,) net N mineralisation by bacteria of the day
+    B0: np.ndarray                   # initial pools
+    Nmin0: float = 0.0               # initial mineral N
+    Ntot0: float = 0.0               # initial total N
+    errors: list = field(default_factory=list)   # messages about numerical problems (e.g. negative SOM N)
+
+    @property
+    def ndays(self):
+        return self.pools.shape[0]
+
+
+# ---------------------------------------------------------------------------------------------
+class KeylinkModel:
+    """The KEYLINK soil model for one configuration. `run()` integrates the daily loop of
+    Flores et al. (2021) ('Calculation order') and returns a KeylinkResults; it can be called
+    repeatedly (e.g. in a calibration), every call starts from the initial state of the config."""
+
+    def __init__(self, config):
+        self.cfg = cfg = config
+        cfg.validate()
+        # heat index and exponent of the Thornthwaite equation (from the monthly mean temperatures)
+        HI = float(np.sum((cfg.TEMP/5.0)**1.514))
+        self.HI = HI
+        self.alfa = 0.000000675*HI**3 - 0.0000771*HI**2 + 0.01792*HI + 0.49239
+        # initial nitrogen: biota (fixed C:N) + mineral + SOM + litter
+        B0 = cfg.B0
+        self.Ntot0 = float(np.sum(B0[:NGROUPS]/cfg.cn) + cfg.Nmin0 + B0[SOM]/cfg.SOMCN0 + B0[LITTER]/cfg.litterCN0)
+        self.iniSOM = float(B0[SOM])                      # SOM used for the inaccessible-pore fraction
+        self.PW0 = cfg.initWater/100.0*cfg.PVstruct        # initial water per pore class, l m-3
+
+    # -----------------------------------------------------------------------------------------
+    def _read_climate(self):
+        """Daily (year, month index, precipitation, temperature) for the tStop days of the run."""
+        cfg = self.cfg
+        data = np.loadtxt(cfg.climatefile, skiprows=1, encoding='latin1')
+        if data.ndim == 1:
+            data = data[None, :]
+        if data.shape[0] < cfg.tStop:
+            raise ValueError('climate file %s has %d days, run needs %d' % (cfg.climatefile, data.shape[0], cfg.tStop))
+        data = data[:cfg.tStop]
+        return data[:, 1].astype(int), data[:, 2].astype(int) - 1, data[:, 4], data[:, 5]
+
+    # -----------------------------------------------------------------------------------------
+    def run(self, gmax=None):
+        """Run the model for cfg.tStop days with the given gmax vector (default cfg.gmax)."""
+        cfg = self.cfg
+        GMAX = np.array(cfg.gmax if gmax is None else gmax, dtype=float)
+        if GMAX.shape != (NGROUPS,):
+            raise ValueError('gmax must have %d values' % NGROUPS)
+        T = cfg.tStop
+        years, months, precips, temps = self._read_climate()
+
+        # per-run state
+        B = np.zeros(NSTATE); B[:NPOOLS] = cfg.B0
+        PW = self.PW0.copy()
+        pv = cfg.PVstruct.copy()
+        Nmin, Ntot = cfg.Nmin0, self.Ntot0
+        litterCN, SOMCN = cfg.litterCN0, cfg.SOMCN0
+        modt = np.zeros(NGROUPS); rRESP = np.zeros(NGROUPS)
+        BETA, BREF = cfg.beta_effective, cfg.bref_effective
+
+        res = KeylinkResults(gmax=GMAX.copy(), pools=np.zeros((T, NSTATE)), soil_water=np.zeros(T),
+                             porosity=np.zeros(T), pores=np.zeros((T, 5)), Nmin=np.zeros(T), Ntot=np.zeros(T),
+                             SOMCN=np.zeros(T), litterCN=np.zeros(T), mineralisation=np.zeros(T),
+                             B0=cfg.B0.copy(), Nmin0=cfg.Nmin0, Ntot0=self.Ntot0)
+
+        for i in range(T):
+            # a) pore size distribution (aggregation, burrows) ------------------------------------
+            ag = mf.calcAg(B[FUNGI], B[MYC], B[SOM])
+            pv = mf.calcPVD(cfg.PVstruct, pv, ag, cfg.ratioPVBeng, cfg.fPVB, cfg.tPVB, cfg.PVBmax, cfg.d, B)
+            res.pores[i] = pv
+
+            # climate of the day ------------------------------------------------------------------
+            nd = DAYS_IN_MONTH.copy()
+            if _is_leap_year(years[i]):
+                nd[1] += 1
+            precip, temp = precips[i], temps[i]
+            for j in range(NGROUPS):
+                modt[j] = mf.calcmodt(temp, cfg.topt[j], cfg.tmin[j], cfg.tmax[j])
+                rRESP[j] = mf.calcresp(temp, cfg.topt[j], cfg.resp[j], cfg.q10[j])
+            pet = mf.PET(temp, nd[months[i]], cfg.SUNH[months[i]], self.HI, self.alfa)
+
+            # b) water ----------------------------------------------------------------------------
+            SatW = sum(pv[0:4])/(cfg.d - pv[4]/sum(pv[0:5]))   # saturated water content (excluding macropores)
+            PW, drainage, runoff = mf.calcPW(pv, precip, PW, cfg.drainmax, cfg.d, pv[0]/cfg.d, SatW,
+                                             cfg.alpha, cfg.n, cfg.m, cfg.Ksat)
+            res.soil_water[i] = sum(PW)
+            res.porosity[i] = sum(pv)
+
+            # d) availability of each pool to each consumer --------------------------------------
+            avail = mf.calcAvail(pv, PW, self.iniSOM)
+
+            # litter input (plant litter and root turnover) and its nitrogen ----------------------
+            lit_in = cfg.inputLit + mf.rootTurnover(B[ROOTS], cfg.rootTO)
+            litterCN = (B[LITTER] + lit_in)/(B[LITTER]/litterCN + lit_in/cfg.CNlit)
+            B[LITTER] += lit_in
+            Ntot += lit_in/cfg.CNlit
+            B[ROOTS] += mf.rootgrowth(cfg.rrg) - mf.rootTurnover(B[ROOTS], cfg.rootTO)
+            # (the plant C input to mycorrhiza, CtoMyc, is added inside the ODE)
+
+            # plant N uptake: via mycorrhiza first (mineral N first, the rest from SOM), then direct
+            CNsoil = (B[LITTER] + B[SOM])/(B[LITTER]/litterCN + B[SOM]/SOMCN)
+            NviaMyc = mf.mycNtoPlant(cfg.NmyctoPlant, cfg.inputLit, litterCN, cfg.CtoMyc, CNsoil)
+            Ntot -= NviaMyc
+            Nmin = Nmin - NviaMyc if NviaMyc < Nmin else 0.0
+            upt = min(mf.plantNuptake(litterCN, cfg.inputLit, cfg.NmyctoPlant), Nmin)
+            Ntot -= upt
+            Nmin -= upt
+
+            # e)-g) growth modifiers and the daily ODE of all C pools ------------------------------
+            B[13:NSTATE] = 0   # flux outputs of this day
+            day = odeint(mf.fCompSpecies, B, [i, i+1],
+                         args=(avail, modt, GMAX, litterCN, SOMCN, mf, cfg.cn, cfg.mcn, cfg.mrec, cfg.pH,
+                               cfg.recLit, cfg.faec, cfg.pfaec, rRESP, cfg.ks, cfg.death, cfg.CtoMyc, BETA, BREF))
+            B = day[1, :].copy()
+            res.pools[i] = B
+
+            # evapotranspiration at the end of the day (otherwise the soil is always dry)
+            PW = mf.wl(PW, cfg.ee*pet)
+
+            # h) nitrogen: bacterial mineralisation, SOM C:N as the residual of the N budget ------
+            mineralisation = (B[BACT_GROWTH_SOM]/SOMCN + B[BACT_GROWTH_LIT]/litterCN
+                              - (B[BACT_GROWTH_SOM] + B[BACT_GROWTH_LIT] - B[BACT_RESP])/cfg.cn[BACT])
+            Nmin = max(0.0, Nmin + mineralisation)   # deficit is taken from SOM (the residual below)
+            Nfauna = np.sum(B[:NGROUPS]/cfg.cn)
+            NSOM = Ntot - Nfauna - Nmin - B[LITTER]/litterCN
+            if NSOM <= 0:
+                res.errors.append('day %d: SOM nitrogen <= 0 (%.3f g N m-3)' % (i, NSOM))
+                NSOM = abs(NSOM)
+            SOMCN = B[SOM]/NSOM
+
+            # i2) bioturbation: SOM and litter moved out of the layer by the engineers ------------
+            SOMdown = mf.calcBioturb(B[ENG], cfg.bioturbRate, B[SOM])
+            B[SOM] -= SOMdown
+            Ntot -= SOMdown/SOMCN
+            Litdown = mf.calcLittermove(B[ENG], cfg.moveRate, B[LITTER])
+            B[LITTER] -= Litdown
+            Ntot -= Litdown/litterCN
+
+            res.Nmin[i], res.Ntot[i], res.SOMCN[i], res.litterCN[i], res.mineralisation[i] = \
+                Nmin, Ntot, SOMCN, litterCN, mineralisation
+
+            # fragmentation of litter eaten by engineers into SOM
+            # NOTE: index 21 of the state is the spare (always 0) entry, LIT_EATEN_ENG is index 20;
+            # kept as in the original code so this refactoring does not change results.
+            B[LITTER] -= cfg.frag*res.pools[i, 21]
+            B[SOM] += cfg.frag*res.pools[i, 21]
+
+            for s in range(SOM+1):   # security: avoid negative biomasses
+                if B[s] <= 0:
+                    B[s] = 0.001
+        return res
+
+
+# ---------------------------------------------------------------------------------------------
+def show_plot(results, gr=(4000, 2000, 500, 50, 0.1)):
+    """Plot soil water / porosity and the C pools of a run in four biomass ranges (gr)."""
+    import matplotlib.pyplot as plt
+    soln, tStop = results.pools, results.ndays
     t = np.arange(0., tStop)
-    PVt = np.zeros(tStop)
-    PWt = np.zeros(tStop)
-    # daily nitrogen diagnostics: mineral N, total N, SOM C:N, litter C:N, net N mineralisation by bacteria
-    Nmint = np.zeros(tStop)
-    Ntott = np.zeros(tStop)
-    SOMCNt = np.zeros(tStop)
-    litterCNt = np.zeros(tStop)
-    mineralisationt = np.zeros(tStop)
-    psoln = np.zeros((tStop, NrGroups+14))
 
-set_run_length(tStop)
-avail = np.zeros(NrGroups+3)
-modt = np.zeros(NrGroups+1)
-rRESP = np.zeros(NrGroups+1)
-
-HI=0 #heat index (is calculated with the daily mean temperature of all months)
-for m in range(12):
-    HI = HI + (TEMP[m]/5)**1.514
-alfa = 0.000000675*(HI**3) - 0.0000771*(HI**2) + 0.01792*HI + 0.49239 #alpha for Thornthwaite equation
-
-gr = np.array([4000,2000,500,50,0.1]) #graph ranges, for five biomass graphs with ranges from 0 to these values
-#graph labels for the populations and C pools
-popname = np.array(['Bacteria','Fungi','Mycorrhiza','bacterivores','fungivores','saprotrophs','engineers','herbivores','predators','litter','SOM','roots','CO2'])
-#graph colours for the populations and C pools
-popcolour = np.array(['blue','red','darkcyan','cyan','orange','purple','darkgreen','magenta','black','brown','grey','chartreuse','yellow'])
-
-
-# function to be integrated daily solving the carbon pools 'B' ifo time
-def fEight(B, t, avail, modt, GMAX, litterCN,SOMCN):
-    (availSOMbact, availSOMfungi, availSOMeng, availSOMsap, availbbvores,
-     availffvores, availfvorespred, availbvorespred, availhvorespred,
-     availsappred, availengpred ,SOMunavail) = avail
-
-    # Default '10 groups': 0=bact, 1=fungi, 2=myc, 3=bvores, 4=fvores, 5=sap,
-    # 6=eng, 7=hvores, 8=pred, 9=litter, 10=SOM, 11=roots, 12=CO2
-    # update GMAX for bacteria, fung and myc GMAX is modified for SOM
-    # and litter seperately depending on CN (and possibly recalcitrance)
-    #for bact if CN source too high they can't grow   
-    gmaxblit = mf.calcgmaxmod(CN[0], litterCN, MCN[0], recLit, MREC[0], pH, 1)*GMAX[0] #gmax for bact on litter
-    gmaxbSOM = mf.calcgmaxmod(CN[0], SOMCN, MCN[0], 0.0, MREC[0], pH, 1)*GMAX[0] #gmax for bact on SOM
-    gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
-    gmaxfSOM = mf.calcgmaxmod(CN[1], SOMCN, MCN[1], 0.0, MREC[1], pH, 2)* GMAX[1] #gmax for fung on SOM
-    # mycorrhiza: same pH response as fungi (id=2) but its own gmax, CN and recalcitrance parameters
-    gmaxmlit = mf.calcgmaxmod(CN[2], litterCN, MCN[2], recLit, MREC[2], pH, 2)* GMAX[2] #gmax for myc on litter
-    gmaxmSOM = mf.calcgmaxmod(CN[2], SOMCN, MCN[2], 0.0, MREC[2], pH, 2)* GMAX[2] #gmax for myc on SOM
-    gmaxEng = min(mf.calcgmaxEng(GMAX[6],pH),GMAX[6]) #gmax for engineers
-    
-    #update faeces for  SAP and engineers
-    faeclitEng = min(1,mf.calcFaec(gmaxEng, FAEC[6], pfaec[6], litterCN, CN[6], rRESP[6]))
-    faeclitSAP = min(1,mf.calcFaec(GMAX[5], FAEC[5], pfaec[5], litterCN, CN[5], rRESP[5]))
-
-    #turnover (death) flux of each group; density dependent if BETA/BREF are given
-    if BETA is None:
-        dead = [DEATH[k]*B[k] for k in range(9)]
-    else:
-        dead = [mf.calcDeath(B[k], DEATH[k], BETA[k], BREF[k]) for k in range(9)]
-
-    #growth equations (dB/dt) for each functional group and for variations in C pools
-    bact = (modt[0]*(mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
-            + mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]))
-            - dead[0] - rRESP[0]*B[0]
-            - modt[3]*mf.calcgrowth(B[3], B[0], availbbvores, GMAX[3], KS[3]))
-
-    fungi = (modt[1]*(mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1])
-             + mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]))
-             - dead[1] - rRESP[1]*B[1]
-             - modt[4]*mf.calcgrowth(B[4], B[1], availffvores, GMAX[4], KS[4]))
-
-    myc = (mf.inputCtoMyc(CtoMyc)
-           + modt[2]*(mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2])
-           + mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxmSOM, KS[2]))
-           - dead[2] - rRESP[2]*B[2]
-           - modt[4]*mf.calcgrowth(B[4], B[2], availffvores, GMAX[4], KS[4]))
-           # myc (being a fungi) has the same availability as fungi, but its own gmax
-    bvores = (modt[3]*mf.calcgrowth(B[3], B[0], availbbvores, GMAX[3], KS[3])
-              - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
-              - dead[3] - rRESP[3]*B[3])
-
-    fvores = (modt[4]*(mf.calcgrowth(B[4], B[1], availffvores, GMAX[4], KS[4])
-              + mf.calcgrowth(B[4], B[2], availffvores, GMAX[4], KS[4]))
-              - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[4], availfvorespred, GMAX[8], KS[8])
-              - dead[4] - rRESP[4]*B[4])
-
-    sap = (modt[5]*(mf.calcgrowth(B[5], B[9],availSOMbact, GMAX[5], KS[5])
-           + mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]))
-           -modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[5], availsappred, GMAX[8], KS[8])
-           - dead[5] - rRESP[5]*B[5])
-
-    eng = (modt[6]*(mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])
-           + mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6]))
-           - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
-           - dead[6] - rRESP[6]*B[6])
-
-    #roots are avaialble because larger than herbivores
-    hvores = (modt[7]*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7])
-              - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[7], availhvorespred, GMAX[8], KS[8])
-              - dead[7] - rRESP[7]*B[7])
-
-    pred = (modt[8]*(mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
-            + mf.calcgrowth(B[8], B[4], availfvorespred, GMAX[8], KS[8])
-            + mf.calcgrowth(B[8], B[5], availsappred, GMAX[8], KS[8])
-            + mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
-            + mf.calcgrowth(B[8], B[7], availhvorespred, GMAX[8], KS[8]))
-            - dead[8] - rRESP[8]*B[8])
-
-    litter = (           
-              -modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #eaten by bact
-              -modt[1]*mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]) #eaten by fungi
-              -modt[2]*mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2]) #eaten by myc
-              -modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
-              -modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) # eaten by engineers
-              + dead[5] + dead[6]+ dead[7] + dead[8])
-
-    som = (mf.exudation() 
-           - modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
-           - modt[1]*mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1])
-           - modt[2]*mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxmSOM, KS[2])
-           - modt[5]*mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]) #eaten by SAP
-           - modt[6]*mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6]) # eaten by engineers
-           + modt[8]*FAEC[8] * (mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
-                        + mf.calcgrowth(B[8], B[4], availfvorespred, GMAX[8], KS[8])
-                        + mf.calcgrowth(B[8], B[5], availsappred, GMAX[8], KS[8])
-                        + mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
-                        + mf.calcgrowth(B[8], B[7], availhvorespred, GMAX[8], KS[8]))
-           + modt[5]*faeclitSAP*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5])
-           + modt[6]*faeclitEng*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])
-           + modt[7]*FAEC[7]*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7])
-           + dead[0]+dead[1]+dead[2]+dead[3]+dead[4])
-
-    roots = (- modt[7]*(1+FAEC[7])*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7]))
-   
-    co2 = (rRESP[0]*B[0]+rRESP[1]*B[1]+rRESP[2]*B[2]+rRESP[3]*B[3] #CO2 emissions from respiration
-           +rRESP[4]*B[4]+rRESP[5]*B[5]+rRESP[6]*B[6]+rRESP[7]*B[7]+rRESP[8]*B[8])
-           
-    bactResp=rRESP[0]*B[0] #respiration of bacteria
-    funResp=rRESP[1]*B[1] #respiration of fungi
-    EMresp=rRESP[2]*B[2] #respiration of mycorrhizal fungi
-    bactGrowthSOM=modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0]) #growth of bact from eaten SOM
-    bactGrowthLit=modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #growth of bact from eaten litter
-    # total SOM and litter consumption: the sums MUST be enclosed in parentheses,
-    # otherwise the continuation lines are separate statements and only the bacterial term is kept
-    SOMeaten=(modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0]) #SOM eaten by bact
-              + modt[1]*mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1]) #eaten by fungi
-              + modt[2]*mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxmSOM, KS[2]) #eaten by myc
-              + modt[5]*mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]) #eaten by SAP
-              + modt[6]*mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6])) # eaten by engineers
-    LITeaten=(modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #Litter eaten by bact
-              + modt[1]*mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]) #eaten by fungi
-              + modt[2]*mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2]) #eaten by myc
-              + modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
-              + modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])) # eaten by engineers
-    LITeatenEng=modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) #only litter eaten by enginners
- 
-    return [bact, fungi, myc, bvores, fvores, sap,
-            eng, hvores, pred, litter, som, roots, co2,
-            bactResp,funResp,EMresp,bactGrowthSOM,bactGrowthLit, SOMeaten, LITeaten, LITeatenEng,0]   
-
-
-
-
-
-def KeylinkModel(Val):
-
-    climatefile=open(climatefile_name)
-    titls=climatefile.readline() # first line are titles
-    
-    std=0 #we are using here dates from climate input file, so there is no need in create a starting date
-    pv=PVstruct #initialise to structural 
-    GMAX=Val
-    Nmin=Nminini 
-    Ntot=Ntotini
-    litterCN=litterCNini
-    SOMCN=SOMCNini
-    
-    B = Bini
-    PW = PWini
-    pores= np.zeros([int(tStop),5], 'd') #matrix for the daily pore volumes of each size class
-    
-    # this is the actual core model routine over time steps i
-    for i in range(int(std), int(std+tStop)):
-        # calculate PSD (array of % of five size classes of pores) and aggregation
-        ag = mf.calcAg(B[1], B[2], B[10]) #calculates aggregation fraction
-        pv = mf.calcPVD(PVstruct, pv, ag, ratioPVBeng, fPVB, tPVB, PVBmax, d, B)
-        pvd = pv*100/sum(pv)
-        pores[i,:]=pv
-        nd = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]) # number of days in each month
-    
-        zip=climatefile.readline().split() #daily meteorological data
-        year=int(zip[1])
-        month=(int(zip[2])-1)
-        ly=0 #it will became 1 in leap-years
-        if (year%4)==0:
-            ly=1
-        if (year%100)==0:
-            ly=0
-        if (year%400)==0:
-            ly=1
-        
-        if ly==1: #in leap-years, this changes the number of days of february to 29
-            nd[1]=nd[1]+1
-
-        precip=float(zip[4])
-        temp=float(zip[5])
-        for j in range (NrGroups+1):
-            modt[j] = mf.calcmodt(temp, T_OPT[j], T_MIN[j], T_MAX[j])
-            rRESP[j]=mf.calcresp(temp, T_OPT[j], RESP[j], Q10[j])
-    
-        #calculate the Potential Evapotranspiration (pet)
-        pet = mf.PET(temp, nd[month], SUNH[month], HI, alfa)
-
-        # water calculations                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
-        # (pvd (pore volume density = array of % filled of each porse size class)
-        SatW = sum(pv[0:4])/(d-(pv[4])/sum(pv[0:5])) #saturated water content (excluding macropores)
-        PW, drainage, runoff = mf.calcPW(pv, precip, PW, drainmax,d, (pv[0]/d), SatW, alpha, n, m, Ksat)
-   
-        PWt[i-std] = sum(PW) #soil water content in the current day
-        PVt[i-std] = sum(pv) #total soil porosity in the current day
-
-        #calculate availability of each pool to each relevant biota
-        avail = mf.calcAvail(pv, PW, iniSOM)
-
-        #update litter CN
-        litterCN=(B[9]+mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[11],rootTO))/(B[9]/litterCN+(mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[11],rootTO))/CNlit)
-    
-        #add litter (plant and root) and update total soil N
-        B[9]=B[9]+mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[11],rootTO)
-        Ntot=Ntot+(mf.inputLitter(inputLit, CNlit)[0]+mf.rootTurnover(B[11],rootTO))/CNlit
-    
-        #root growth
-        B[11]=B[11]+mf.rootgrowth(rrg)-mf.rootTurnover(B[11],rootTO)
-    
-        #interaction between mycorrhizal fungi and plants: the plant C input to mycorrhiza (CtoMyc)
-        #is added inside the ODE (fEight / fCompSpecies); adding it here as well double-counts it
-    
-        #update soil C and N in soil
-        CNsoil=(B[9]+B[10])/(B[9]/litterCN+B[10]/SOMCN)
-        NviaMyc=mf.mycNtoPlant(NmyctoPlant, inputLit, litterCN, CtoMyc, CNsoil) #N delivered by mycorrhiza to the plant
-        Ntot=Ntot-NviaMyc
-        if NviaMyc<Nmin:   #mycorrhisae take up mineral N first
-            Nmin=Nmin-NviaMyc
-        else:
-            Nmin=0  #the rest comes from SOM (SOM N is the residual of the N budget, see NSOM below)
-        #plant N uptake    
-        Ntot=Ntot-min(mf.plantNuptake(litterCN, inputLit, NmyctoPlant), Nmin)
-        Nmin=Nmin-min(mf.plantNuptake(litterCN, inputLit, NmyctoPlant), Nmin)
-    
-        # entries 13..21 integrate flux outputs (respiration, growth, consumption); reset them so that
-        # after the ODE call they hold the flux of THIS day and not the cumulative value since the start
-        B[13:22]=0
-        # Call the ODE solver for day i
-        if CompetingSpecies==True: 
-            day = odeint(mf.fCompSpecies, B, [i, i+1], args=(avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH, recLit, FAEC, pfaec, rRESP,
-         KS, DEATH, CtoMyc, BETA, BREF))
-        else:    
-            day = odeint(fEight, B, [i, i+1], args=(avail, modt, GMAX, litterCN, SOMCN))
-        
-            
-        
-        # Second column is end value for day i, start value for day i + 1
-        psoln[i-std] = day[1, :]
-        B = day[1, :]
-        et = ee*pet #evapotranspiration (rate of effective evapotranspiration * potential evapotranspiration)
-        PW = mf.wl(PW,et) # water lost by evapotranspiration: we do this at the end of the day (otherwise soil is always dry)
-
-        # net N mineralisation by bacteria (daily fluxes of this day): N taken up with the consumed SOM
-        # (B[16]=growth on SOM, C:N of SOM) and litter (B[17]=growth on litter, C:N of litter) minus the N
-        # built into new biomass, plus the N released by respiration (B[13]) at the bacterial C:N
-        mineralisation=(B[16]/SOMCN+B[17]/litterCN-(B[16]+B[17]-B[13])/CN[0])
-        Nmin=Nmin+mineralisation
-        if Nmin<0:   #bacteria immobilise more N than available as mineral N: the deficit is taken from SOM
-            Nmin=0   #(SOM N is the residual of the budget below, so the deficit automatically ends up there)
-        # N budget closure: total N = biota N (fixed C:N) + mineral N + litter N + SOM N
-        Nfauna=sum(B[0:9]/CN)
-        NSOM=Ntot-Nfauna-Nmin-B[9]/litterCN
-        if NSOM<=0:
-            print('error NSOM<=0 on day', i, NSOM)
-            NSOM=abs(NSOM)
-        SOMCN=B[10]/NSOM
-
-    
-        #move SOM by engineers
-        SOMdown=mf.calcBioturb(B[6], bioturbRate, B[10])
-        B[10]=B[10]-SOMdown
-        Ntot=Ntot-SOMdown/SOMCN
-
-        #move litter by engineers
-        Litdown=mf.calcLittermove(B[6], moveRate, B[9])
-        B[9]=B[9]-Litdown
-        Ntot=Ntot-Litdown/litterCN
-
-        #daily nitrogen diagnostics (end of day, after the engineers moved SOM and litter out of the layer)
-        Nmint[i-std]=Nmin
-        Ntott[i-std]=Ntot
-        SOMCNt[i-std]=SOMCN
-        litterCNt[i-std]=litterCN
-        mineralisationt[i-std]=mineralisation
-    
-        #fragmentation    
-        B[9]=B[9]-frag*psoln[i,21]
-        B[10]=B[10]+frag*psoln[i,21]  #LITeatenEng
-     
-        for s in range (0, 11):
-            if B[s]<=0: #security codes to avoid errors by negative biomasses
-                B[s]=0.001
-    
-    climatefile.close
-    return (psoln, PWt, PVt, pores)   #save the Cpools, water and porevolumes's on all days days
-
-
-
-'''
-    Plot population size as a function of time
-'''
-def show_plot(soln, pwt, pvt):
-    
     plt.clf()
-    
     plt.subplot(2, 1, 1)
-    plt.plot(t, pwt, label="SW")
-    plt.plot(t, pvt, label="porosity")
-
+    plt.plot(t, results.soil_water, label="SW")
+    plt.plot(t, results.porosity, label="porosity")
     plt.ylabel('Water, l/m2')
-    plt.ylim(0,400)
-    plt.legend(loc=(1.01, 0), shadow=True) #loc='upper right',
-    
-    plt.subplot(2, 1, 2)
-    for p in range(13): # it only shows populations with max biomass value higher than gr[1]
-        if max(soln[:,p])>gr[1]:
-            plt.plot(t, soln[:, p], label=popname[p], c=popcolour[p])
-    
-    plt.xlabel('Time,days')
-    plt.ylabel('Biomass, gC/m3')
-    plt.ylim(0, gr[0])
+    plt.ylim(0, 400)
     plt.legend(loc=(1.01, 0), shadow=True)
-    
+    plt.subplot(2, 1, 2)
+    for p in range(NPOOLS):   # pools with maximum above gr[1]
+        if max(soln[:, p]) > gr[1]:
+            plt.plot(t, soln[:, p], label=POOL_NAMES[p], c=POOL_COLOURS[p])
+    plt.xlabel('Time,days'); plt.ylabel('Biomass, gC/m3'); plt.ylim(0, gr[0])
+    plt.legend(loc=(1.01, 0), shadow=True)
     plt.show()
-    
-    plt.clf()
-    
-    plt.subplot(2, 1, 1)
-    for p in range(13): # shows populations with maximum or mean biomass values between gr[1] and gr[2]
-        maxvalue=(max(soln[:,p]))
-        meanvalue=((sum(soln[:,p]))/tStop)
-        if ((maxvalue>gr[2]) and (maxvalue<gr[1])) or (meanvalue>gr[2] and meanvalue<gr[1]):
-            plt.plot(t, soln[:, p], label=popname[p], c=popcolour[p])    
-    
-    plt.ylabel('Biomass, gC/m3')
-    plt.ylim(0, gr[1])
-    plt.legend(loc=(1.01, 0), shadow=True)
-    
-    plt.subplot(2, 1, 2)
-    for p in range(13): # shows populations with maximum or mean biomass values between gr[2] and gr[3]
-        maxvalue=(max(soln[:,p]))
-        meanvalue=((sum(soln[:,p]))/tStop)
-        if ((maxvalue>gr[3]) and (maxvalue<gr[2])) or (meanvalue>gr[3] and meanvalue<gr[2]):
-            plt.plot(t, soln[:, p], label=popname[p], c=popcolour[p])    
-    
-    plt.xlabel('Time,days')
-    plt.ylabel('Biomass, gC/m3')
-    plt.ylim(0, gr[2])
-    plt.legend(loc=(1.01, 0), shadow=True)
-    
-    plt.show()    
-    
-    plt.clf()
-    
-    plt.subplot(2, 1, 1)
-    for p in range(13): # shows populations with maximum or mean biomass values between gr[3] and gr[4]
-        maxvalue=(max(soln[:,p]))
-        meanvalue=((sum(soln[:,p]))/tStop)
-        if ((maxvalue>gr[4]) and (maxvalue<gr[3])) or (meanvalue>gr[4] and meanvalue<gr[3]):
-            plt.plot(t, soln[:, p], label=popname[p], c=popcolour[p])
-    
-    plt.ylabel('Biomass, gC/m3')
-    plt.ylim(0, gr[3])
-    plt.legend(loc=(1.01, 0), shadow=True)
-    
-    plt.subplot(2, 1, 2)
-    te=(tStop-int(round((tStop/5))))
-    # shows populations with last 20% days mean biomass values lower than gr[4] (assumed local extinction)
-    for p in range(13):
-        extvalue=((sum(soln[te:tStop,p]))/(tStop-te))
-        if (extvalue<gr[4]):
-            plt.plot(t, soln[:, p], label=popname[p], c=popcolour[p])    
-    
-    plt.xlabel('Time,days')
-    plt.ylabel('Biomass, gC/m3')
-    plt.ylim(0, gr[4])
-    plt.legend(loc=(1.01, 0), shadow=True)
 
+    def _range_page(upper, lower):
+        """pools with maximum or mean biomass between gr[lower] and gr[upper] (upper < lower index)"""
+        for p in range(NPOOLS):
+            maxvalue = max(soln[:, p]); meanvalue = sum(soln[:, p])/tStop
+            if (gr[lower] < maxvalue < gr[upper]) or (gr[lower] < meanvalue < gr[upper]):
+                plt.plot(t, soln[:, p], label=POOL_NAMES[p], c=POOL_COLOURS[p])
+        plt.ylabel('Biomass, gC/m3'); plt.ylim(0, gr[upper])
+        plt.legend(loc=(1.01, 0), shadow=True)
+
+    plt.clf()
+    plt.subplot(2, 1, 1); _range_page(1, 2)
+    plt.subplot(2, 1, 2); _range_page(2, 3); plt.xlabel('Time,days')
+    plt.show()
+
+    plt.clf()
+    plt.subplot(2, 1, 1); _range_page(3, 4)
+    plt.subplot(2, 1, 2)
+    te = tStop - int(round(tStop/5))
+    for p in range(NPOOLS):   # mean of the last 20 % of days below gr[4] (assumed local extinction)
+        if sum(soln[te:tStop, p])/(tStop-te) < gr[4]:
+            plt.plot(t, soln[:, p], label=POOL_NAMES[p], c=POOL_COLOURS[p])
+    plt.xlabel('Time,days'); plt.ylabel('Biomass, gC/m3'); plt.ylim(0, gr[4])
+    plt.legend(loc=(1.01, 0), shadow=True)
     plt.show()
