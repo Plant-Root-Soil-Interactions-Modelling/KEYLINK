@@ -10,6 +10,9 @@ import numpy as np
 import random
 import math
 
+from keylink_names import (BACT, FUNGI, MYC, BVORES, FVORES, SAP, ENG, HVORES, PRED, LITTER, SOM, ROOTS, CO2,
+                           NGROUPS, INACC, BACTPORES, MICRO, MESO, MACRO)
+
 def calcKD(pH,fClay): #Cempirically from orchideeSOM model Cammino-serrano et al 2018
     Kd=0.001226-0.000212*pH+0.00374*fClay
     return Kd
@@ -90,18 +93,18 @@ def calcAg(fungi, myc, SOM):
 
 def calcPVD(PVstruct, pv, Ag, ratioPVBeng, fPVB, tPVB, PVBmax, d, b):
     #all volumes in l/m3
-    Beng = b[6] #engineer biomass
+    Beng = b[ENG] #engineer biomass
     PVB = min(PVBmax*d, ratioPVBeng*Beng*d)
-    PVB=max(PVB, (pv[4]-PVstruct[4])*(1-tPVB))
+    PVB=max(PVB, (pv[MACRO]-PVstruct[MACRO])*(1-tPVB))   # Flores et al. 2021, Eq. 27
     # absolute volume of burrows ifo engineer biomass (to max)
     # burrows can increase total porosity or push material
     # so moving pore space, the ration between the 2 = parameter fPVB
-    pv = np.zeros(5)
-    pv[4] = PVstruct[4] + PVB
-    pv[1] = PVstruct[1] + Ag*PVstruct[3]/4 + Ag*b[10]*d/1000
-    pv[2] = PVstruct[2] + Ag*PVstruct[3]/4 + Ag*b[10]*d/1000
-    pv[3] = PVstruct[3] - Ag*PVstruct[3]/2 - (1-fPVB)*PVB
-    pv[0] = PVstruct[0]
+    pv = np.zeros(5)                                                                    # Eqs. 31-34:
+    pv[MACRO] = PVstruct[MACRO] + PVB
+    pv[BACTPORES] = PVstruct[BACTPORES] + Ag*PVstruct[MESO]/4 + Ag*b[SOM]*d/1000
+    pv[MICRO] = PVstruct[MICRO] + Ag*PVstruct[MESO]/4 + Ag*b[SOM]*d/1000
+    pv[MESO] = PVstruct[MESO] - Ag*PVstruct[MESO]/2 - (1-fPVB)*PVB
+    pv[INACC] = PVstruct[INACC]
     
     return pv
 
@@ -330,120 +333,120 @@ def fCompSpecies(B, t, avail, modt, GMAX, litterCN,SOMCN, mf, CN, MCN, MREC, pH,
     # update GMAX for bacteria, fung and myc GMAX is modified for SOM
     # and litter seperately depending on CN (and possibly recalcitrance)
     #for bact if CN source too high they can't grow   
-    gmaxblit = mf.calcgmaxmod(CN[0], litterCN, MCN[0], recLit, MREC[0], pH, 1)*GMAX[0] #gmax for bact on litter
-    gmaxbSOM = mf.calcgmaxmod(CN[0], SOMCN, MCN[0], 0.0, MREC[0], pH, 1)*GMAX[0] #gmax for bact on SOM
-    gmaxflit = mf.calcgmaxmod(CN[1], litterCN, MCN[1], recLit, MREC[1], pH, 2)* GMAX[1] #gmax for fung on litter
-    gmaxfSOM = mf.calcgmaxmod(CN[1], SOMCN, MCN[1], 0.0, MREC[1], pH, 2)* GMAX[1] #gmax for fung on SOM
+    gmaxblit = mf.calcgmaxmod(CN[BACT], litterCN, MCN[BACT], recLit, MREC[BACT], pH, 1)*GMAX[BACT] #gmax for bact on litter
+    gmaxbSOM = mf.calcgmaxmod(CN[BACT], SOMCN, MCN[BACT], 0.0, MREC[BACT], pH, 1)*GMAX[BACT] #gmax for bact on SOM
+    gmaxflit = mf.calcgmaxmod(CN[FUNGI], litterCN, MCN[FUNGI], recLit, MREC[FUNGI], pH, 2)* GMAX[FUNGI] #gmax for fung on litter
+    gmaxfSOM = mf.calcgmaxmod(CN[FUNGI], SOMCN, MCN[FUNGI], 0.0, MREC[FUNGI], pH, 2)* GMAX[FUNGI] #gmax for fung on SOM
     # mycorrhiza: same pH response as fungi (id=2) but its own gmax, CN and recalcitrance parameters
-    gmaxmlit = mf.calcgmaxmod(CN[2], litterCN, MCN[2], recLit, MREC[2], pH, 2)* GMAX[2] #gmax for myc on litter
-    gmaxmSOM = mf.calcgmaxmod(CN[2], SOMCN, MCN[2], 0.0, MREC[2], pH, 2)* GMAX[2] #gmax for myc on SOM
-    gmaxEng = min(mf.calcgmaxEng(GMAX[6],pH),GMAX[6]) #gmax for engineers
+    gmaxmlit = mf.calcgmaxmod(CN[MYC], litterCN, MCN[MYC], recLit, MREC[MYC], pH, 2)* GMAX[MYC] #gmax for myc on litter
+    gmaxmSOM = mf.calcgmaxmod(CN[MYC], SOMCN, MCN[MYC], 0.0, MREC[MYC], pH, 2)* GMAX[MYC] #gmax for myc on SOM
+    gmaxEng = min(mf.calcgmaxEng(GMAX[ENG],pH),GMAX[ENG]) #gmax for engineers
     
     #update faeces for  SAP and engineers
-    faeclitEng = min(1,mf.calcFaec(gmaxEng, FAEC[6], pfaec[6], litterCN, CN[6], rRESP[6]))
-    faeclitSAP = min(1,mf.calcFaec(GMAX[5], FAEC[5], pfaec[5], litterCN, CN[5], rRESP[5]))
+    faeclitEng = min(1,mf.calcFaec(gmaxEng, FAEC[ENG], pfaec[ENG], litterCN, CN[ENG], rRESP[ENG]))
+    faeclitSAP = min(1,mf.calcFaec(GMAX[SAP], FAEC[SAP], pfaec[SAP], litterCN, CN[SAP], rRESP[SAP]))
 
     #turnover (death) flux of each group; density dependent if BETA/BREF are given
     if BETA is None:
-        dead = [DEATH[k]*B[k] for k in range(9)]
+        dead = [DEATH[k]*B[k] for k in range(NGROUPS)]
     else:
-        dead = [mf.calcDeath(B[k], DEATH[k], BETA[k], BREF[k]) for k in range(9)]
+        dead = [mf.calcDeath(B[k], DEATH[k], BETA[k], BREF[k]) for k in range(NGROUPS)]
 
     #growth equations for each functional group and for variations in C pools
-    bact = (modt[0]*(mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
-            + mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]))
-            - dead[0] - rRESP[0]*B[0]
-            - modt[3]*mf.calcgrowth(B[3], B[0], availbbvores, GMAX[3], KS[3]))
+    bact = (modt[BACT]*(mf.calcgrowth(B[BACT], B[SOM]-SOMunavail, availSOMbact, gmaxbSOM, KS[BACT])
+            + mf.calcgrowth(B[BACT], B[LITTER], availSOMbact, gmaxblit, KS[BACT]))
+            - dead[BACT] - rRESP[BACT]*B[BACT]
+            - modt[BVORES]*mf.calcgrowth(B[BVORES], B[BACT], availbbvores, GMAX[BVORES], KS[BVORES]))
 
-    fungi = (modt[1]*(mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1])
-             + mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]))
-             - dead[1] - rRESP[1]*B[1]
-             - modt[4]*mf.calcgrowth(B[4], B[1], availffvores, GMAX[4], KS[4]))
+    fungi = (modt[FUNGI]*(mf.calcgrowth(B[FUNGI], B[SOM]-SOMunavail, availSOMfungi, gmaxfSOM, KS[FUNGI])
+             + mf.calcgrowth(B[FUNGI], B[LITTER], availSOMbact, gmaxflit, KS[FUNGI]))
+             - dead[FUNGI] - rRESP[FUNGI]*B[FUNGI]
+             - modt[FVORES]*mf.calcgrowth(B[FVORES], B[FUNGI], availffvores, GMAX[FVORES], KS[FVORES]))
 
     myc = (mf.inputCtoMyc(CtoMyc)
-           + modt[2]*(mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2])
-           + mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxmSOM, KS[2]))
-           - dead[2] - rRESP[2]*B[2]
-           - modt[4]*mf.calcgrowth(B[4], B[2], availffvores, GMAX[4], KS[4]))
+           + modt[MYC]*(mf.calcgrowth(B[MYC], B[LITTER], availSOMbact, gmaxmlit, KS[MYC])
+           + mf.calcgrowth(B[MYC], B[SOM]-SOMunavail, availSOMfungi, gmaxmSOM, KS[MYC]))
+           - dead[MYC] - rRESP[MYC]*B[MYC]
+           - modt[FVORES]*mf.calcgrowth(B[FVORES], B[MYC], availffvores, GMAX[FVORES], KS[FVORES]))
            # myc (being a fungi) has the same availability as fungi, but its own gmax
-    bvores = (modt[3]*mf.calcgrowth(B[3], B[0], availbbvores, GMAX[3], KS[3])
-              - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
-              - dead[3] - rRESP[3]*B[3])
+    bvores = (modt[BVORES]*mf.calcgrowth(B[BVORES], B[BACT], availbbvores, GMAX[BVORES], KS[BVORES])
+              - modt[PRED]*(1+FAEC[PRED])*mf.calcgrowth(B[PRED], B[BVORES], availbvorespred, GMAX[PRED], KS[PRED])
+              - dead[BVORES] - rRESP[BVORES]*B[BVORES])
 
-    fvores = (modt[4]*(mf.calcgrowth(B[4], B[1], availffvores, GMAX[4], KS[4])
-              + mf.calcgrowth(B[4], B[2], availffvores, GMAX[4], KS[4]))
-              - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[4], availfvorespred, GMAX[8], KS[8])
-              - dead[4] - rRESP[4]*B[4])
+    fvores = (modt[FVORES]*(mf.calcgrowth(B[FVORES], B[FUNGI], availffvores, GMAX[FVORES], KS[FVORES])
+              + mf.calcgrowth(B[FVORES], B[MYC], availffvores, GMAX[FVORES], KS[FVORES]))
+              - modt[PRED]*(1+FAEC[PRED])*mf.calcgrowth(B[PRED], B[FVORES], availfvorespred, GMAX[PRED], KS[PRED])
+              - dead[FVORES] - rRESP[FVORES]*B[FVORES])
 
-    sap = (modt[5]*(mf.calcgrowth(B[5], B[9],availSOMbact, GMAX[5], KS[5])
-           + mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]))
-           -modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[5], availsappred, GMAX[8], KS[8])
-           - dead[5] - rRESP[5]*B[5])
+    sap = (modt[SAP]*(mf.calcgrowth(B[SAP], B[LITTER],availSOMbact, GMAX[SAP], KS[SAP])
+           + mf.calcgrowth(B[SAP], B[SOM]-SOMunavail, availSOMsap, GMAX[SAP], KS[SAP]))
+           -modt[PRED]*(1+FAEC[PRED])*mf.calcgrowth(B[PRED], B[SAP], availsappred, GMAX[PRED], KS[PRED])
+           - dead[SAP] - rRESP[SAP]*B[SAP])
 
-    eng = (modt[6]*(mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])
-           + mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6]))
-           - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
-           - dead[6] - rRESP[6]*B[6])
+    eng = (modt[ENG]*(mf.calcgrowth(B[ENG], B[LITTER], availSOMbact, gmaxEng, KS[ENG])
+           + mf.calcgrowth(B[ENG], B[SOM]-SOMunavail, availSOMeng, gmaxEng, KS[ENG]))
+           - modt[PRED]*(1+FAEC[PRED])*mf.calcgrowth(B[PRED], B[ENG], availengpred, GMAX[PRED], KS[PRED])
+           - dead[ENG] - rRESP[ENG]*B[ENG])
 
     #roots are avaialble because larger than herbivores
-    hvores = (modt[7]*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7])
-              - modt[8]*(1+FAEC[8])*mf.calcgrowth(B[8], B[7], availhvorespred, GMAX[8], KS[8])
-              - dead[7] - rRESP[7]*B[7])
+    hvores = (modt[HVORES]*mf.calcgrowth(B[HVORES], B[ROOTS], 1, GMAX[HVORES], KS[HVORES])
+              - modt[PRED]*(1+FAEC[PRED])*mf.calcgrowth(B[PRED], B[HVORES], availhvorespred, GMAX[PRED], KS[PRED])
+              - dead[HVORES] - rRESP[HVORES]*B[HVORES])
 
-    pred = (modt[8]*(mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
-            + mf.calcgrowth(B[8], B[4], availfvorespred, GMAX[8], KS[8])
-            + mf.calcgrowth(B[8], B[5], availsappred, GMAX[8], KS[8])
-            + mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
-            + mf.calcgrowth(B[8], B[7], availhvorespred, GMAX[8], KS[8]))
-            - dead[8] - rRESP[8]*B[8])
+    pred = (modt[PRED]*(mf.calcgrowth(B[PRED], B[BVORES], availbvorespred, GMAX[PRED], KS[PRED])
+            + mf.calcgrowth(B[PRED], B[FVORES], availfvorespred, GMAX[PRED], KS[PRED])
+            + mf.calcgrowth(B[PRED], B[SAP], availsappred, GMAX[PRED], KS[PRED])
+            + mf.calcgrowth(B[PRED], B[ENG], availengpred, GMAX[PRED], KS[PRED])
+            + mf.calcgrowth(B[PRED], B[HVORES], availhvorespred, GMAX[PRED], KS[PRED]))
+            - dead[PRED] - rRESP[PRED]*B[PRED])
 
     litter = (           
-              -modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #eaten by bact
-              -modt[1]*mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]) #eaten by fungi
-              -modt[2]*mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2]) #eaten by myc
-              -modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
-              -modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) # eaten by engineers
-              + dead[5] + dead[6]+ dead[7] + dead[8])
+              -modt[BACT]*mf.calcgrowth(B[BACT], B[LITTER], availSOMbact, gmaxblit, KS[BACT]) #eaten by bact
+              -modt[FUNGI]*mf.calcgrowth(B[FUNGI], B[LITTER], availSOMbact, gmaxflit, KS[FUNGI]) #eaten by fungi
+              -modt[MYC]*mf.calcgrowth(B[MYC], B[LITTER], availSOMbact, gmaxmlit, KS[MYC]) #eaten by myc
+              -modt[SAP]*(1+faeclitSAP)*mf.calcgrowth(B[SAP], B[LITTER], availSOMbact, GMAX[SAP], KS[SAP]) #eaten by SAP
+              -modt[ENG]*(1+faeclitEng)*mf.calcgrowth(B[ENG], B[LITTER], availSOMbact, gmaxEng, KS[ENG]) # eaten by engineers
+              + dead[SAP] + dead[ENG]+ dead[HVORES] + dead[PRED])
 
     som = (mf.exudation() 
-           - modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0])
-           - modt[1]*mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1])
-           - modt[2]*mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxmSOM, KS[2])
-           - modt[5]*mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]) #eaten by SAP
-           - modt[6]*mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6]) # eaten by engineers
-           + modt[8]*FAEC[8] * (mf.calcgrowth(B[8], B[3], availbvorespred, GMAX[8], KS[8])
-                        + mf.calcgrowth(B[8], B[4], availfvorespred, GMAX[8], KS[8])
-                        + mf.calcgrowth(B[8], B[5], availsappred, GMAX[8], KS[8])
-                        + mf.calcgrowth(B[8], B[6], availengpred, GMAX[8], KS[8])
-                        + mf.calcgrowth(B[8], B[7], availhvorespred, GMAX[8], KS[8]))
-           + modt[5]*faeclitSAP*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5])
-           + modt[6]*faeclitEng*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])
-           + modt[7]*FAEC[7]*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7])
-           + dead[0]+dead[1]+dead[2]+dead[3]+dead[4])
+           - modt[BACT]*mf.calcgrowth(B[BACT], B[SOM]-SOMunavail, availSOMbact, gmaxbSOM, KS[BACT])
+           - modt[FUNGI]*mf.calcgrowth(B[FUNGI], B[SOM]-SOMunavail, availSOMfungi, gmaxfSOM, KS[FUNGI])
+           - modt[MYC]*mf.calcgrowth(B[MYC], B[SOM]-SOMunavail, availSOMfungi, gmaxmSOM, KS[MYC])
+           - modt[SAP]*mf.calcgrowth(B[SAP], B[SOM]-SOMunavail, availSOMsap, GMAX[SAP], KS[SAP]) #eaten by SAP
+           - modt[ENG]*mf.calcgrowth(B[ENG], B[SOM]-SOMunavail, availSOMeng, gmaxEng, KS[ENG]) # eaten by engineers
+           + modt[PRED]*FAEC[PRED] * (mf.calcgrowth(B[PRED], B[BVORES], availbvorespred, GMAX[PRED], KS[PRED])
+                        + mf.calcgrowth(B[PRED], B[FVORES], availfvorespred, GMAX[PRED], KS[PRED])
+                        + mf.calcgrowth(B[PRED], B[SAP], availsappred, GMAX[PRED], KS[PRED])
+                        + mf.calcgrowth(B[PRED], B[ENG], availengpred, GMAX[PRED], KS[PRED])
+                        + mf.calcgrowth(B[PRED], B[HVORES], availhvorespred, GMAX[PRED], KS[PRED]))
+           + modt[SAP]*faeclitSAP*mf.calcgrowth(B[SAP], B[LITTER], availSOMbact, GMAX[SAP], KS[SAP])
+           + modt[ENG]*faeclitEng*mf.calcgrowth(B[ENG], B[LITTER], availSOMbact, gmaxEng, KS[ENG])
+           + modt[HVORES]*FAEC[HVORES]*mf.calcgrowth(B[HVORES], B[ROOTS], 1, GMAX[HVORES], KS[HVORES])
+           + dead[BACT]+dead[FUNGI]+dead[MYC]+dead[BVORES]+dead[FVORES])
 
-    roots = (- modt[7]*(1+FAEC[7])*mf.calcgrowth(B[7], B[11], 1, GMAX[7], KS[7]))
+    roots = (- modt[HVORES]*(1+FAEC[HVORES])*mf.calcgrowth(B[HVORES], B[ROOTS], 1, GMAX[HVORES], KS[HVORES]))
    
-    co2 = (rRESP[0]*B[0]+rRESP[1]*B[1]+rRESP[2]*B[2]+rRESP[3]*B[3] #CO2 emissions from respiration
-           +rRESP[4]*B[4]+rRESP[5]*B[5]+rRESP[6]*B[6]+rRESP[7]*B[7]+rRESP[8]*B[8])
+    co2 = (rRESP[BACT]*B[BACT]+rRESP[FUNGI]*B[FUNGI]+rRESP[MYC]*B[MYC]+rRESP[BVORES]*B[BVORES] #CO2 emissions from respiration
+           +rRESP[FVORES]*B[FVORES]+rRESP[SAP]*B[SAP]+rRESP[ENG]*B[ENG]+rRESP[HVORES]*B[HVORES]+rRESP[PRED]*B[PRED])
            
-    bactResp=rRESP[0]*B[0] #respiration of bacteria
-    funResp=rRESP[1]*B[1] #respiration of fungi
-    EMresp=rRESP[2]*B[2] #respiration of mycorrhizal fungi
-    bactGrowthSOM=modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0]) #growth of bact from eaten SOM
-    bactGrowthLit=modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #growth of bact from eaten litter
+    bactResp=rRESP[BACT]*B[BACT] #respiration of bacteria
+    funResp=rRESP[FUNGI]*B[FUNGI] #respiration of fungi
+    EMresp=rRESP[MYC]*B[MYC] #respiration of mycorrhizal fungi
+    bactGrowthSOM=modt[BACT]*mf.calcgrowth(B[BACT], B[SOM]-SOMunavail, availSOMbact, gmaxbSOM, KS[BACT]) #growth of bact from eaten SOM
+    bactGrowthLit=modt[BACT]*mf.calcgrowth(B[BACT], B[LITTER], availSOMbact, gmaxblit, KS[BACT]) #growth of bact from eaten litter
     # total SOM and litter consumption: the sums MUST be enclosed in parentheses,
     # otherwise the continuation lines are separate statements and only the bacterial term is kept
-    SOMeaten=(modt[0]*mf.calcgrowth(B[0], B[10]-SOMunavail, availSOMbact, gmaxbSOM, KS[0]) #SOM eaten by bact
-              + modt[1]*mf.calcgrowth(B[1], B[10]-SOMunavail, availSOMfungi, gmaxfSOM, KS[1]) #eaten by fungi
-              + modt[2]*mf.calcgrowth(B[2], B[10]-SOMunavail, availSOMfungi, gmaxmSOM, KS[2]) #eaten by myc
-              + modt[5]*mf.calcgrowth(B[5], B[10]-SOMunavail, availSOMsap, GMAX[5], KS[5]) #eaten by SAP
-              + modt[6]*mf.calcgrowth(B[6], B[10]-SOMunavail, availSOMeng, gmaxEng, KS[6])) # eaten by engineers
-    LITeaten=(modt[0]*mf.calcgrowth(B[0], B[9], availSOMbact, gmaxblit, KS[0]) #Litter eaten by bact
-              + modt[1]*mf.calcgrowth(B[1], B[9], availSOMbact, gmaxflit, KS[1]) #eaten by fungi
-              + modt[2]*mf.calcgrowth(B[2], B[9], availSOMbact, gmaxmlit, KS[2]) #eaten by myc
-              + modt[5]*(1+faeclitSAP)*mf.calcgrowth(B[5], B[9], availSOMbact, GMAX[5], KS[5]) #eaten by SAP
-              + modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6])) # eaten by engineers
-    LITeatenEng=modt[6]*(1+faeclitEng)*mf.calcgrowth(B[6], B[9], availSOMbact, gmaxEng, KS[6]) #only litter eaten by enginners
+    SOMeaten=(modt[BACT]*mf.calcgrowth(B[BACT], B[SOM]-SOMunavail, availSOMbact, gmaxbSOM, KS[BACT]) #SOM eaten by bact
+              + modt[FUNGI]*mf.calcgrowth(B[FUNGI], B[SOM]-SOMunavail, availSOMfungi, gmaxfSOM, KS[FUNGI]) #eaten by fungi
+              + modt[MYC]*mf.calcgrowth(B[MYC], B[SOM]-SOMunavail, availSOMfungi, gmaxmSOM, KS[MYC]) #eaten by myc
+              + modt[SAP]*mf.calcgrowth(B[SAP], B[SOM]-SOMunavail, availSOMsap, GMAX[SAP], KS[SAP]) #eaten by SAP
+              + modt[ENG]*mf.calcgrowth(B[ENG], B[SOM]-SOMunavail, availSOMeng, gmaxEng, KS[ENG])) # eaten by engineers
+    LITeaten=(modt[BACT]*mf.calcgrowth(B[BACT], B[LITTER], availSOMbact, gmaxblit, KS[BACT]) #Litter eaten by bact
+              + modt[FUNGI]*mf.calcgrowth(B[FUNGI], B[LITTER], availSOMbact, gmaxflit, KS[FUNGI]) #eaten by fungi
+              + modt[MYC]*mf.calcgrowth(B[MYC], B[LITTER], availSOMbact, gmaxmlit, KS[MYC]) #eaten by myc
+              + modt[SAP]*(1+faeclitSAP)*mf.calcgrowth(B[SAP], B[LITTER], availSOMbact, GMAX[SAP], KS[SAP]) #eaten by SAP
+              + modt[ENG]*(1+faeclitEng)*mf.calcgrowth(B[ENG], B[LITTER], availSOMbact, gmaxEng, KS[ENG])) # eaten by engineers
+    LITeatenEng=modt[ENG]*(1+faeclitEng)*mf.calcgrowth(B[ENG], B[LITTER], availSOMbact, gmaxEng, KS[ENG]) #only litter eaten by enginners
  
     return [bact, fungi, myc, bvores, fvores, sap,
             eng, hvores, pred, litter, som, roots, co2,

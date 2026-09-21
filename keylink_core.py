@@ -25,20 +25,11 @@ from scipy.integrate import odeint
 
 import keylink_functions as mf
 
-# ---------------------------------------------------------------------------------------------
-# pool indices of the state vector B / the daily output (Flores et al. 2021, Fig. 2)
-BACT, FUNGI, MYC, BVORES, FVORES, SAP, ENG, HVORES, PRED = range(9)   # the nine functional groups
-LITTER, SOM, ROOTS, CO2 = 9, 10, 11, 12                                # organic matter pools, cumulative CO2
-# daily flux outputs carried along in the state vector (reset every day)
-BACT_RESP, FUN_RESP, MYC_RESP, BACT_GROWTH_SOM, BACT_GROWTH_LIT, SOM_EATEN, LIT_EATEN, LIT_EATEN_ENG = range(13, 21)
-NGROUPS = 9          # functional groups
-NPOOLS = 13          # groups + litter, SOM, roots, CO2
-NSTATE = 22          # pools + 8 flux outputs + 1 spare (always 0)
-
-POOL_NAMES = np.array(['Bacteria', 'Fungi', 'Mycorrhiza', 'bacterivores', 'fungivores', 'saprotrophs',
-                       'engineers', 'herbivores', 'predators', 'litter', 'SOM', 'roots', 'CO2'])
-POOL_COLOURS = np.array(['blue', 'red', 'darkcyan', 'cyan', 'orange', 'purple', 'darkgreen', 'magenta',
-                         'black', 'brown', 'grey', 'chartreuse', 'yellow'])
+from keylink_names import (Pool, Flux, BACT, FUNGI, MYC, BVORES, FVORES, SAP, ENG, HVORES, PRED, LITTER, SOM,
+                           ROOTS, CO2, BACT_RESP, FUN_RESP, MYC_RESP, BACT_GROWTH_SOM, BACT_GROWTH_LIT, SOM_EATEN,
+                           LIT_EATEN, LIT_EATEN_ENG, NGROUPS, NPOOLS, NSTATE, GROUP_KEYS, POOL_KEYS, FLUX_KEYS,
+                           POOL_NAMES, POOL_COLOURS, INACC, BACTPORES, MICRO, MESO, MACRO)
+from keylink_params import load_parameter_file, ParameterFileError, SCHEMA, PV_KEYS
 
 DAYS_IN_MONTH = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
 
@@ -125,31 +116,35 @@ class KeylinkConfig:
     @classmethod
     def from_files(cls, directory='.', climatefile='PrecipKMIBrass.txt', density_dependent_turnover=True,
                    tStop=None):
-        """Read the KL_*.txt parameter files from `directory`. `tStop` overrides the run length of
-        KL_runparams.txt; the climate file must have at least tStop lines after its header."""
-        P = import_pools('KL_FaunalParams', directory)
-        (gmax, ks, death, resp, faec, cn, rec, mcn, mrec, tmin, topt, tmax, q10) = P
-        soil = import_pools('KL_initSoil', directory)
-        eng = import_pools('KL_engineerParams', directory)
-        run = import_pools('KL_runparams', directory)
-        TEMP, SUNH = import_pools('KL_climateParams', directory)
-        B0 = import_pools('KL_initC_Pools', directory)
+        """Read the KL_*.txt parameter files from `directory` (validated by name against the schema of
+        keylink_params; a ParameterFileError names the offending file and line). `tStop` overrides the
+        run length of KL_runparams.txt; the climate file must have at least tStop lines after its header."""
+        fauna = load_parameter_file('KL_FaunalParams', directory)
+        soil = load_parameter_file('KL_initSoil', directory)
+        eng = load_parameter_file('KL_engineerParams', directory)
+        run = load_parameter_file('KL_runparams', directory)
+        clim = load_parameter_file('KL_climateParams', directory)
+        pools = load_parameter_file('KL_initC_Pools', directory)
         pfaec = np.zeros(7)
-        pfaec[5], pfaec[6] = eng[5], eng[6]
+        pfaec[SAP], pfaec[ENG] = eng['pfaec_sap'], eng['pfaec_eng']
         beta = bref = None
         if density_dependent_turnover:
-            beta, bref = import_pools('KL_densityParams', directory)
-        cfg = cls(gmax=gmax, ks=ks, death=death, resp=resp, faec=faec, cn=cn, rec=rec, mcn=mcn, mrec=mrec,
-                  tmin=tmin, topt=topt, tmax=tmax, q10=q10,
-                  d=soil[0], BD=soil[1], alpha=soil[2], n=soil[3], m=soil[4], Ksat=soil[5], pH=soil[6],
-                  litterCN0=soil[7], SOMCN0=soil[8], drainmax=soil[9], PVstruct=np.array(soil[10:15]),
-                  ratioPVBeng=eng[0], fPVB=eng[1], tPVB=eng[2], PVBmax=eng[3], frag=eng[4], pfaec=pfaec,
-                  bioturbRate=eng[7], moveRate=eng[8],
-                  tStop=int(run[0] if tStop is None else tStop), initWater=run[1], Nmin0=run[2], rrg=run[3],
-                  rootTO=run[4], inputLit=run[5], CNlit=run[6], recLit=run[7], CtoMyc=run[8],
-                  NmyctoPlant=run[9], ee=run[10],
-                  TEMP=TEMP, SUNH=SUNH, climatefile=os.path.join(directory, climatefile) if directory != '.' else climatefile,
-                  B0=np.array(B0[:NPOOLS], dtype=float),
+            dens = load_parameter_file('KL_densityParams', directory)
+            beta, bref = dens['beta'], dens['bref']
+        cfg = cls(gmax=fauna['gmax'], ks=fauna['ks'], death=fauna['death'], resp=fauna['resp'], faec=fauna['faec'],
+                  cn=fauna['cn'], rec=fauna['rec'], mcn=fauna['mcn'], mrec=fauna['mrec'], tmin=fauna['tmin'],
+                  topt=fauna['topt'], tmax=fauna['tmax'], q10=fauna['q10'],
+                  d=soil['d'], BD=soil['BD'], alpha=soil['alpha'], n=soil['n'], m=soil['m'], Ksat=soil['Ksat'],
+                  pH=soil['pH'], litterCN0=soil['litterCN0'], SOMCN0=soil['SOMCN0'], drainmax=soil['drainmax'],
+                  PVstruct=np.array([soil[k] for k in PV_KEYS]),
+                  ratioPVBeng=eng['ratioPVBeng'], fPVB=eng['fPVB'], tPVB=eng['tPVB'], PVBmax=eng['PVBmax'],
+                  frag=eng['frag'], pfaec=pfaec, bioturbRate=eng['bioturbRate'], moveRate=eng['moveRate'],
+                  tStop=int(run['tStop'] if tStop is None else tStop), initWater=run['initWater'], Nmin0=run['Nmin0'],
+                  rrg=run['rrg'], rootTO=run['rootTO'], inputLit=run['inputLit'], CNlit=run['CNlit'],
+                  recLit=run['recLit'], CtoMyc=run['CtoMyc'], NmyctoPlant=run['NmyctoPlant'], ee=run['ee'],
+                  TEMP=clim['TEMP'], SUNH=clim['SUNH'],
+                  climatefile=os.path.join(directory, climatefile) if directory != '.' else climatefile,
+                  B0=np.array([pools[k] for k in POOL_KEYS], dtype=float),
                   density_dependent_turnover=density_dependent_turnover, beta=beta, bref=bref)
         cfg.validate()
         return cfg
@@ -161,9 +156,29 @@ class KeylinkConfig:
         return cfg
 
     def validate(self):
+        """Shapes and the valid ranges of the parameter schema (keylink_params.SCHEMA)."""
         for name in ('gmax', 'ks', 'death', 'resp', 'faec', 'cn', 'mcn', 'mrec', 'tmin', 'topt', 'tmax', 'q10'):
             if np.shape(getattr(self, name)) != (NGROUPS,):
                 raise ValueError('%s must have %d values (one per functional group)' % (name, NGROUPS))
+        for spec in SCHEMA.values():
+            for e in spec['entries']:
+                if e.key in PV_KEYS:
+                    value = self.PVstruct[PV_KEYS.index(e.key)] if np.shape(self.PVstruct) == (5,) else None
+                elif e.key == 'pfaec_sap':
+                    value = self.pfaec[SAP]
+                elif e.key == 'pfaec_eng':
+                    value = self.pfaec[ENG]
+                elif hasattr(self, e.key):
+                    value = getattr(self, e.key)
+                else:
+                    continue
+                if value is None:
+                    continue
+                arr = np.asarray(value, dtype=float)
+                if np.any(arr < e.lo) or np.any(arr > e.hi):
+                    raise ValueError('%s = %s outside the valid range [%g, %g] %s' % (e.key, value, e.lo, e.hi, e.unit))
+        if np.any(self.tmin >= self.topt) or np.any(self.topt >= self.tmax):
+            raise ValueError('temperature parameters must satisfy tmin < topt < tmax for every group')
         if np.shape(self.PVstruct) != (5,) or np.any(self.PVstruct <= 0):
             raise ValueError('PVstruct must hold 5 positive pore volumes')
         if np.shape(self.B0) != (NPOOLS,):
@@ -173,8 +188,6 @@ class KeylinkConfig:
         if self.density_dependent_turnover:
             if np.shape(self.beta) != (NGROUPS,) or np.shape(self.bref) != (NGROUPS,):
                 raise ValueError('beta and bref must have %d values' % NGROUPS)
-            if np.any(self.beta < 1):
-                raise ValueError('beta must be >= 1')
 
     @property
     def bref_effective(self):
@@ -211,6 +224,24 @@ class KeylinkResults:
     @property
     def ndays(self):
         return self.pools.shape[0]
+
+    def pool(self, key):
+        """Daily values of one pool by name ('bact', 'fungi', 'myc', 'bvores', 'fvores', 'sap', 'eng',
+        'hvores', 'pred', 'litter', 'SOM', 'roots', 'CO2') or Pool member."""
+        idx = key if isinstance(key, (int, np.integer)) else Pool(POOL_KEYS.index(key))
+        return self.pools[:, int(idx)]
+
+    def flux(self, key):
+        """Daily flux outputs by name ('bactResp', 'funResp', 'EMresp', 'bactGrowthSOM', 'bactGrowthLit',
+        'SOMeaten', 'LITeaten', 'LITeatenEng') or Flux member, g C m-3 day-1."""
+        idx = key if isinstance(key, (int, np.integer)) else Flux(13 + FLUX_KEYS.index(key))
+        return self.pools[:, int(idx)]
+
+    def as_dict(self):
+        """{name: daily array} for all pools and fluxes."""
+        d = {k: self.pools[:, i] for i, k in enumerate(POOL_KEYS)}
+        d.update({k: self.pools[:, 13+i] for i, k in enumerate(FLUX_KEYS)})
+        return d
 
 
 # ---------------------------------------------------------------------------------------------

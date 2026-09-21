@@ -19,6 +19,23 @@ mutate state, and importing `keylink_core` has no side effects. `keylink_main.py
 run modes (single, bayesian, posterior) on top of this API. The model equations are in
 `keylink_functions.py` (`fCompSpecies` is the ODE right-hand side).
 
+## Parameter files
+
+The `KL_*.txt` files keep their format (numbers followed by a `# comment`, one line per parameter
+or one column per functional group), but they are read **by name**: `keylink_params.SCHEMA` lists
+for every file the expected lines in order, a keyword that must occur in the line's comment, the
+unit and the valid range. A missing, reordered, mislabelled or out-of-range line raises a
+`ParameterFileError` naming the file and line, instead of silently shifting the values below it.
+The group header of `KL_FaunalParams.txt` / `KL_densityParams.txt` must list the groups in the
+order bact, fungi, myc (EM), bacterivores, fungivores, detritivores, engineers, herbivores,
+predators. To see what a file must contain:
+
+    python -c "import keylink_params as kp; print(kp.describe('KL_initSoil'))"
+
+Pool, flux and pore-class indices are named in `keylink_names.py` (`Pool.SOM`, `Flux.SOM_EATEN`,
+`MESO`, ...); `results.pool('SOM')`, `results.flux('SOMeaten')` and `results.as_dict()` give
+named access to the daily output.
+
 ## Density dependent turnover (optional extension)
 
 `KeylinkConfig.density_dependent_turnover` (`from_files(..., density_dependent_turnover=True)`, default on). The turnover (death)
