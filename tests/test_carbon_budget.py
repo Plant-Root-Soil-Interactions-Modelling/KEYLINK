@@ -6,7 +6,7 @@ cumulative CO2 pool) may only change through fluxes across the model boundary:
 
   inputs  : daily litter fall (inputLit), fine-root growth (rrg), plant C to
             mycorrhiza (CtoMyc, added inside the ODE), root exudation to SOM
-            (mf.exudation(), inside the ODE), and the 'security' clamp that
+            (plant.exudation(), inside the ODE), and the 'security' clamp that
             lifts non-positive pools to 0.001 g C m-3
   outputs : SOM bioturbated out of the layer (calcBioturb) and litter moved
             down by engineers (calcLittermove)
@@ -22,7 +22,7 @@ Run with:  python run_tests.py   (all tests) from the model directory.
 import unittest
 import numpy as np
 
-from tests.helpers import mf, make_config, core, POOLS
+from tests.helpers import make_config, core, POOLS, plant, struct
 
 NDAYS = 200          # days of the climate fixture used
 
@@ -32,8 +32,8 @@ def between_days(cfg, B_after_ode):
     of day i and precedes the ODE of day i+1. Returns the state handed to the
     next ODE call plus the boundary fluxes involved."""
     B = B_after_ode.copy()
-    somdown = mf.calcBioturb(B[6], cfg.bioturbRate, B[10]); B[10] -= somdown
-    litdown = mf.calcLittermove(B[6], cfg.moveRate, B[9]);  B[9] -= litdown
+    somdown = struct.calcBioturb(B[6], cfg.bioturbRate, B[10]); B[10] -= somdown
+    litdown = struct.calcLittermove(B[6], cfg.moveRate, B[9]);  B[9] -= litdown
     # fragmentation (litter -> SOM) is internal: no effect on the sum
     clamp = 0.0
     for s in range(11):
@@ -46,7 +46,7 @@ def between_days(cfg, B_after_ode):
 def start_of_day(cfg, B):
     """Litter input, root turnover (internal) and root growth applied before the ODE."""
     B = B.copy()
-    rt = mf.rootTurnover(B[11], cfg.rootTO)
+    rt = plant.rootTurnover(B[11], cfg.rootTO)
     B[9] += cfg.inputLit + rt
     B[11] += cfg.rrg - rt
     return B
@@ -67,7 +67,7 @@ class TestCarbonBudget(unittest.TestCase):
         self.assertTrue(np.all(np.isfinite(C[:, POOLS])))
         self.assertTrue(np.all(C[:, :12] > 0))
         self.assertGreater(C[-1, 12], 0)
-        self.assertGreater(mf.calcBioturb(C[:, 6], self.cfg.bioturbRate, C[:, 10]).sum(), 0)
+        self.assertGreater(struct.calcBioturb(C[:, 6], self.cfg.bioturbRate, C[:, 10]).sum(), 0)
 
     def test_daily_ode_conserves_carbon(self):
         """Over each ODE call, the sum of the 13 pools increases by exactly
@@ -77,7 +77,7 @@ class TestCarbonBudget(unittest.TestCase):
         residuals = []
         for i in range(NDAYS):
             d_sum = C[i, POOLS].sum() - pre[POOLS].sum()
-            residuals.append(d_sum - (mf.exudation() + self.cfg.CtoMyc))
+            residuals.append(d_sum - (plant.exudation() + self.cfg.CtoMyc))
             pre, _, _, _ = between_days(self.cfg, C[i])
         residuals = np.abs(residuals)
         self.assertLess(residuals.max(), 1e-8, "max daily residual %.3e g C m-3" % residuals.max())
@@ -90,7 +90,7 @@ class TestCarbonBudget(unittest.TestCase):
         pre = start_of_day(self.cfg, self.B0)
         inputs += self.cfg.inputLit + self.cfg.rrg           # day 0 explicit inputs
         for i in range(NDAYS):
-            inputs += mf.exudation() + self.cfg.CtoMyc   # inputs inside the ODE of day i
+            inputs += plant.exudation() + self.cfg.CtoMyc   # inputs inside the ODE of day i
             if i < NDAYS-1:
                 pre, somdown, litdown, clamp = between_days(self.cfg, C[i])
                 outputs += somdown + litdown

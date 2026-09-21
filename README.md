@@ -16,8 +16,19 @@ scenario = cfg.replace(pH=5.9, tStop=365)           # variants: validated copies
 `KeylinkConfig` is an immutable, validated dataclass (one field per parameter, documented in
 `keylink_core.py`); `KeylinkModel.run()` allocates its own output arrays, so runs never share or
 mutate state, and importing `keylink_core` has no side effects. `keylink_main.py` shows the three
-run modes (single, bayesian, posterior) on top of this API. The model equations are in
-`keylink_functions.py` (`fCompSpecies` is the ODE right-hand side).
+run modes (single, bayesian, posterior) on top of this API.
+
+Code layout (dependencies point downwards only; checked by `tests/test_modules.py`):
+
+| module | concern |
+|---|---|
+| `keylink_core.py` | `KeylinkConfig`, `KeylinkModel` (daily loop, N budget), `KeylinkResults`, plotting |
+| `keylink_foodweb.py` | growth modifiers, growth / respiration / turnover, `fCompSpecies` (ODE right-hand side) |
+| `keylink_structure.py` | pore size distribution, availability of pools to consumers, bioturbation |
+| `keylink_hydrology.py` | water balance, evapotranspiration, van Genuchten functions, DOM adsorption |
+| `keylink_plant.py` | external plant inputs (litter, roots, exudation, C to mycorrhiza) and plant N uptake |
+| `keylink_params.py`, `keylink_names.py` | parameter-file schema / reader, named indices |
+| `keylink_functions.py` | compatibility facade re-exporting the four equation modules |
 
 ## Parameter files
 

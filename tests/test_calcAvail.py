@@ -13,7 +13,7 @@ Run with:  python run_tests.py   (all tests) from the model directory.
 import unittest
 import numpy as np
 
-from tests.helpers import mf
+from tests.helpers import struct
 
 # pore volumes (l/m3) of the five classes: inaccessible, bacterial, micro, meso, macro
 PV = np.array([45., 37., 37., 200., 6.])
@@ -53,10 +53,10 @@ class TestWaterModifier(unittest.TestCase):
             V_over_P = PW.sum()/PV.sum()
             mtot = 4*V_over_P*(1-V_over_P) if V_over_P < 0.5 else 1.0
             expected = (PV[2]*(1-f)*mtot + PV[3]*f*mtot)/PV[1:].sum()
-            got = mf.calcAvail(PV, PW.copy(), SOMINI)[0]
+            got = struct.calcAvail(PV, PW.copy(), SOMINI)[0]
             self.assertAlmostEqual(got, expected, places=12, msg="filling fraction %.2f" % f)
             # detritivores (meso + macro only) see exactly the Eq. 16 share
-            self.assertAlmostEqual(mf.calcAvail(PV, PW.copy(), SOMINI)[3], PV[3]*f*mtot/PV[1:].sum(), places=12)
+            self.assertAlmostEqual(struct.calcAvail(PV, PW.copy(), SOMINI)[3], PV[3]*f*mtot/PV[1:].sum(), places=12)
 
     def test_half_filled_gives_half_mtot(self):
         """The clearest check of the volume used: at 50 % filling Eq. 15 gives exactly
@@ -67,7 +67,7 @@ class TestWaterModifier(unittest.TestCase):
         mw = expected_mwater(PV, PW)
         self.assertAlmostEqual(mw[2], 0.5*mtot, places=12)
         self.assertAlmostEqual(mw[3], 0.5*mtot, places=12)
-        self.assertAlmostEqual(mf.calcAvail(PV, PW.copy(), SOMINI)[0], availSOMbact_from_mwater(PV, mw), places=12)
+        self.assertAlmostEqual(struct.calcAvail(PV, PW.copy(), SOMINI)[0], availSOMbact_from_mwater(PV, mw), places=12)
         self.assertNotAlmostEqual(mw[2], PV[2]/(PV[2]+PW[2])*mtot, places=3)
 
     def test_modifier_is_continuous_across_class_boundaries(self):
@@ -77,13 +77,13 @@ class TestWaterModifier(unittest.TestCase):
         prev = None
         for V in np.linspace(83., 250., 300):   # from 'micropores just filling' to 'mesopores 80 % full'
             PW = np.array([45., 37., min(37., V-82.), max(0., V-119.), 0.])
-            a = mf.calcAvail(PV, PW.copy(), SOMINI)[0]
+            a = struct.calcAvail(PV, PW.copy(), SOMINI)[0]
             if prev is not None:
                 self.assertLess(abs(a-prev), 0.02, "jump at V=%.1f" % V)
             prev = a
         # full micropores, empty mesopores (field capacity): activity is in the mesopores, not zero
         PW = np.array([45., 37., 37., 0., 0.])
-        a = mf.calcAvail(PV, PW.copy(), SOMINI)
+        a = struct.calcAvail(PV, PW.copy(), SOMINI)
         r = PW.sum()/PV.sum(); mtot = 4*r*(1-r) if r < 0.5 else 1.0
         self.assertAlmostEqual(a[0], PV[3]/PV[1:].sum()*mtot, places=12)
         self.assertGreater(a[3], 0)                                        # detritivores active too
@@ -92,11 +92,11 @@ class TestWaterModifier(unittest.TestCase):
         PW = np.array([45., 37., 20., 0., 3.])        # transient macropore water, matrix level in micropores
         mw = expected_mwater(PV, PW)
         self.assertGreater(mw[2], 0); self.assertGreater(mw[3], 0); self.assertEqual(mw[4], 0)
-        np.testing.assert_allclose(mf.calcAvail(PV, PW.copy(), SOMINI)[0], availSOMbact_from_mwater(PV, mw))
+        np.testing.assert_allclose(struct.calcAvail(PV, PW.copy(), SOMINI)[0], availSOMbact_from_mwater(PV, mw))
         PW = np.array([45., 37., 37., 200., 3.])      # saturated matrix: macropores are the filling class
         mw = expected_mwater(PV, PW)
         self.assertEqual(mw[3], 0); self.assertAlmostEqual(mw[4], (6.-3.)/6.)
-        np.testing.assert_allclose(mf.calcAvail(PV, PW.copy(), SOMINI)[0], availSOMbact_from_mwater(PV, mw))
+        np.testing.assert_allclose(struct.calcAvail(PV, PW.copy(), SOMINI)[0], availSOMbact_from_mwater(PV, mw))
 
     def test_class_above_eq16(self):
         """Eq. 16: when mesopores are partially filled, macropores get
@@ -106,7 +106,7 @@ class TestWaterModifier(unittest.TestCase):
         self.assertAlmostEqual(mw[3], 0.25)
         self.assertAlmostEqual(mw[4], 0.75)
         self.assertAlmostEqual(mw[3]+mw[4], 1.0)
-        got = mf.calcAvail(PV, PW.copy(), SOMINI)
+        got = struct.calcAvail(PV, PW.copy(), SOMINI)
         self.assertAlmostEqual(got[0], availSOMbact_from_mwater(PV, mw), places=12)
 
     def test_full_availability_vector_against_reference(self):
@@ -121,7 +121,7 @@ class TestWaterModifier(unittest.TestCase):
                    np.array([45., 37., 37., 0., 0.]),
                    np.array([45., 37., 37., 120., 0.]),
                    np.array([45., 37., 37., 200., 2.])):
-            got = mf.calcAvail(PV, PW.copy(), SOMINI)
+            got = struct.calcAvail(PV, PW.copy(), SOMINI)
             mw = expected_mwater(PV, PW)
             for k, (mask, start) in masks.items():
                 exp = np.sum(np.array(mask)*PV[start:]*mw[start:])/PV[start:].sum()

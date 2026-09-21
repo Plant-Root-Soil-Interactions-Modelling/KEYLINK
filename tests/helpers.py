@@ -6,7 +6,10 @@ import os
 import numpy as np
 
 from tests import MODEL_DIR
-import keylink_functions as mf
+import keylink_hydrology as hydro
+import keylink_structure as struct
+import keylink_foodweb as foodweb
+import keylink_plant as plant
 import keylink_core as core
 
 # two years (1999-2000, 731 days) of the Brasschaat record, instead of the full 10-year file
@@ -47,7 +50,7 @@ def base_inputs():
     B[:12] = [15.1, 15.1, 160., 0.1, 0.8, 0.6, 0.2, 0.2, 0.4, 2680., SOMINI, 320.]
     SOMunavail = 45./325.*SOMINI
     avail = np.array([0.30, 0.25, 0.30, 0.20, 0.25, 0.30, 0.20, 0.20, 0.20, 0.20, 1.0, SOMunavail])
-    kw = dict(avail=avail, modt=np.ones(9), GMAX=GMAX.copy(), litterCN=38.6, SOMCN=18., mf=mf,
+    kw = dict(avail=avail, modt=np.ones(9), GMAX=GMAX.copy(), litterCN=38.6, SOMCN=18.,
               CN=CN.copy(), MCN=MCN.copy(), MREC=MREC.copy(), pH=3.9, recLit=40., FAEC=FAEC,
               pfaec=np.array([0, 0, 0, 0, 0, 0.3, 0.2]), rRESP=RESP.copy(), KS=KS, DEATH=DEATH,
               CtoMyc=0.54)
@@ -56,20 +59,20 @@ def base_inputs():
 
 def rhs(B, kw):
     """Daily derivatives from fCompSpecies as an array."""
-    return np.array(mf.fCompSpecies(B.copy(), 0., **kw), dtype=float)
+    return np.array(foodweb.fCompSpecies(B.copy(), 0., **kw), dtype=float)
 
 
 def growth_of(B, kw, consumer, source_idx, avail_idx, gmax, SOM=False):
     """Independent re-computation of one Monod consumption term (Flores et al. 2021, Eq. 9)."""
     S = B[source_idx] - kw['avail'][11] if SOM else B[source_idx]
-    return kw['modt'][consumer]*mf.calcgrowth(B[consumer], S, kw['avail'][avail_idx], gmax, kw['KS'][consumer])
+    return kw['modt'][consumer]*foodweb.calcgrowth(B[consumer], S, kw['avail'][avail_idx], gmax, kw['KS'][consumer])
 
 
 def gmax_on(kw, group, source):
     """gmax of bacteria(0)/fungi(1)/mycorrhiza(2) on 'litter' or 'SOM' incl. C:N/rec/pH modifiers."""
     pH_id = 1 if group == 0 else 2
     if source == 'litter':
-        return mf.calcgmaxmod(kw['CN'][group], kw['litterCN'], kw['MCN'][group], kw['recLit'],
+        return foodweb.calcgmaxmod(kw['CN'][group], kw['litterCN'], kw['MCN'][group], kw['recLit'],
                               kw['MREC'][group], kw['pH'], pH_id)*kw['GMAX'][group]
-    return mf.calcgmaxmod(kw['CN'][group], kw['SOMCN'], kw['MCN'][group], 0.0,
+    return foodweb.calcgmaxmod(kw['CN'][group], kw['SOMCN'], kw['MCN'][group], 0.0,
                           kw['MREC'][group], kw['pH'], pH_id)*kw['GMAX'][group]

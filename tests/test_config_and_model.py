@@ -8,7 +8,7 @@ Run with:  python run_tests.py   (all tests) from the model directory.
 import unittest
 import numpy as np
 
-from tests.helpers import mf, core, make_config, FIXTURE_CLIMATE, FIXTURE_DAYS
+from tests.helpers import core, make_config, FIXTURE_CLIMATE, FIXTURE_DAYS, hydro
 
 
 class TestKeylinkConfig(unittest.TestCase):
@@ -103,13 +103,11 @@ class TestKeylinkModel(unittest.TestCase):
 
 
 class TestMatrixInfiltration(unittest.TestCase):
-    """calcPW uses a constant maximal matrix infiltration rate (Ksat), as prescribed by Flores
-    et al. (2021). With the former unsaturated conductivity K(theta) a dry soil could never rewet."""
 
     def test_dry_matrix_takes_up_rain(self):
         PV = np.array([45., 37., 37., 200., 6.])
         PW = np.array([45., 0., 0., 0., 0.])            # matrix completely dry
-        PWn, drain, runoff = mf.calcPW(PV, 8.0, PW.copy(), 7., 1., 45., 319., 1.2, 1.7, 0.3, 10.)
+        PWn, drain, runoff = hydro.calcPW(PV, 8.0, PW.copy(), 7., 1., 45., 319., 1.2, 1.7, 0.3, 10.)
         self.assertGreater(PWn[1]+PWn[2]+PWn[3], 0.1)    # some of the 8 mm entered the matrix
         self.assertEqual(runoff, 0.0)
 

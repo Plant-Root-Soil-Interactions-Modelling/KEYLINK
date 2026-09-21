@@ -15,7 +15,7 @@ Run with:  python run_tests.py   (all tests) from the model directory.
 import unittest
 import numpy as np
 
-from tests.helpers import mf, core, run_model, make_config, base_inputs, rhs, FIXTURE_DAYS
+from tests.helpers import core, run_model, make_config, base_inputs, rhs, FIXTURE_DAYS, foodweb, plant
 
 NDAYS = FIXTURE_DAYS   # 2 years
 
@@ -24,21 +24,21 @@ class TestCalcDeath(unittest.TestCase):
 
     def test_first_order_when_beta_is_one(self):
         for B in (0.0, 0.3, 15.1, 5000.):
-            self.assertEqual(mf.calcDeath(B, 0.05, 1.0, 15.1), 0.05*B)
-            self.assertEqual(mf.calcDeath(B, 0.05), 0.05*B)
+            self.assertEqual(foodweb.calcDeath(B, 0.05, 1.0, 15.1), 0.05*B)
+            self.assertEqual(foodweb.calcDeath(B, 0.05), 0.05*B)
 
     def test_equals_d_at_reference_biomass_and_scales_with_density(self):
         d, Bref = 0.05, 15.1
         for beta in (1.5, 2.0):
-            self.assertAlmostEqual(mf.calcDeath(Bref, d, beta, Bref), d*Bref)
+            self.assertAlmostEqual(foodweb.calcDeath(Bref, d, beta, Bref), d*Bref)
             # specific turnover at 10x the reference biomass is 10**(beta-1) times d
-            self.assertAlmostEqual(mf.calcDeath(10*Bref, d, beta, Bref)/(10*Bref), d*10**(beta-1))
+            self.assertAlmostEqual(foodweb.calcDeath(10*Bref, d, beta, Bref)/(10*Bref), d*10**(beta-1))
             # and at 0.1x it is reduced accordingly (slower decline of small populations)
-            self.assertAlmostEqual(mf.calcDeath(0.1*Bref, d, beta, Bref)/(0.1*Bref), d*0.1**(beta-1))
+            self.assertAlmostEqual(foodweb.calcDeath(0.1*Bref, d, beta, Bref)/(0.1*Bref), d*0.1**(beta-1))
 
     def test_robust_for_non_positive_biomass(self):
-        self.assertEqual(mf.calcDeath(0.0, 0.05, 2.0, 15.1), 0.0)
-        self.assertTrue(np.isfinite(mf.calcDeath(-1e-9, 0.05, 1.7, 15.1)))
+        self.assertEqual(foodweb.calcDeath(0.0, 0.05, 2.0, 15.1), 0.0)
+        self.assertTrue(np.isfinite(foodweb.calcDeath(-1e-9, 0.05, 1.7, 15.1)))
 
 
 class TestInDerivativeFunctions(unittest.TestCase):
@@ -63,11 +63,11 @@ class TestInDerivativeFunctions(unittest.TestCase):
         B = self.B.copy(); B[2] *= 10      # mycorrhiza at 10x its reference biomass
         kw_dd = dict(self.kw, BETA=self.beta, BREF=self.bref)
         a = rhs(B, self.kw); b = rhs(B, kw_dd)
-        extra_death = mf.calcDeath(B[2], self.kw['DEATH'][2], 2.0, self.bref[2]) - self.kw['DEATH'][2]*B[2]
+        extra_death = foodweb.calcDeath(B[2], self.kw['DEATH'][2], 2.0, self.bref[2]) - self.kw['DEATH'][2]*B[2]
         self.assertGreater(extra_death, 0)
         self.assertAlmostEqual(a[2]-b[2], extra_death, places=10)      # myc loses it
         self.assertAlmostEqual(b[10]-a[10], extra_death, places=10)    # SOM (microbial necromass) gains it
-        self.assertAlmostEqual(b[:13].sum(), mf.exudation()+kw_dd['CtoMyc'], places=9)  # mass balance
+        self.assertAlmostEqual(b[:13].sum(), plant.exudation()+kw_dd['CtoMyc'], places=9)  # mass balance
 
 
 class TestWholeModelStability(unittest.TestCase):

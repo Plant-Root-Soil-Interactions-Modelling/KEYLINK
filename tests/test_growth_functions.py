@@ -1,5 +1,5 @@
 """
-Regression tests for the daily C-pool derivative function keylink_functions.fCompSpecies
+Regression tests for the daily C-pool derivative function keylink_foodweb.fCompSpecies
 (the ODE right-hand side; the former duplicate keylink_core.fEight has been removed).
 
 They guard against two bugs found in it:
@@ -14,7 +14,7 @@ Run with:  python run_tests.py   (all tests) from the model directory.
 import unittest
 import numpy as np
 
-from tests.helpers import mf, base_inputs, rhs, growth_of, gmax_on
+from tests.helpers import base_inputs, rhs, growth_of, gmax_on, foodweb, plant
 
 
 class TestSummedConsumptionOutputs(unittest.TestCase):
@@ -26,9 +26,9 @@ class TestSummedConsumptionOutputs(unittest.TestCase):
 
     def expected_terms(self):
         B, kw = self.B, self.kw
-        gEng = min(mf.calcgmaxEng(kw['GMAX'][6], kw['pH']), kw['GMAX'][6])
-        fSAP = min(1, mf.calcFaec(kw['GMAX'][5], kw['FAEC'][5], kw['pfaec'][5], kw['litterCN'], kw['CN'][5], kw['rRESP'][5]))
-        fEng = min(1, mf.calcFaec(gEng, kw['FAEC'][6], kw['pfaec'][6], kw['litterCN'], kw['CN'][6], kw['rRESP'][6]))
+        gEng = min(foodweb.calcgmaxEng(kw['GMAX'][6], kw['pH']), kw['GMAX'][6])
+        fSAP = min(1, foodweb.calcFaec(kw['GMAX'][5], kw['FAEC'][5], kw['pfaec'][5], kw['litterCN'], kw['CN'][5], kw['rRESP'][5]))
+        fEng = min(1, foodweb.calcFaec(gEng, kw['FAEC'][6], kw['pfaec'][6], kw['litterCN'], kw['CN'][6], kw['rRESP'][6]))
         som = {'bact': growth_of(B, kw, 0, 10, 0, gmax_on(kw, 0, 'SOM'), SOM=True),
                'fungi': growth_of(B, kw, 1, 10, 1, gmax_on(kw, 1, 'SOM'), SOM=True),
                'myc': growth_of(B, kw, 2, 10, 1, gmax_on(kw, 2, 'SOM'), SOM=True),
@@ -71,16 +71,16 @@ class TestSummedConsumptionOutputs(unittest.TestCase):
         + necromass of bacteria, fungi, myc, bacterivores, fungivores."""
         B, kw = self.B, self.kw
         _, lit = self.expected_terms()
-        gEng = min(mf.calcgmaxEng(kw['GMAX'][6], kw['pH']), kw['GMAX'][6])
-        fSAP = min(1, mf.calcFaec(kw['GMAX'][5], kw['FAEC'][5], kw['pfaec'][5], kw['litterCN'], kw['CN'][5], kw['rRESP'][5]))
-        fEng = min(1, mf.calcFaec(gEng, kw['FAEC'][6], kw['pfaec'][6], kw['litterCN'], kw['CN'][6], kw['rRESP'][6]))
+        gEng = min(foodweb.calcgmaxEng(kw['GMAX'][6], kw['pH']), kw['GMAX'][6])
+        fSAP = min(1, foodweb.calcFaec(kw['GMAX'][5], kw['FAEC'][5], kw['pfaec'][5], kw['litterCN'], kw['CN'][5], kw['rRESP'][5]))
+        fEng = min(1, foodweb.calcFaec(gEng, kw['FAEC'][6], kw['pfaec'][6], kw['litterCN'], kw['CN'][6], kw['rRESP'][6]))
         faeces = (kw['FAEC'][8]*sum(growth_of(B, kw, 8, prey, av, kw['GMAX'][8])
                                     for prey, av in ((3, 7), (4, 6), (5, 9), (6, 10), (7, 8)))
                   + fSAP*growth_of(B, kw, 5, 9, 0, kw['GMAX'][5])
                   + fEng*growth_of(B, kw, 6, 9, 0, gEng)
-                  + kw['FAEC'][7]*kw['modt'][7]*mf.calcgrowth(B[7], B[11], 1, kw['GMAX'][7], kw['KS'][7]))
+                  + kw['FAEC'][7]*kw['modt'][7]*foodweb.calcgrowth(B[7], B[11], 1, kw['GMAX'][7], kw['KS'][7]))
         deaths = sum(kw['DEATH'][i]*B[i] for i in range(5))
-        self.assertAlmostEqual(self.out[10], mf.exudation() - self.out[18] + faeces + deaths, places=10)
+        self.assertAlmostEqual(self.out[10], plant.exudation() - self.out[18] + faeces + deaths, places=10)
 
 
 class TestMycorrhizaParameters(unittest.TestCase):
@@ -120,7 +120,7 @@ class TestMycorrhizaParameters(unittest.TestCase):
     def test_myc_gmax_zero_leaves_only_input_minus_losses(self):
         out, kw = self._with(GMAX=(2, 0.0))
         B = self.B
-        predation = kw['modt'][4]*mf.calcgrowth(B[4], B[2], kw['avail'][5], kw['GMAX'][4], kw['KS'][4])
+        predation = kw['modt'][4]*foodweb.calcgrowth(B[4], B[2], kw['avail'][5], kw['GMAX'][4], kw['KS'][4])
         expected = kw['CtoMyc'] - kw['DEATH'][2]*B[2] - kw['rRESP'][2]*B[2] - predation
         self.assertAlmostEqual(out[2], expected, places=10)
 
@@ -136,7 +136,7 @@ class TestDetritivoresAndEngineers(unittest.TestCase):
         kw = dict(self.kw); kw['pH'] = 2.5
         out = rhs(self.B, kw)
         B = self.B
-        predation = (1+kw['FAEC'][8])*kw['modt'][8]*mf.calcgrowth(B[8], B[6], kw['avail'][10], kw['GMAX'][8], kw['KS'][8])
+        predation = (1+kw['FAEC'][8])*kw['modt'][8]*foodweb.calcgrowth(B[8], B[6], kw['avail'][10], kw['GMAX'][8], kw['KS'][8])
         self.assertAlmostEqual(out[6], -kw['DEATH'][6]*B[6] - kw['rRESP'][6]*B[6] - predation, places=10)
         self.assertEqual(out[20], 0.0)
         ref = rhs(self.B, self.kw)
@@ -146,7 +146,7 @@ class TestDetritivoresAndEngineers(unittest.TestCase):
     def test_detritivore_growth_uses_unmodified_gmax_and_own_availability(self):
         B, kw = self.B, self.kw
         out = rhs(B, kw)
-        fSAP = min(1, mf.calcFaec(kw['GMAX'][5], kw['FAEC'][5], kw['pfaec'][5], kw['litterCN'], kw['CN'][5], kw['rRESP'][5]))
+        fSAP = min(1, foodweb.calcFaec(kw['GMAX'][5], kw['FAEC'][5], kw['pfaec'][5], kw['litterCN'], kw['CN'][5], kw['rRESP'][5]))
         g_lit = growth_of(B, kw, 5, 9, 0, kw['GMAX'][5])
         g_som = growth_of(B, kw, 5, 10, 3, kw['GMAX'][5], SOM=True)
         predation = (1+kw['FAEC'][8])*growth_of(B, kw, 8, 5, 9, kw['GMAX'][8])
@@ -166,7 +166,7 @@ class TestMassBalanceAndEquivalence(unittest.TestCase):
         external inputs (root exudation + plant C to mycorrhiza)."""
         B, kw = base_inputs()
         out = rhs(B, kw)
-        self.assertAlmostEqual(out[:13].sum(), mf.exudation() + kw['CtoMyc'], places=9)
+        self.assertAlmostEqual(out[:13].sum(), plant.exudation() + kw['CtoMyc'], places=9)
 
 
 if __name__ == '__main__':

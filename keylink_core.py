@@ -14,7 +14,8 @@ Usage
 Importing this module has no side effects: nothing is read and no state is kept between runs.
 All parameters live in a KeylinkConfig (a frozen dataclass; use cfg.replace(...) for variants),
 every run allocates its own output arrays and returns them in a KeylinkResults object.
-The model equations themselves are in keylink_functions (fCompSpecies is the ODE right-hand side).
+The model equations are in keylink_hydrology, keylink_structure, keylink_foodweb (fCompSpecies is the
+ODE right-hand side) and keylink_plant.
 '''
 import dataclasses
 from dataclasses import dataclass, field
@@ -23,7 +24,10 @@ import os
 import numpy as np
 from scipy.integrate import odeint
 
-import keylink_functions as mf
+import keylink_hydrology as hydro
+import keylink_structure as struct
+import keylink_foodweb as foodweb
+import keylink_plant as plant
 
 from keylink_names import (Pool, Flux, BACT, FUNGI, MYC, BVORES, FVORES, SAP, ENG, HVORES, PRED, LITTER, SOM,
                            ROOTS, CO2, BACT_RESP, FUN_RESP, MYC_RESP, BACT_GROWTH_SOM, BACT_GROWTH_LIT, SOM_EATEN,
@@ -301,8 +305,8 @@ class KeylinkModel:
 
         for i in range(T):
             # a) pore size distribution (aggregation, burrows) ------------------------------------
-            ag = mf.calcAg(B[FUNGI], B[MYC], B[SOM])
-            pv = mf.calcPVD(cfg.PVstruct, pv, ag, cfg.ratioPVBeng, cfg.fPVB, cfg.tPVB, cfg.PVBmax, cfg.d, B)
+            ag = struct.calcAg(B[FUNGI], B[MYC], B[SOM])
+            pv = struct.calcPVD(cfg.PVstruct, pv, ag, cfg.ratioPVBeng, cfg.fPVB, cfg.tPVB, cfg.PVBmax, cfg.d, B)
             res.pores[i] = pv
 
             # climate of the day ------------------------------------------------------------------
@@ -311,47 +315,47 @@ class KeylinkModel:
                 nd[1] += 1
             precip, temp = precips[i], temps[i]
             for j in range(NGROUPS):
-                modt[j] = mf.calcmodt(temp, cfg.topt[j], cfg.tmin[j], cfg.tmax[j])
-                rRESP[j] = mf.calcresp(temp, cfg.topt[j], cfg.resp[j], cfg.q10[j])
-            pet = mf.PET(temp, nd[months[i]], cfg.SUNH[months[i]], self.HI, self.alfa)
+                modt[j] = foodweb.calcmodt(temp, cfg.topt[j], cfg.tmin[j], cfg.tmax[j])
+                rRESP[j] = foodweb.calcresp(temp, cfg.topt[j], cfg.resp[j], cfg.q10[j])
+            pet = hydro.PET(temp, nd[months[i]], cfg.SUNH[months[i]], self.HI, self.alfa)
 
             # b) water ----------------------------------------------------------------------------
             SatW = sum(pv[0:4])/(cfg.d - pv[4]/sum(pv[0:5]))   # saturated water content (excluding macropores)
-            PW, drainage, runoff = mf.calcPW(pv, precip, PW, cfg.drainmax, cfg.d, pv[0]/cfg.d, SatW,
+            PW, drainage, runoff = hydro.calcPW(pv, precip, PW, cfg.drainmax, cfg.d, pv[0]/cfg.d, SatW,
                                              cfg.alpha, cfg.n, cfg.m, cfg.Ksat)
             res.soil_water[i] = sum(PW)
             res.porosity[i] = sum(pv)
 
             # d) availability of each pool to each consumer --------------------------------------
-            avail = mf.calcAvail(pv, PW, self.iniSOM)
+            avail = struct.calcAvail(pv, PW, self.iniSOM)
 
             # litter input (plant litter and root turnover) and its nitrogen ----------------------
-            lit_in = cfg.inputLit + mf.rootTurnover(B[ROOTS], cfg.rootTO)
+            lit_in = cfg.inputLit + plant.rootTurnover(B[ROOTS], cfg.rootTO)
             litterCN = (B[LITTER] + lit_in)/(B[LITTER]/litterCN + lit_in/cfg.CNlit)
             B[LITTER] += lit_in
             Ntot += lit_in/cfg.CNlit
-            B[ROOTS] += mf.rootgrowth(cfg.rrg) - mf.rootTurnover(B[ROOTS], cfg.rootTO)
+            B[ROOTS] += plant.rootgrowth(cfg.rrg) - plant.rootTurnover(B[ROOTS], cfg.rootTO)
             # (the plant C input to mycorrhiza, CtoMyc, is added inside the ODE)
 
             # plant N uptake: via mycorrhiza first (mineral N first, the rest from SOM), then direct
             CNsoil = (B[LITTER] + B[SOM])/(B[LITTER]/litterCN + B[SOM]/SOMCN)
-            NviaMyc = mf.mycNtoPlant(cfg.NmyctoPlant, cfg.inputLit, litterCN, cfg.CtoMyc, CNsoil)
+            NviaMyc = plant.mycNtoPlant(cfg.NmyctoPlant, cfg.inputLit, litterCN, cfg.CtoMyc, CNsoil)
             Ntot -= NviaMyc
             Nmin = Nmin - NviaMyc if NviaMyc < Nmin else 0.0
-            upt = min(mf.plantNuptake(litterCN, cfg.inputLit, cfg.NmyctoPlant), Nmin)
+            upt = min(plant.plantNuptake(litterCN, cfg.inputLit, cfg.NmyctoPlant), Nmin)
             Ntot -= upt
             Nmin -= upt
 
             # e)-g) growth modifiers and the daily ODE of all C pools ------------------------------
             B[13:NSTATE] = 0   # flux outputs of this day
-            day = odeint(mf.fCompSpecies, B, [i, i+1],
-                         args=(avail, modt, GMAX, litterCN, SOMCN, mf, cfg.cn, cfg.mcn, cfg.mrec, cfg.pH,
+            day = odeint(foodweb.fCompSpecies, B, [i, i+1],
+                         args=(avail, modt, GMAX, litterCN, SOMCN, cfg.cn, cfg.mcn, cfg.mrec, cfg.pH,
                                cfg.recLit, cfg.faec, cfg.pfaec, rRESP, cfg.ks, cfg.death, cfg.CtoMyc, BETA, BREF))
             B = day[1, :].copy()
             res.pools[i] = B
 
             # evapotranspiration at the end of the day (otherwise the soil is always dry)
-            PW = mf.wl(PW, cfg.ee*pet)
+            PW = hydro.wl(PW, cfg.ee*pet)
 
             # h) nitrogen: bacterial mineralisation, SOM C:N as the residual of the N budget ------
             mineralisation = (B[BACT_GROWTH_SOM]/SOMCN + B[BACT_GROWTH_LIT]/litterCN
@@ -365,10 +369,10 @@ class KeylinkModel:
             SOMCN = B[SOM]/NSOM
 
             # i2) bioturbation: SOM and litter moved out of the layer by the engineers ------------
-            SOMdown = mf.calcBioturb(B[ENG], cfg.bioturbRate, B[SOM])
+            SOMdown = struct.calcBioturb(B[ENG], cfg.bioturbRate, B[SOM])
             B[SOM] -= SOMdown
             Ntot -= SOMdown/SOMCN
-            Litdown = mf.calcLittermove(B[ENG], cfg.moveRate, B[LITTER])
+            Litdown = struct.calcLittermove(B[ENG], cfg.moveRate, B[LITTER])
             B[LITTER] -= Litdown
             Ntot -= Litdown/litterCN
 

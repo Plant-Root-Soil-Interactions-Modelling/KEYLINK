@@ -27,7 +27,7 @@ Run with:  python run_tests.py   (all tests) from the model directory.
 import unittest
 import numpy as np
 
-from tests.helpers import mf, core, make_config
+from tests.helpers import core, make_config, plant, struct
 
 NDAYS = 365
 
@@ -52,30 +52,30 @@ class TestNitrogenBudget(unittest.TestCase):
             Nmin = self.cfg.Nmin0; Ntot = self.res.Ntot0
         else:
             B = C[i-1].copy()
-            B[10] -= mf.calcBioturb(B[6], self.cfg.bioturbRate, B[10])
-            B[9] -= mf.calcLittermove(B[6], self.cfg.moveRate, B[9])
+            B[10] -= struct.calcBioturb(B[6], self.cfg.bioturbRate, B[10])
+            B[9] -= struct.calcLittermove(B[6], self.cfg.moveRate, B[9])
             for s in range(11):
                 if B[s] <= 0:
                     B[s] = 0.001
             litterCN = self.res.litterCN[i-1]; SOMCN = self.res.SOMCN[i-1]
             Nmin = self.res.Nmin[i-1]; Ntot = self.res.Ntot[i-1]
-        lit_in = self.cfg.inputLit + mf.rootTurnover(B[11], self.cfg.rootTO)
+        lit_in = self.cfg.inputLit + plant.rootTurnover(B[11], self.cfg.rootTO)
         litterCN = (B[9]+lit_in)/(B[9]/litterCN + lit_in/self.cfg.CNlit)
         B[9] += lit_in
         Ntot += lit_in/self.cfg.CNlit
-        B[11] += self.cfg.rrg - mf.rootTurnover(B[11], self.cfg.rootTO)
+        B[11] += self.cfg.rrg - plant.rootTurnover(B[11], self.cfg.rootTO)
         CNsoil = (B[9]+B[10])/(B[9]/litterCN + B[10]/SOMCN)
-        NviaMyc = mf.mycNtoPlant(self.cfg.NmyctoPlant, self.cfg.inputLit, litterCN, self.cfg.CtoMyc, CNsoil)
+        NviaMyc = plant.mycNtoPlant(self.cfg.NmyctoPlant, self.cfg.inputLit, litterCN, self.cfg.CtoMyc, CNsoil)
         Ntot -= NviaMyc
         Nmin = Nmin - NviaMyc if NviaMyc < Nmin else 0.0
-        upt = min(mf.plantNuptake(litterCN, self.cfg.inputLit, self.cfg.NmyctoPlant), Nmin)
+        upt = min(plant.plantNuptake(litterCN, self.cfg.inputLit, self.cfg.NmyctoPlant), Nmin)
         Ntot -= upt; Nmin -= upt
         return B, litterCN, SOMCN, Nmin, Ntot
 
     def end_of_day_pools(self, i):
         B = self.C[i].copy()
-        somdown = mf.calcBioturb(B[6], self.cfg.bioturbRate, B[10]); B[10] -= somdown
-        litdown = mf.calcLittermove(B[6], self.cfg.moveRate, B[9]);  B[9] -= litdown
+        somdown = struct.calcBioturb(B[6], self.cfg.bioturbRate, B[10]); B[10] -= somdown
+        litdown = struct.calcLittermove(B[6], self.cfg.moveRate, B[9]);  B[9] -= litdown
         return B, somdown, litdown
 
     # -------------------------------------------------------------------- tests
@@ -107,16 +107,16 @@ class TestNitrogenBudget(unittest.TestCase):
         """mycNtoPlant must be evaluated with inputLit as plant-demand proxy (as plantNuptake is),
         not with CtoMyc: check the day-0 Ntot against both variants."""
         B = self.B0.copy()
-        lit_in = self.cfg.inputLit + mf.rootTurnover(B[11], self.cfg.rootTO)
+        lit_in = self.cfg.inputLit + plant.rootTurnover(B[11], self.cfg.rootTO)
         litterCN = (B[9]+lit_in)/(B[9]/self.cfg.litterCN0 + lit_in/self.cfg.CNlit)
         B[9] += lit_in
         CNsoil = (B[9]+B[10])/(B[9]/litterCN + B[10]/self.cfg.SOMCN0)
-        right = mf.mycNtoPlant(self.cfg.NmyctoPlant, self.cfg.inputLit, litterCN, self.cfg.CtoMyc, CNsoil)
-        wrong = mf.mycNtoPlant(self.cfg.NmyctoPlant, self.cfg.CtoMyc, litterCN, self.cfg.CtoMyc, CNsoil)
+        right = plant.mycNtoPlant(self.cfg.NmyctoPlant, self.cfg.inputLit, litterCN, self.cfg.CtoMyc, CNsoil)
+        wrong = plant.mycNtoPlant(self.cfg.NmyctoPlant, self.cfg.CtoMyc, litterCN, self.cfg.CtoMyc, CNsoil)
         self.assertNotAlmostEqual(right, wrong, places=6)
         _, somdown, litdown = self.end_of_day_pools(0)
         Nmin0 = self.cfg.Nmin0 - right
-        upt = min(mf.plantNuptake(litterCN, self.cfg.inputLit, self.cfg.NmyctoPlant), Nmin0)
+        upt = min(plant.plantNuptake(litterCN, self.cfg.inputLit, self.cfg.NmyctoPlant), Nmin0)
         self.assertAlmostEqual(self.res.Ntot[0], self.res.Ntot0 + lit_in/self.cfg.CNlit - right - upt
                                - somdown/self.res.SOMCN[0] - litdown/litterCN, places=9)
 
