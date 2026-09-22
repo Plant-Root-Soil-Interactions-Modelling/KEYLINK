@@ -1,50 +1,51 @@
 """
-KEYLINK hydrology: daily water balance of the soil layer, evapotranspiration and the van Genuchten
-soil hydraulic functions (Flores et al. 2021, 'Water flow', Eqs. 3-8), plus the DOM adsorption
-coefficient (Eq. 37) of the leaching concept.
+KEYLINK hydrology: daily water balance of the soil layer and evapotranspiration
+(Flores et al. 2021, 'Water flow', Eqs. 3-8). The DOM adsorption coefficient that used to be in this module is not used by the model any more; it is kept in archive/keylink_unused.py.
 
 Units: pore volumes PV and water contents PW in l m-3 of soil (per class: inaccessible, bacterial,
 micro, meso, macro pores, see keylink_names), precipitation / infiltration / drainage in mm day-1
 (= l m-2 day-1, identical to l m-3 for the 1 m layer of the example set-up).
 """
 import math
-
 import numpy as np
 
 
 def pressure_head(theta, R, S, alpha, n, m): 
+    '''returns the pressure_head'''
     theta = min(theta,S) # saturated water conent is the maximum 
     return - pow( pow( (S - R)/(theta - R), (1./m))-1., 1./n) / alpha
 
-# returns the volumetric water content at a given pressure head  according to the van genuchten model (Eqn 21)
 
 
 def water_content(h, R, S, alpha, n, m):
+    '''returns the volumetric water content at a given pressure head  according to the van genuchten model (Eqn 21)'''
     return R + (S-R)*pow(1. + pow(alpha*abs(h),n),-m)
 
-# returns the effective saturation according to the van genuchten model (dimensionless water content, Eqn 2)
 
 
 def effective_saturation(h, R, S, alpha, n, m):
+    '''returns the effective saturation according to the van genuchten model (dimensionless water content, Eqn 2)'''
     h = min(h,0) # pressure head is negative, zero the maximum
     theta = water_content(h, R, S, alpha, n, m)
     se = (theta-R)/(S-R)
     return se
 
-# returns the hydraulic conductivity according to the van genuchten model (Eqn 8)
 
 
 def hydraulic_conductivity(h, R, S, alpha, n, m, Ksat):
+    '''returns the hydraulic conductivity according to the van genuchten model (Eqn 8)'''
     se = effective_saturation(h, R, S, alpha, n, m) 
     K = Ksat*math.sqrt(se)*( (1. - pow(1. - pow(se, 1/m),m)) ** 2 )
     return K
 
 
-def calcPW(PV, precip, PW, drainmax, d, R, S, alpha, n, m, Ksat): #PV=pore volume in l/m3 (absolute value)
+def calcPW(PV, precip, PW, drainmax, d, R, S, alpha, n, m, Ksat):
     '''Daily water balance of the layer (Flores et al. 2021, Eqs. 4-8): infiltration into the matrix and
     the macropores, runoff, drainage; PW (water per pore class, l/m3) is updated in place and returned.
-    ImaxMat is the maximal infiltration rate of the soil matrix ('measured or derived', Eq. 5 ff.); here
-    the saturated conductivity Ksat (mm/day) is used.'''
+    ImaxMat is the maximal infiltration rate of the soil matrix ('measured or derived', Eq. 5 ff.)
+
+    PV=pore volume in l/m3 (absolute value)
+    '''
     SWtot = sum(PW)    # total soil water, assume in absolute values so m3 water per m2 soil in that layer
     h=pressure_head(SWtot, R, S, alpha, n, m)
     ImaxMat = hydraulic_conductivity(h, R, S, alpha, n, m, Ksat) #maximal infriltration in matrix (mm/day), excluding macropores
@@ -122,6 +123,12 @@ def calcPW(PV, precip, PW, drainmax, d, R, S, alpha, n, m, Ksat): #PV=pore volum
 
 
 def PET(temp, nd, sunh, hi, alfa):  # Potential Evapotranspiration, Thornthwaite equation (1948)
+    """Potential evapotranspiration after Thornthwaite (1948), mm day-1 (= l m-2 day-1).
+
+    temp: daily mean air temperature, degC; nd: number of days of the month, -;
+    sunh: sunshine hours of the month, h; hi: annual heat index from the monthly mean
+    temperatures, -; alfa: exponent derived from hi, -.
+    """
     sun = sunh/nd # average day length (hours)
     pet = (16*(sun/12)*(nd/30)*(((10*max(0,temp))/hi)**alfa))/nd # in l/m2 at daily scale
     return pet
@@ -129,6 +136,12 @@ def PET(temp, nd, sunh, hi, alfa):  # Potential Evapotranspiration, Thornthwaite
 
 
 def wl(PW, et): # water lost by evapotranspiration
+    """Remove the evapotranspiration of the day from the pore classes; returns PW (changed in place).
+
+    PW: water per pore class, l m-3; et: evapotranspiration, mm day-1 (= l m-2 day-1).
+    Water is taken from the largest pores first (macro, meso, micro, bacterial); the water of the
+    inaccessible pores is held below wilting point and is never removed.
+    """
     if et<PW[4]:
         PW[4]=PW[4]-et
     elif et<(PW[3]+PW[4]):
@@ -151,8 +164,3 @@ def wl(PW, et): # water lost by evapotranspiration
 
     return PW
 
-
-def calcKD(pH,fClay): #Cempirically from orchideeSOM model Cammino-serrano et al 2018
-    Kd=0.001226-0.000212*pH+0.00374*fClay
-    return Kd
-    

@@ -18,6 +18,17 @@ def calcAg(fungi, myc, SOM):
 
 
 def calcPVD(PVstruct, pv, Ag, ratioPVBeng, fPVB, tPVB, PVBmax, d, b):
+    """Pore volume of the five size classes, l m-3 (Flores et al. 2021, Eqs. 27 and 31-34).
+
+    PVstruct: textural pore volume per class, l m-3; pv: pore volume per class of the previous day,
+    l m-3 (only the macropores are used, for the burrow turnover); Ag: aggregated fraction of SOM,
+    0-1 (calcAg); ratioPVBeng: burrow volume per engineer biomass, l g C-1; fPVB: fraction of the
+    burrow volume that is additional porosity, 0-1 (the rest is taken from the mesopores);
+    tPVB: daily turnover of burrows, day-1; PVBmax: maximal burrow volume, l m-3; d: depth of the
+    layer, m; b: state vector of the C pools, g C m-3 (engineer biomass and SOM are used).
+    Aggregation moves mesoporosity into micro- and bacterial pores and adds porosity proportional
+    to the aggregated SOM; engineers add macroporosity at the expense of mesoporosity.
+    """
     #all volumes in l/m3
     Beng = b[ENG] #engineer biomass
     PVB = min(PVBmax*d, ratioPVBeng*Beng*d)
@@ -36,6 +47,18 @@ def calcPVD(PVstruct, pv, Ag, ratioPVBeng, fPVB, tPVB, PVBmax, d, b):
 
 
 def calcAvail(PV, PW, SOMini):
+    """Available fraction of each substrate to each consumer, 0-1 (Flores et al. 2021, Eqs. 14-16).
+
+    PV: pore volume per size class, l m-3; PW: water filled volume per size class, l m-3;
+    SOMini: SOM used to derive the amount held in inaccessible pores, g C m-3.
+
+    For every consumer the pore classes it can enter are weighted by their volume and by the water
+    modifier mH2O: activity takes place in the highest class that holds water (Eq. 15) and in the
+    class one above it, which is not yet dry (Eq. 16); flooded and dry classes contribute nothing.
+    The overall hydration modifier mH2Otot (Eq. 14) is a function of the total water content and
+    the total pore volume. Returns the 12 entries of keylink_names.AVAIL_KEYS: 11 availabilities
+    (0-1) and, as the last entry, the SOM held in inaccessible pores (g C m-3).
+    """
     #units in water and porosity volumes: l/m3
     mwater = np.zeros(5)
     if sum(PW)/sum(PV) < 0.5:
@@ -79,10 +102,20 @@ def calcAvail(PV, PW, SOMini):
 
 
 def calcBioturb(worms, biotRate, OM): #calculate bioturbation
+    """SOM mixed downwards out of the layer by the engineers, g C m-3 day-1.
+
+    worms: engineer biomass, g C m-3; biotRate: % of the SOM pool per g C engineer per day;
+    OM: SOM pool, g C m-3.
+    """
     soilDown=worms*biotRate/100*OM
     return soilDown
 
 
 def calcLittermove(worms, moveRate, Lit): #calculate litter move by engineers
+    """Litter moved downwards out of the layer by the engineers, g C m-3 day-1.
+
+    worms: engineer biomass, g C m-3; moveRate: % of the litter pool per g C engineer per day;
+    Lit: litter pool, g C m-3.
+    """
     litterDown=worms*moveRate/100*Lit
     return litterDown

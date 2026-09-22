@@ -30,6 +30,17 @@ Code layout (dependencies point downwards only; checked by `tests/test_modules.p
 | `keylink_params.py`, `keylink_names.py` | parameter-file schema / reader, named indices |
 | `keylink_functions.py` | compatibility facade re-exporting the four equation modules |
 
+## Documentation
+
+* `docs/equations.md` maps every equation of Flores et al. (2021) (Eqs. 1-37) and of the
+  calculation order to the function that implements it, and lists the deviations from the papers
+  (and the remaining known defects) in one place.
+* Every module, class and function has a docstring stating purpose, arguments and **units**;
+  `tests/test_modules.py` checks that this stays true and that the equation map only refers to
+  functions that exist.
+* `archive/` contains superseded scripts and the functions the model no longer uses; see
+  `archive/README.md`.
+
 ## Parameter files
 
 The `KL_*.txt` files keep their format (numbers followed by a `# comment`, one line per parameter

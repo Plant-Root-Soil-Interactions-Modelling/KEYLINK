@@ -49,6 +49,7 @@ def export_pools(filename, array, directory='.'):
 
 
 def _is_leap_year(year):
+    """True for leap years (Gregorian rule), used for the day count of February."""
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 
@@ -202,6 +203,7 @@ class KeylinkConfig:
 
     @property
     def beta_effective(self):
+        """Exponent of the density dependent turnover per group, or None when the add-on is off."""
         return self.beta if self.density_dependent_turnover else None
 
 
@@ -227,6 +229,7 @@ class KeylinkResults:
 
     @property
     def ndays(self):
+        """Number of simulated days."""
         return self.pools.shape[0]
 
     def pool(self, key):
@@ -255,6 +258,10 @@ class KeylinkModel:
     repeatedly (e.g. in a calibration), every call starts from the initial state of the config."""
 
     def __init__(self, config):
+        """Derive the run-invariant quantities of a configuration: Thornthwaite heat index and
+        exponent, the initial total N of the layer (biota + mineral + SOM + litter, g N m-3), the
+        SOM used for the inaccessible pore fraction (g C m-3) and the initial water content per
+        pore class (l m-3)."""
         self.cfg = cfg = config
         cfg.validate()
         # heat index and exponent of the Thornthwaite equation (from the monthly mean temperatures)

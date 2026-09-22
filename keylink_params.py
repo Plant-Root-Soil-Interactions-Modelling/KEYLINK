@@ -38,6 +38,9 @@ class Entry:
     (1, or NGROUPS for group-wise files, or 12 for monthly values)."""
 
     def __init__(self, key, keyword, unit='', lo=-INF, hi=INF, n=1, description=''):
+        """key: name in the returned dict; keyword: regex that must occur in the comment of the
+        line; unit: unit string used in messages; lo, hi: valid range; n: number of values
+        expected on the line; description: explanation used in error messages and describe()."""
         self.key, self.keyword, self.unit, self.lo, self.hi, self.n, self.description = \
             key, keyword, unit, lo, hi, n, description
 
@@ -141,6 +144,8 @@ def _read_lines(path):
 
 
 def _check_group_header(path, comment, lineno):
+    """Verify that the header comment of a group-wise file names the nine functional groups
+    in the expected order (the aliases of GROUP_ALIASES are accepted)."""
     tokens = comment.lower().split()
     if len(tokens) != NGROUPS:
         raise ParameterFileError('%s line %d: header must name the %d functional groups (%s), found %r'

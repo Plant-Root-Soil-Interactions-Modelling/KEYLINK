@@ -7,6 +7,8 @@ pure re-export facade. Nothing below core may import core, matplotlib or read fi
 Run with:  python run_tests.py   (all tests) from the model directory.
 """
 import ast
+import os
+import re
 import unittest
 
 from tests import MODEL_DIR   # noqa: F401  (sets cwd / sys.path)
@@ -59,7 +61,13 @@ class TestModuleLayering(unittest.TestCase):
             home = {'keylink_hydrology': hydro, 'keylink_structure': struct, 'keylink_foodweb': foodweb,
                     'keylink_plant': plant}[obj.__module__]
             self.assertIs(obj, getattr(home, name))
-        self.assertEqual(len(mf.__all__), 28)
+        self.assertEqual(len(mf.__all__), 22)
+
+    def test_archive_is_not_imported_by_the_model(self):
+        """archive/ holds superseded code and unused functions; no model module may depend on it."""
+        for module in list(ALLOWED_IMPORTS):
+            self.assertNotIn('keylink_unused', imported_modules(module + '.py'), module)
+        self.assertFalse(any(n.startswith('archive') for m in ALLOWED_IMPORTS for n in imported_modules(m + '.py')))
 
     def test_each_function_lives_in_the_module_of_its_concern(self):
         self.assertEqual(hydro.calcPW.__module__, 'keylink_hydrology')
@@ -74,3 +82,53 @@ class TestModuleLayering(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestDocumentation(unittest.TestCase):
+    """Every public function/class of the model must have a docstring, and the equation map in
+    docs/equations.md must only refer to functions that exist."""
+
+    MODULES = ['keylink_names', 'keylink_params', 'keylink_plant', 'keylink_hydrology',
+               'keylink_structure', 'keylink_foodweb', 'keylink_core']
+
+    def test_all_functions_and_classes_have_docstrings(self):
+        import ast
+        for module in self.MODULES:
+            tree = ast.parse(open(module + '.py', encoding='utf-8').read())
+            self.assertTrue(ast.get_docstring(tree), '%s has no module docstring' % module)
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                    self.assertTrue(ast.get_docstring(node), '%s.%s has no docstring' % (module, node.name))
+
+    def test_units_are_documented(self):
+        """The docstrings of the flux/rate functions must state their units."""
+        import keylink_structure as st
+        import keylink_foodweb as fw
+        import keylink_hydrology as hy
+        for fn, unit in [(fw.calcgrowth, 'g C m-3 day-1'), (fw.calcDeath, 'g C m-3 day-1'),
+                         (fw.calcresp, 'g C g C-1 day-1'), (st.calcBioturb, 'g C m-3 day-1'),
+                         (st.calcPVD, 'l m-3'), (hy.PET, 'mm day-1')]:
+            self.assertIn(unit, fn.__doc__, fn.__name__)
+
+    def test_equation_map_refers_to_existing_functions(self):
+        import importlib
+        text = open(os.path.join('docs', 'equations.md'), encoding='utf-8').read()
+        refs = set(re.findall(r'`(keylink_\w+)\.(\w+)`', text))
+        self.assertGreater(len(refs), 15)
+        for module, attr in sorted(refs):
+            if module.startswith('keylink_') and module not in ('keylink_unused',):
+                mod = importlib.import_module(module)
+                self.assertTrue(hasattr(mod, attr), '%s.%s in docs/equations.md does not exist' % (module, attr))
+
+    def test_equation_map_covers_all_equations(self):
+        """Every equation 1-37 of Flores et al. (2021) must appear in the map, either with its own
+        row or inside a range such as '4-8'."""
+        text = open(os.path.join('docs', 'equations.md'), encoding='utf-8').read()
+        covered = set()
+        for spec in re.findall(r'^\|\s*([0-9\u2013\-]+)\s*\|', text, flags=re.M):
+            parts = re.split(r'[\u2013\-]', spec)
+            if len(parts) == 2 and all(p.isdigit() for p in parts):
+                covered.update(range(int(parts[0]), int(parts[1])+1))
+            elif spec.isdigit():
+                covered.add(int(spec))
+        self.assertEqual(sorted(set(range(1, 38)) - covered), [], 'equations missing in docs/equations.md')

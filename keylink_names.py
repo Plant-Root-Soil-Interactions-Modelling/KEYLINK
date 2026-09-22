@@ -12,6 +12,7 @@ from enum import IntEnum
 
 
 class Pool(IntEnum):
+    """Indices of the C pools in the state vector / in KeylinkResults.pools (all g C m-3)."""
     BACT = 0        # bacteria
     FUNGI = 1       # non-mycorrhizal fungi
     MYC = 2         # mycorrhizal fungi
@@ -28,6 +29,7 @@ class Pool(IntEnum):
 
 
 class Flux(IntEnum):
+    """Indices of the daily flux outputs carried in the state vector (all g C m-3 day-1)."""
     BACT_RESP = 13        # bacterial respiration
     FUN_RESP = 14         # fungal respiration
     MYC_RESP = 15         # mycorrhizal respiration

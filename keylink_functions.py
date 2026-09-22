@@ -7,14 +7,13 @@ Compatibility facade: the functions of the former single module keylink_function
 This module re-exports all of them so that `import keylink_functions as mf` keeps working.
 New code should import from the specific modules.
 """
-from keylink_hydrology import (pressure_head, water_content, effective_saturation, hydraulic_conductivity,
-                               calcPW, PET, wl, calcKD)
+from keylink_hydrology import calcPW, PET, wl
 from keylink_structure import calcAg, calcPVD, calcAvail, calcBioturb, calcLittermove
 from keylink_foodweb import (calcmodt, calcresp, calcgmaxmod, calcgmaxEng, calcgrowth, calcDeath, calcFaec,
                              fCompSpecies)
-from keylink_plant import inputLitter, inputCtoMyc, rootgrowth, rootTurnover, exudation, mycNtoPlant, plantNuptake
+from keylink_plant import inputCtoMyc, rootgrowth, rootTurnover, exudation, mycNtoPlant, plantNuptake
 
-__all__ = ['pressure_head', 'water_content', 'effective_saturation', 'hydraulic_conductivity', 'calcPW', 'PET',
-           'wl', 'calcKD', 'calcAg', 'calcPVD', 'calcAvail', 'calcBioturb', 'calcLittermove', 'calcmodt',
-           'calcresp', 'calcgmaxmod', 'calcgmaxEng', 'calcgrowth', 'calcDeath', 'calcFaec', 'fCompSpecies',
-           'inputLitter', 'inputCtoMyc', 'rootgrowth', 'rootTurnover', 'exudation', 'mycNtoPlant', 'plantNuptake']
+__all__ = ['calcPW', 'PET', 'wl', 'calcAg', 'calcPVD', 'calcAvail', 'calcBioturb', 'calcLittermove', 
+           'calcmodt', 'calcresp', 'calcgmaxmod', 'calcgmaxEng', 'calcgrowth', 'calcDeath', 'calcFaec',
+           'fCompSpecies', 'inputCtoMyc', 'rootgrowth', 'rootTurnover', 'exudation', 'mycNtoPlant', 
+           'plantNuptake']

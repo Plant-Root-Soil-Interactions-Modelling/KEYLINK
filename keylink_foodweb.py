@@ -13,6 +13,13 @@ from keylink_plant import inputCtoMyc, exudation
 
 
 def calcmodt(temp, topt, tmin, tmax): #calculate temperature modifier
+    """Temperature modifier of the growth rate, 0-1 (Flores et al. 2021, Eq. 17).
+
+    temp, topt, tmin, tmax: actual, optimal, minimum and maximum temperature, degC.
+    Q10-shaped below the optimum, a plateau of 1 between optimum and maximum, 0 outside
+    [tmin, tmax). The Q10 of growth is 2 here, while respiration uses the Q10 of the
+    parameter file (see calcresp).
+    """
     if temp < tmin:
         value = 0
     elif temp < topt:
@@ -27,6 +34,13 @@ def calcmodt(temp, topt, tmin, tmax): #calculate temperature modifier
 
 
 def calcresp(temp, T1, R1, Q10): #calculate respiration ifo temperature
+    """Respiration rate at the temperature of the day, g C g C-1 day-1 (Eq. 11).
+
+    temp: temperature of the day, degC; T1: reference temperature of R1 (the optimum
+    temperature), degC; R1: respiration rate at T1, g C g C-1 day-1; Q10: -.
+    Unlike the growth modifier this curve has no plateau, so above the optimum respiration
+    keeps increasing while growth does not.
+    """
     value = R1*(Q10**((temp-T1)/10))
     return value
 
@@ -36,6 +50,14 @@ def calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id):
 #effect of CN when limiting (only for bacteria!) is in the main code
 # id is te identity of the organisms (1=bacteria, 2=fungi)
       #effect of recalcitrance
+   """Combined modifier of gmax for a microbial group on one substrate, 0-1 (Eqs. 18-25).
+
+   CNbiomass: C:N of the consumer, -; CNsource: C:N of the substrate, -; pCN: sensitivity
+   to the C:N ratio pmC:N, - (Eqs. 21-22); rec: recalcitrance of the substrate, % (0 for
+   SOM); prec: sensitivity to recalcitrance pmRec, - (Eqs. 23-24); pH: -; id: 1 for
+   bacteria, >= 2 for fungi and mycorrhiza (selects the pH response of Eqs. 18-19).
+   The modifiers are multiplied (Eq. 25) and capped at 1.
+   """
    mRec = 1-prec*rec/100
       #effect of pH
    if id < 2: #for bacteria
@@ -55,6 +77,11 @@ def calcgmaxmod(CNbiomass, CNsource, pCN, rec, prec, pH, id):
 
 
 def calcgmaxEng(GM,pH): #calculate engineer gmax ifo pH
+    """Maximal growth rate of the engineers as a function of pH, g C g C-1 day-1 (Eq. 20).
+
+    GM: unmodified gmax, g C g C-1 day-1; pH: -. Zero below pH 3, linear between 3 and 5,
+    GM above.
+    """
     if pH<3:
         gmaxEng=0
     elif 3<=pH<5:
@@ -66,6 +93,14 @@ def calcgmaxEng(GM,pH): #calculate engineer gmax ifo pH
 
 
 def calcgrowth(biomass, source, avail, gmaxmod, Ks): #Monod kinetic equation of growth
+    """Growth of a consumer on one substrate, g C m-3 day-1 (Monod kinetics, Eq. 9).
+
+    biomass: consumer biomass B, g C m-3; source: substrate pool S, g C m-3; avail:
+    available fraction fa of that substrate, 0-1 (keylink_structure.calcAvail); gmaxmod:
+    maximal growth rate including its modifiers, g C g C-1 day-1; Ks: half saturation
+    constant, g C m-3. Returns gmaxmod*fa*S/(Ks+S)*B, limited to half of the available
+    substrate per day (a safeguard that is not part of Eq. 9).
+    """
     value = min(gmaxmod*avail*source*biomass/(Ks+source), (avail*source/2))
     return np.real(value)
     
@@ -84,6 +119,15 @@ def calcDeath(biomass, d, beta=1.0, Bref=1.0):
 
 
 def calcFaec(gmax, faec, pfaec, CNsource, CNbiomass, R): #calculate faeces
+    """Fraction of the consumed C that becomes faeces, 0-1 (Eq. 26 plus a C:N constraint).
+
+    gmax: maximal growth rate of the consumer, g C g C-1 day-1; faec: basal faeces fraction
+    ffaec, 0-1; pfaec: sensitivity of ffaec to the C:N ratio mfaec, -; CNsource: C:N of the
+    food, -; CNbiomass: C:N of the consumer, -; R: respiration rate, g C g C-1 day-1.
+    The first term is Eq. 26 (more faeces on poorer food); the second (faecshort) is the
+    fraction needed to cover the consumer N demand from food of that C:N and is not in the
+    paper. The larger of the two is returned; the caller caps the result at 1.
+    """
     faecm = faec+pfaec*(CNsource-CNbiomass)/CNsource*faec # ffaecEff in paper
     faecshort = CNsource/CNbiomass+R/gmax-1 # ffaecCN in paper
     value = max(faecm, faecshort)
